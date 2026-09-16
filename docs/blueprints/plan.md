@@ -9,12 +9,20 @@
   minimal CLI, tests, and documented code-as-source-of-truth hypothesis. See
   [`repository bootstrap`](plans/2026-09-16-repository-bootstrap.md).
 
+## 🚧 In progress
+
+- **Code-first production vertical slice** — a playable synthetic-source chop-flip example now
+  compiles modular Python into a graph/material store and renders mix plus sample/drums/bass stems
+  without source code. Tests verify exact graph-only replay, a bass-only revision, and an honest
+  materialized-randomness boundary. It has not yet matched the private Music Agent OS source,
+  pitch-preserving warp, effects/routing, groove MIDI, or human A/B acceptance. See
+  [`vertical-slice plan`](plans/2026-09-16-code-first-production-slice.md).
+
 ## ▶ Next
 
-- **Choose and pre-register one Music Agent OS vertical slice** — the first build should cover a
-  real analysis → arrangement → custom DSP → mix/stems/MIDI → revision workflow. Compare it with
-  the existing Tactus path before promoting shared abstractions. No production model has been
-  selected by the bootstrap.
+- **Close the workflow gap** — replace the synthetic fixture with a locally usable, lawful source
+  and compare the adapted output with the Music Agent OS production path. Add only the missing
+  production seams the comparison actually requires, then ask Paul to listen to the A/B.
 
 ## ⏸ Future — evidence-gated
 
