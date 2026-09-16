@@ -242,8 +242,10 @@ def render() -> dict:
                 velocity *= 1.12
             if name == "outro":
                 velocity *= 0.70 * (1 - local / (section_bars + 2))
+            velocity *= float(rng.uniform(0.93, 1.07))
+            timing = float(rng.normal(0, 0.006))
             add(buses["piano"], piano(notes[index], 0.58),
-                start + step * BEAT / 2, velocity, -0.24 + 0.48 * (step % 2))
+                start + step * BEAT / 2 + timing, velocity, -0.24 + 0.48 * (step % 2))
 
         if name not in ("intro", "outro"):
             for beat, index in [(0.5, 1), (1.5, 2), (2.5, 3), (3.5, 1)]:
@@ -270,6 +272,9 @@ def render() -> dict:
                 gain = 0.70 if name == "verse_1" else 1.22 if name == "final_chorus" else 1.0
                 add(buses["lead"], lead(pitch, length * BEAT),
                     start + beat * BEAT, gain, -0.06)
+            if name == "final_chorus" and local in (0, 4):
+                add(buses["guitar"], guitar(notes[2] + 12, 1.1 * BEAT),
+                    start + 3 * BEAT, 0.95, 0.7)
 
         if name not in ("intro", "outro"):
             for beat, pitch, length in [(0, root, 1.35), (2, root + 7, 1.25)]:
@@ -291,11 +296,20 @@ def render() -> dict:
                     0.34 if is_verse else 0.48, 0.35)
             if is_chorus and local in (0, 4):
                 add(buses["drums"], drum("ride", rng), start, 1.0, -0.47)
+            if (is_pre or name == "bridge") and local == section_bars - 1:
+                for beat, gain in [(2.5, 0.28), (3.0, 0.38), (3.5, 0.55)]:
+                    add(buses["drums"], drum("snare", rng), start + beat * BEAT,
+                        gain, 0.12)
 
     buses["piano"] = ambience(buses["piano"], 0.36)
     buses["guitar"] = ambience(buses["guitar"], 0.28)
     buses["strings"] = ambience(buses["strings"], 0.44)
     buses["lead"] = ambience(buses["lead"], 0.62)
+    outro_start = int((total_bars - SECTIONS[-1][1]) * BAR * RATE)
+    outro_end = int(total_bars * BAR * RATE)
+    fade = np.linspace(1, 0, outro_end - outro_start, dtype=np.float32)[:, None]
+    for signal in buses.values():
+        signal[outro_start:outro_end] *= fade
 
     # Source code, not a saved DAW state, defines every musical decision.
     mix = sum(buses.values())
