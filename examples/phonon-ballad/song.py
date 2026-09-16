@@ -1,17 +1,20 @@
 """An original, deterministic instrumental pop ballad inspired by a reference's arc.
 
 The reference recording is never sampled, imported, or used by this renderer.
-Run with: uv run python examples/phonon-ballad/song.py
+Run with: uv run python examples/phonon-ballad/song.py --palette sampled
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
+from soundfont import SoundFont
 
 RATE = 32_000
 BPM = 120
@@ -19,6 +22,39 @@ BEAT = 60.0 / BPM
 BAR = 4 * BEAT
 SEED = 41377
 OUT = Path(__file__).resolve().parents[2] / "dist" / "phonon-ballad"
+LIBRARY = Path(
+    os.environ.get(
+        "RYTHO_LIBRARY_ROOT",
+        str(Path(__file__).resolve().parents[4] / "knowledge/libraries/rytho-library"),
+    )
+)
+SOUNDFONT = Path(os.environ.get("FLUID_SOUNDFONT", "/usr/share/sounds/sf2/FluidR3_GM.sf2"))
+DRUM_BASE = (
+    "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/03-soulful-vintage"
+)
+DRUM_FILES = {
+    "kick": (
+        "kicks/vintage-kick-01.wav",
+        "7623b0357f54e90c9c85ef9570b7782e0ab5ef1287de45279f9ccb8e27d42dd6",
+        0.80,
+    ),
+    "snare": (
+        "snares/vintage-snare-01.wav",
+        "c05f292f7a004b4e7452682b6cd75e0f2b37aaee2e3555401b360f44d695c08f",
+        0.48,
+    ),
+    "hat": (
+        "hi-hats/hi-hat-closed-01.wav",
+        "c1af239d645c4f6a4e769e10bde768bd2395f7a29ed60d68838ee77b7b98c984",
+        0.10,
+    ),
+    "ride": (
+        "open-hats/open-hat-01.wav",
+        "1e8ded3118c6530655e07ad1d4472bfa2cc1f2472ec954f7d7c576d56ffe8888",
+        0.07,
+    ),
+}
+PROGRAMS = {"piano": (0, 5.0), "guitar": (24, 1.7), "strings": (48, 1.2), "lead": (26, 3.2)}
 
 SECTIONS = [
     ("intro", 4),
@@ -97,9 +133,11 @@ def guitar(midi: int, seconds: float) -> np.ndarray:
     f = hz(midi)
     wave = np.zeros(n, dtype=np.float32)
     for partial in range(1, 8):
-        wave += np.sin(2 * np.pi * f * partial * t + partial * 0.19) * np.exp(
-            -t * (2.1 + partial * 0.74)
-        ) / partial**1.1
+        wave += (
+            np.sin(2 * np.pi * f * partial * t + partial * 0.19)
+            * np.exp(-t * (2.1 + partial * 0.74))
+            / partial**1.1
+        )
     return wave * envelope(n, 0.003, 0.10) * 0.10
 
 
@@ -149,7 +187,30 @@ def drum(kind: str, rng: np.random.Generator) -> np.ndarray:
     return (noise * np.exp(-t * 45) * 0.055).astype(np.float32)
 
 
-def add(bus: np.ndarray, sound: np.ndarray, start: float, gain: float = 1.0, pan: float = 0) -> None:
+def sampled_drums() -> dict[str, np.ndarray]:
+    """Read four pinned one-shots from Rytho without changing its originals."""
+    result = {}
+    for kind, (filename, expected_sha, gain) in DRUM_FILES.items():
+        path = LIBRARY / DRUM_BASE / filename
+        actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual_sha != expected_sha:
+            raise ValueError(f"Drum source changed: {path}")
+        signal, source_rate = sf.read(path, dtype="float32", always_2d=True)
+        mono = signal.mean(axis=1)
+        frames = int(len(mono) * RATE / source_rate)
+        original = np.arange(len(mono), dtype=np.float32) / source_rate
+        target = np.arange(frames, dtype=np.float32) / RATE
+        resampled = np.interp(target, original, mono).astype(np.float32)
+        resampled -= float(np.mean(resampled))
+        tail = min(len(resampled), int(0.025 * RATE))
+        resampled[-tail:] *= np.linspace(1, 0, tail, dtype=np.float32)
+        result[kind] = resampled * gain
+    return result
+
+
+def add(
+    bus: np.ndarray, sound: np.ndarray, start: float, gain: float = 1.0, pan: float = 0
+) -> None:
     position = max(0, round(start * RATE))
     end = min(position + len(sound), len(bus))
     if end <= position:
@@ -210,20 +271,39 @@ BRIDGE_MELODY = [
 
 def ambience(signal: np.ndarray, wet: float) -> np.ndarray:
     result = signal.copy()
-    for seconds, gain, swap in [(0.093, 0.42, True), (0.167, 0.32, False),
-                                (0.293, 0.22, True), (0.419, 0.14, False)]:
+    for seconds, gain, swap in [
+        (0.093, 0.42, True),
+        (0.167, 0.32, False),
+        (0.293, 0.22, True),
+        (0.419, 0.14, False),
+    ]:
         offset = int(seconds * RATE)
         tail = signal[:-offset, ::-1] if swap else signal[:-offset]
         result[offset:] += tail * gain * wet
     return result
 
 
-def render() -> dict:
+def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
     rng = np.random.default_rng(SEED)
+    drum_samples = sampled_drums() if palette == "sampled" else None
+
+    def tone(kind: str, pitch: int, seconds: float) -> np.ndarray:
+        if soundfont is not None:
+            program, gain = PROGRAMS[kind]
+            return soundfont.note(program, pitch, seconds) * gain
+        return {"piano": piano, "guitar": guitar, "strings": strings, "lead": lead}[kind](
+            pitch, seconds
+        )
+
+    def hit(kind: str) -> np.ndarray:
+        return drum_samples[kind] if drum_samples is not None else drum(kind, rng)
+
     total_bars = sum(bars for _, bars in SECTIONS)
     frames = int((total_bars * BAR + 2) * RATE)
-    buses = {name: np.zeros((frames, 2), dtype=np.float32)
-             for name in ("piano", "guitar", "strings", "lead", "bass", "drums")}
+    buses = {
+        name: np.zeros((frames, 2), dtype=np.float32)
+        for name in ("piano", "guitar", "strings", "lead", "bass", "drums")
+    }
     timeline = []
     for bar in range(total_bars):
         name, local, section_bars = section_at(bar)
@@ -244,19 +324,34 @@ def render() -> dict:
                 velocity *= 0.70 * (1 - local / (section_bars + 2))
             velocity *= float(rng.uniform(0.93, 1.07))
             timing = float(rng.normal(0, 0.006))
-            add(buses["piano"], piano(notes[index], 0.58),
-                start + step * BEAT / 2 + timing, velocity, -0.24 + 0.48 * (step % 2))
+            add(
+                buses["piano"],
+                tone("piano", notes[index], 0.58),
+                start + step * BEAT / 2 + timing,
+                velocity,
+                -0.24 + 0.48 * (step % 2),
+            )
 
         if name not in ("intro", "outro"):
             for beat, index in [(0.5, 1), (1.5, 2), (2.5, 3), (3.5, 1)]:
-                add(buses["guitar"], guitar(notes[index] + 12, 0.38),
-                    start + beat * BEAT, 0.67 if is_verse else 0.88, 0.46)
+                add(
+                    buses["guitar"],
+                    tone("guitar", notes[index] + 12, 0.38),
+                    start + beat * BEAT,
+                    0.67 if is_verse else 0.88,
+                    0.46,
+                )
 
         if is_chorus or is_pre or name == "bridge" or name == "outro":
             pad_gain = 0.68 if is_pre else 1.0 if is_chorus else 0.57
             for index in (0, 1, 2):
-                add(buses["strings"], strings(notes[index], BAR - 0.3),
-                    start, pad_gain, [-0.65, 0.0, 0.65][index])
+                add(
+                    buses["strings"],
+                    tone("strings", notes[index], BAR - 0.3),
+                    start,
+                    pad_gain,
+                    [-0.65, 0.0, 0.65][index],
+                )
 
         if name not in ("intro", "interlude", "outro"):
             if is_chorus:
@@ -270,36 +365,54 @@ def render() -> dict:
             for beat, length, pitch in phrase:
                 # Small first-verse restraint; the final chorus is the emotional peak.
                 gain = 0.70 if name == "verse_1" else 1.22 if name == "final_chorus" else 1.0
-                add(buses["lead"], lead(pitch, length * BEAT),
-                    start + beat * BEAT, gain, -0.06)
+                add(
+                    buses["lead"],
+                    tone("lead", pitch, length * BEAT),
+                    start + beat * BEAT,
+                    gain,
+                    -0.06,
+                )
             if name == "final_chorus" and local in (0, 4):
-                add(buses["guitar"], guitar(notes[2] + 12, 1.1 * BEAT),
-                    start + 3 * BEAT, 0.95, 0.7)
+                add(
+                    buses["guitar"],
+                    tone("guitar", notes[2] + 12, 1.1 * BEAT),
+                    start + 3 * BEAT,
+                    0.95,
+                    0.7,
+                )
 
         if name not in ("intro", "outro"):
             for beat, pitch, length in [(0, root, 1.35), (2, root + 7, 1.25)]:
-                add(buses["bass"], bass(pitch, length * BEAT), start + beat * BEAT,
-                    0.7 if is_verse else 1.0)
+                add(
+                    buses["bass"],
+                    bass(pitch, length * BEAT),
+                    start + beat * BEAT,
+                    0.7 if is_verse else 1.0,
+                )
 
         # Half-time verse, wider backbeat in the chorus; never four-on-the-floor.
         if name not in ("intro", "outro", "interlude"):
             kick_beats = (0, 2.5) if is_verse or is_pre else (0, 2, 3.5)
             snare_beats = (2,) if is_verse or is_pre else (1, 3)
             for beat in kick_beats:
-                add(buses["drums"], drum("kick", rng), start + beat * BEAT,
-                    0.72 if is_verse else 1.0)
+                add(buses["drums"], hit("kick"), start + beat * BEAT, 0.72 if is_verse else 1.0)
             for beat in snare_beats:
-                add(buses["drums"], drum("snare", rng), start + beat * BEAT,
-                    0.62 if is_verse else 0.95)
+                add(buses["drums"], hit("snare"), start + beat * BEAT, 0.62 if is_verse else 0.95)
             for step in range(8):
-                add(buses["drums"], drum("hat", rng), start + step * BEAT / 2,
-                    0.34 if is_verse else 0.48, 0.35)
+                timing = float(rng.normal(0, 0.004)) if drum_samples is not None else 0
+                strength = float(rng.uniform(0.88, 1.06)) if drum_samples is not None else 1
+                add(
+                    buses["drums"],
+                    hit("hat"),
+                    start + step * BEAT / 2 + timing,
+                    (0.34 if is_verse else 0.48) * strength,
+                    0.35,
+                )
             if is_chorus and local in (0, 4):
-                add(buses["drums"], drum("ride", rng), start, 1.0, -0.47)
+                add(buses["drums"], hit("ride"), start, 1.0, -0.47)
             if (is_pre or name == "bridge") and local == section_bars - 1:
                 for beat, gain in [(2.5, 0.28), (3.0, 0.38), (3.5, 0.55)]:
-                    add(buses["drums"], drum("snare", rng), start + beat * BEAT,
-                        gain, 0.12)
+                    add(buses["drums"], hit("snare"), start + beat * BEAT, gain, 0.12)
 
     buses["piano"] = ambience(buses["piano"], 0.36)
     buses["guitar"] = ambience(buses["guitar"], 0.28)
@@ -315,10 +428,10 @@ def render() -> dict:
     mix = sum(buses.values())
     mix = np.tanh(mix * 1.25).astype(np.float32)
     mix *= 0.88 / max(float(np.max(np.abs(mix))), 1e-9)
-    OUT.mkdir(parents=True, exist_ok=True)
-    sf.write(OUT / "mix.wav", mix, RATE, subtype="PCM_24")
+    out.mkdir(parents=True, exist_ok=True)
+    sf.write(out / "mix.wav", mix, RATE, subtype="PCM_24")
     for name, signal in buses.items():
-        sf.write(OUT / f"{name}.wav", np.clip(signal, -1, 1), RATE, subtype="PCM_24")
+        sf.write(out / f"{name}.wav", np.clip(signal, -1, 1), RATE, subtype="PCM_24")
     receipt = {
         "title": "The Space Between Replies",
         "tempo_bpm": BPM,
@@ -326,14 +439,39 @@ def render() -> dict:
         "duration_seconds": round(total_bars * BAR, 3),
         "rendered_duration_seconds": round(frames / RATE, 3),
         "seed": SEED,
+        "palette": palette,
+        "soundfont": str(SOUNDFONT) if palette == "sampled" else None,
+        "drum_sources": {
+            kind: {"path": f"{DRUM_BASE}/{filename}", "sha256": sha}
+            for kind, (filename, sha, _) in DRUM_FILES.items()
+        }
+        if palette == "sampled"
+        else {},
         "reference_audio_used_in_render": False,
         "sections": SECTIONS,
         "timeline": timeline,
-        "mix_sha256": hashlib.sha256((OUT / "mix.wav").read_bytes()).hexdigest(),
+        "mix_sha256": hashlib.sha256((out / "mix.wav").read_bytes()).hexdigest(),
     }
-    (OUT / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    (out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
     return receipt
 
 
+def render(palette: str = "sampled", out: Path = OUT) -> dict:
+    if palette == "sampled":
+        with SoundFont(SOUNDFONT, RATE) as soundfont:
+            return _render(palette, out, soundfont)
+    if palette == "synthetic":
+        return _render(palette, out, None)
+    raise ValueError(f"Unknown palette: {palette}")
+
+
 if __name__ == "__main__":
-    print(json.dumps({k: v for k, v in render().items() if k != "timeline"}, indent=2))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--palette", choices=("sampled", "synthetic"), default="sampled")
+    parser.add_argument("--out", type=Path, default=OUT)
+    args = parser.parse_args()
+    print(
+        json.dumps(
+            {k: v for k, v in render(args.palette, args.out).items() if k != "timeline"}, indent=2
+        )
+    )
