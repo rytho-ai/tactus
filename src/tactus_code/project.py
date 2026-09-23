@@ -76,18 +76,64 @@ class Project:
         self.store = MaterialStore(materials, sample_rate)
         self.tracks: list[Track] = []
         self.computations: list[dict[str, Any]] = []
-        self.inputs: list[dict[str, str]] = []
+        self.inputs: list[dict[str, Any]] = []
 
     def asset(self, path: str | Path) -> AudioRef:
-        source = (self.root / path).resolve()
-        if not source.is_relative_to(self.root) or not source.is_file():
-            raise ValueError(f"asset must be a file inside the project: {path}")
+        source = self._source_file(path)
         ref = self.store.import_file(source)
         self.inputs.append(
             {
                 "path": source.relative_to(self.root).as_posix(),
-                "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                "source_sha256": self._hash_file(source),
                 "material_sha256": ref.sha256,
+            }
+        )
+        return ref
+
+    def _source_file(self, path: str | Path) -> Path:
+        source = (self.root / path).resolve()
+        if not source.is_relative_to(self.root) or not source.is_file():
+            raise ValueError(f"asset must be a file inside the project: {path}")
+        return source
+
+    @staticmethod
+    def _hash_file(source: Path) -> str:
+        digest = hashlib.sha256()
+        with source.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def file(self, path: str | Path) -> Path:
+        """Declare a project-local non-audio input and return its path for ordinary parsing."""
+        source = self._source_file(path)
+        self.inputs.append(
+            {
+                "kind": "file",
+                "path": source.relative_to(self.root).as_posix(),
+                "source_sha256": self._hash_file(source),
+            }
+        )
+        return source
+
+    def asset_region(
+        self,
+        path: str | Path,
+        *,
+        start_seconds: float,
+        duration_seconds: float,
+    ) -> AudioRef:
+        """Declare a bounded source region without storing the unused source audio."""
+        source = self._source_file(path)
+        ref = self.store.import_file(
+            source, start_seconds=start_seconds, duration_seconds=duration_seconds
+        )
+        self.inputs.append(
+            {
+                "path": source.relative_to(self.root).as_posix(),
+                "source_sha256": self._hash_file(source),
+                "material_sha256": ref.sha256,
+                "region_seconds": [float(start_seconds), float(duration_seconds)],
             }
         )
         return ref

@@ -59,6 +59,7 @@ def build(entry: Path, output: Path) -> dict[str, Path]:
     lock = root / "uv.lock"
     receipt = {
         "source_files": source_files,
+        "declared_inputs": project.inputs,
         "dependency_lock_sha256": _hash(lock) if lock.is_file() else None,
         "runtime": {
             "python": sys.version.split()[0],

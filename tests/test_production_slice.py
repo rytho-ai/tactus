@@ -14,6 +14,7 @@ import pytest
 import soundfile as sf
 
 from tactus_code.graph import read_graph, semantic_diff
+from tactus_code.project import Project
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "chop-flip"
 
@@ -136,3 +137,63 @@ def build(project):
         assert read_graph(Path(output["graph"]))["computations"][0]["reproducibility"].startswith(
             "materialized"
         )
+
+
+def test_declared_sidecar_and_bounded_audio_region(tmp_path: Path) -> None:
+    root = tmp_path / "song"
+    root.mkdir()
+    sidecar = root / "beatgrid.npy"
+    np.save(sidecar, np.array([0.0, 0.25, 0.5]))
+    source = root / "source.wav"
+    audio = np.linspace(-0.4, 0.4, 1000, dtype=np.float32)
+    sf.write(source, audio, 1000, subtype="PCM_24")
+    project = Project(root=root, materials=tmp_path / "materials", bpm=120, bars=1,
+                      sample_rate=1000)
+
+    declared = project.file("beatgrid.npy")
+    assert np.load(declared).tolist() == [0.0, 0.25, 0.5]
+    region = project.asset_region("source.wav", start_seconds=0.25, duration_seconds=0.2)
+    original, _ = sf.read(source, always_2d=True, dtype="float32")
+    assert np.array_equal(project.store.read(region), original[250:450])
+    assert region.frames == 200
+    assert len(list((tmp_path / "materials" / "audio").glob("*.wav"))) == 1
+    assert project.inputs[0]["kind"] == "file"
+    assert project.inputs[0]["source_sha256"] == _hash(sidecar)
+    assert project.inputs[1]["source_sha256"] == _hash(source)
+    assert project.inputs[1]["region_seconds"] == [0.25, 0.2]
+    assert project.inputs[1]["material_sha256"] == region.sha256
+
+    full = project.asset("source.wav")
+    assert full.frames == 1000
+    assert np.array_equal(project.store.read(full), original)
+
+    with pytest.raises(ValueError, match="outside source"):
+        project.asset_region("source.wav", start_seconds=1.0, duration_seconds=0.1)
+    with pytest.raises(ValueError, match="finite and positive"):
+        project.asset_region("source.wav", start_seconds=0, duration_seconds=0)
+    with pytest.raises(ValueError, match="inside the project"):
+        project.file(tmp_path / "outside.npy")
+
+
+def test_declared_inputs_appear_in_build_receipt(tmp_path: Path) -> None:
+    root = tmp_path / "song"
+    root.mkdir()
+    np.save(root / "grid.npy", np.array([0.25]))
+    sf.write(root / "source.wav", np.zeros(1000, dtype=np.float32), 1000)
+    (root / "song.py").write_text(
+        """import numpy as np
+
+TRANSPORT = {"bpm": 120, "bars": 1, "sample_rate": 1000}
+
+def build(project):
+    start = float(np.load(project.file("grid.npy"))[0])
+    clip = project.asset_region("source.wav", start_seconds=start, duration_seconds=0.2)
+    project.track("sample").place("one", clip, at_beats=0)
+""",
+        encoding="utf-8",
+    )
+    result = _run("build", root / "song.py", "--out", tmp_path / "build")
+    receipt = json.loads(Path(result["receipt"]).read_text())
+    graph = read_graph(Path(result["graph"]))
+    assert receipt["declared_inputs"] == graph["inputs"]
+    assert [item["path"] for item in receipt["declared_inputs"]] == ["grid.npy", "source.wav"]
