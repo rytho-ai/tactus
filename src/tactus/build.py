@@ -21,7 +21,7 @@ def _source_inventory(root: Path) -> dict[str, str]:
     return {
         path.relative_to(root).as_posix(): _hash(path)
         for path in sorted(root.rglob("*.py"))
-        if ".tactus-code" not in path.parts and ".venv" not in path.parts
+        if not {".tactus", ".tactus-code", ".venv"}.intersection(path.parts)
     }
 
 
@@ -63,7 +63,7 @@ def build(entry: Path, output: Path) -> dict[str, Path]:
         "dependency_lock_sha256": _hash(lock) if lock.is_file() else None,
         "runtime": {
             "python": sys.version.split()[0],
-            "tactus_code": version("tactus-code"),
+            "tactus": version("tactus"),
             "numpy": version("numpy"),
             "soundfile": version("soundfile"),
         },

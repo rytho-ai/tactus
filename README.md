@@ -1,15 +1,13 @@
-# Tactus Code
+# Tactus
 
-Tactus Code is an independent experiment in maintaining music arrangements as code. The name
-states the hypothesis being tested: ordinary source code should be the authority for a music
-project, while the production runtime compiles inspectable state and renders deliverables.
+Tactus is the active Python-first music production framework, formerly `tactus-code`.
+Python production source, declared materials, and dependency locks own creative intent;
+Git records accepted changes. The runtime renders and verifies the resulting audio.
 
-This repository runs beside the existing [Tactus](https://github.com/rytho-ai/tactus) repository.
-It is not a fork, a replacement announcement, or an API-compatible successor. The existing
-implementation is a reference for proven mechanisms; both approaches should be compared on the
-same real production workflows before deciding what survives. New code-first experiments and
-their first production slice proceed here; the existing Tactus repository remains an independent
-product and a source of tested mechanisms.
+The previous implementation is preserved in
+[tactus-legacy](https://github.com/rytho-ai/tactus-legacy) as a reference for tested mechanisms.
+This product succession does not imply API compatibility or feature parity. Both implementations
+use the Python name `tactus`; keep them in separate virtual environments.
 
 ## Current status
 
@@ -33,8 +31,8 @@ Python 3.12 and [uv](https://docs.astral.sh/uv/) are recommended:
 
 ```bash
 uv sync --group dev
-uv run tactus-code --version
-uv run tactus-code doctor
+uv run tactus --version
+uv run tactus doctor
 uv run pytest
 uv run ruff check .
 ```
@@ -42,15 +40,15 @@ uv run ruff check .
 Try the modular example:
 
 ```bash
-uv run tactus-code build examples/chop-flip/song.py
-uv run tactus-code inspect examples/chop-flip/.tactus-code/build/arrangement.json
-uv run tactus-code render examples/chop-flip/.tactus-code/build/arrangement.json \
-  --out examples/chop-flip/.tactus-code/render
+uv run tactus build examples/chop-flip/song.py
+uv run tactus inspect examples/chop-flip/.tactus/build/arrangement.json
+uv run tactus render examples/chop-flip/.tactus/build/arrangement.json \
+  --out examples/chop-flip/.tactus/render
 ```
 
 `song.py` combines ordinary `parts/` and `mix.py` modules. `build` evaluates that source and
 materializes each audio computation. `render` reads only `arrangement.json` and its material
-store, so it does not need the authoring source. `tactus-code diff BEFORE AFTER` reports which
+store, so it does not need the authoring source. `tactus diff BEFORE AFTER` reports which
 named tracks/events changed between two compiled builds; Git remains the source-history owner.
 
 The receipt deliberately says **compiled replay only**. Arbitrary Python may use hidden state;
@@ -58,8 +56,10 @@ this first version does not promise that rerunning the source creates the same s
 hashes make a selected execution replayable, while dependency detection and reliable incremental
 rebuild remain open work.
 
-The distribution is `tactus-code`, its Python import is `tactus_code`, and its command is
-`tactus-code`. These names intentionally do not collide with the existing `tactus` package.
+The distribution, Python import, and command are all `tactus` (version `0.1.0`).
+Existing `tactus-code` imports and commands must be updated. Build output now defaults to
+`.tactus/`; previously generated `.tactus-code/` directories remain ignored and existing
+format-v1 arrangement files can still be rendered using an explicit path.
 
 ## Working hypothesis
 

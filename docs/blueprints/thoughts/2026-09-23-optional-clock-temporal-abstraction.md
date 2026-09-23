@@ -29,7 +29,7 @@ Earlier [Python/Pattern authoring probes](2026-09-22-python-pattern-authoring-bo
 
 1. **Placement interface:** The smallest honest way to pass seconds/sample positions and total duration into Tactus, while preserving existing beat-based source compatibility. `seconds(...)`, `at_seconds=...`, and a typed position are candidates, not decisions.
 2. **Helper ownership:** Whether repeated tempo-map/local-clock calculations should remain task-local Python, live in an optional Tactus library, or become part of the core interface. Compare actual Agent revisions on the same work before promoting them.
-3. **Compiled provenance:** Whether graph diff, cache invalidation, and audition need to retain “this event follows global beat 8” versus only its resolved output position. Source plus Git retains the relationship, but a compiled consumer may need more evidence.
+3. **Runtime metadata, only when needed:** Time intent stays in Python and Git. Graph provenance is not an active design task or a required core model. Revisit derived metadata only when a concrete runtime consumer demonstrates a missing capability.
 4. **Harder time cases:** Gradual tempo curves, rubato, nested/relative clocks, event duration across tempo changes, rounding to samples, and stateful range rendering have not been established by these probes.
 
 The immediate product gap is the false-BPM requirement. The wider clock model should grow only when a real revision or compiled consumer demonstrates what the minimal interface cannot express or maintain reliably.

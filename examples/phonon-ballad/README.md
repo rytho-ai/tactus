@@ -8,7 +8,7 @@ The arrangement is ordinary Python: harmony, melody, performance, timbre selecti
 mixing, and export are defined by `song.py`. The fixed seed makes regeneration deterministic. The
 rendered WAVs and receipt live in `dist/phonon-ballad/` and are intentionally not committed.
 
-From the `tactus-code` repository root:
+From the `tactus` repository root:
 
 ```sh
 uv run python examples/phonon-ballad/song.py --palette sampled

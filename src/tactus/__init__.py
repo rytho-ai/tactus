@@ -1,4 +1,4 @@
-"""Tactus Code: an experimental code-first music production framework."""
+"""Tactus: an experimental code-first music production framework."""
 
 from .material import AudioRef
 from .project import Project, Track

@@ -1,12 +1,15 @@
-# Tactus Code — plan
+# Tactus — plan
 
 > 2026-09-23 · Short status index. Design lives in `thoughts/`; implementation plans live in
-> `plans/`; shipped behavior lives in Git. This is the active code-first workstream; the
-> existing `tactus` repo remains a reference, not a declared replacement. See
-> [`two-repo boundary`](thoughts/2026-09-23-two-repo-workstream-boundary.md).
+> `plans/`; shipped behavior lives in Git. This is the sole active Tactus product, formerly
+> `tactus-code`; `tactus-legacy` is reference-only. See
+> [`product succession`](thoughts/2026-09-23-tactus-product-succession.md).
 
 ## ✅ Shipped
 
+- **Tactus product succession** — former `tactus-code` now owns the repository, Python import,
+  distribution, and CLI name `tactus` at `0.1.0`. Legacy implementation and history are retained
+  separately. See [`handoff plan`](plans/2026-09-23-tactus-product-handoff.md).
 - **Independent repository bootstrap** — installable Python package, CLI, tests, and the
   code-as-source-of-truth hypothesis. See [`repository bootstrap`](plans/2026-09-16-repository-bootstrap.md).
 - **Declared real-media inputs** — `Project.file` records non-audio sidecars, and
@@ -21,11 +24,12 @@
   existing production path and ask Paul to listen. The synthetic graph-only render and
   bass-only revision already work, but musical parity is open. See
   [`vertical-slice plan`](plans/2026-09-16-code-first-production-slice.md).
-- **Agent authoring boundary for that slice** — use Functional Python/NumPy, framework-owned
-  musical-time mechanics, and optional local Pattern functions; do not require Track/Bus,
+- **Agent authoring boundary for that slice** — use Functional Python/NumPy, optional shared
+  temporal helpers, and optional local Pattern functions; do not require Track/Bus,
   Session, or Project as the Agent's universal composition schema. See
   [`functional authoring`](thoughts/2026-09-21-functional-audio-authoring-core.md) and
-  [`temporal/Pattern boundary`](thoughts/2026-09-22-python-pattern-authoring-boundary.md).
+  [`temporal/Pattern boundary`](thoughts/2026-09-22-python-pattern-authoring-boundary.md), with
+  the [optional-clock clarification](thoughts/2026-09-23-optional-clock-temporal-abstraction.md).
 
 ## ▶ Next
 
@@ -41,9 +45,9 @@
 
 ## ⏸ Future — evidence-gated
 
-- **Selective computation reuse and a broader graph contract** — the derived graph already
-  supports inspection, diff, and source-free replay, but has not proven safe incremental
-  recomputation. See [`graph probe`](thoughts/2026-09-21-production-graph-first-probe.md).
+- **Selective computation reuse** — revisit only when a concrete runtime consumer demonstrates
+  a need. Python remains the creative source of truth; a broader graph model is not a required
+  roadmap item. See [`temporal conclusion`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md).
 - **Commercial VST and broader host compatibility** — no confirmed licensed commercial VST
   is available on this machine; test the actual target plugin when one is available. Dynamic
   latency, complex routing, and crash isolation remain open. See

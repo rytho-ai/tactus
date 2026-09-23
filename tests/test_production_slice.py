@@ -13,15 +13,15 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from tactus_code.graph import read_graph, semantic_diff
-from tactus_code.project import Project
+from tactus.graph import read_graph, semantic_diff
+from tactus.project import Project
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "chop-flip"
 
 
 def _run(*arguments: object) -> dict:
     result = subprocess.run(
-        [sys.executable, "-m", "tactus_code.cli", *(str(value) for value in arguments)],
+        [sys.executable, "-m", "tactus.cli", *(str(value) for value in arguments)],
         check=True,
         capture_output=True,
         text=True,
@@ -33,7 +33,7 @@ def _copy_example(target: Path) -> Path:
     shutil.copytree(
         EXAMPLE,
         target,
-        ignore=shutil.ignore_patterns(".tactus-code", "__pycache__"),
+        ignore=shutil.ignore_patterns(".tactus", ".tactus-code", "__pycache__"),
     )
     return target
 

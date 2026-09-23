@@ -1,4 +1,4 @@
-"""The minimal executable entry point for the Tactus Code experiment."""
+"""The minimal executable entry point for the Tactus experiment."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ from .render import render
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the bootstrap CLI without claiming unimplemented production features."""
-    package_version = version("tactus-code")
+    package_version = version("tactus")
     parser = argparse.ArgumentParser(
-        prog="tactus-code",
+        prog="tactus",
         description="Experimental code-first music production framework.",
     )
     parser.add_argument(
@@ -45,7 +45,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             json.dumps(
                 {
-                    "package": "tactus-code",
+                    "package": "tactus",
                     "version": package_version,
                     "python": sys.version.split()[0],
                     "status": "bootstrap",
@@ -56,7 +56,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build":
-        output = args.out or args.source.resolve().parent / ".tactus-code" / "build"
+        output = args.out or args.source.resolve().parent / ".tactus" / "build"
         print(json.dumps({key: str(path) for key, path in build(args.source, output).items()}))
         return 0
     if args.command == "inspect":

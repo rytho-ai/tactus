@@ -1,5 +1,9 @@
 # Tactus Code is the active code-first workstream, not yet a replacement release
 
+> **Status: superseded by [Tactus product succession](2026-09-23-tactus-product-succession.md)**.
+> Paul approved the rename and product succession on 2026-09-23. The text below records the
+> earlier parallel-workstream decision and no longer defines repository ownership.
+
 > 2026-09-23 · Working repository boundary. New Agent-first, code-as-source-of-truth
 > experiments and their first production slice proceed in `tactus-code`; the existing
 > `tactus` repo remains a reference for proven mechanisms and an independent product.

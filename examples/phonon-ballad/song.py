@@ -405,7 +405,7 @@ def render_sfz_piano(
     header = b"MThd\x00\x00\x00\x06\x00\x00\x00\x01" + MIDI_TICKS_PER_BEAT.to_bytes(2, "big")
     midi = header + b"MTrk" + len(track).to_bytes(4, "big") + track
 
-    with tempfile.TemporaryDirectory(prefix="tactus-code-sfz-") as scratch:
+    with tempfile.TemporaryDirectory(prefix="tactus-sfz-") as scratch:
         midi_path = Path(scratch) / "performance.mid"
         wav_path = Path(scratch) / "piano.wav"
         midi_path.write_bytes(midi)

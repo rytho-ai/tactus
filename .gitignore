@@ -8,5 +8,6 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+.tactus/
 .tactus-code/
 dogfood/
