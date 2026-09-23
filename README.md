@@ -7,7 +7,9 @@ project, while the production runtime compiles inspectable state and renders del
 This repository runs beside the existing [Tactus](https://github.com/rytho-ai/tactus) repository.
 It is not a fork, a replacement announcement, or an API-compatible successor. The existing
 implementation is a reference for proven mechanisms; both approaches should be compared on the
-same real production workflows before deciding what survives.
+same real production workflows before deciding what survives. New code-first experiments and
+their first production slice proceed here; the existing Tactus repository remains an independent
+product and a source of tested mechanisms.
 
 ## Current status
 
@@ -16,6 +18,14 @@ content-addressed PCM materials, a build receipt, and graph-only mix/stem render
 a synthetic-source adaptation of one Music Agent OS workflow, **not** full workflow coverage or
 musical parity with its private-source production. The current transport is 4/4; audio is
 materialized at the project sample rate and rendered as PCM24 WAV.
+
+For locally owned source media, `Project.asset(path)` imports a whole audio file, while
+`Project.asset_region(path, start_seconds=..., duration_seconds=...)` imports only a selected
+segment. `Project.file(path)` declares any project-local sidecar (such as a beat-grid `.npy`)
+and returns its path for ordinary Python parsing. Both source files are hashed in the compiled
+input list and build receipt; the selected PCM region is stored so rendering does not need the originals. Audio
+imports currently require the source sample rate to match the project; no implicit resampling is
+performed.
 
 ## Development setup
 
