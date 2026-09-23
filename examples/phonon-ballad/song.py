@@ -1,7 +1,8 @@
-"""An original, deterministic instrumental pop ballad inspired by a reference's arc.
+"""Render an original, deterministic pop-ballad study from Python source.
 
 The reference recording is never sampled, imported, or used by this renderer.
-Run with: uv run python examples/phonon-ballad/song.py --palette sampled
+The ``sfz`` palette preserves a continuous MIDI piano performance and sends it
+to a supplied multi-sampled instrument through ``sfizz_render``.
 """
 
 from __future__ import annotations
@@ -10,6 +11,9 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -29,32 +33,59 @@ LIBRARY = Path(
     )
 )
 SOUNDFONT = Path(os.environ.get("FLUID_SOUNDFONT", "/usr/share/sounds/sf2/FluidR3_GM.sf2"))
-DRUM_BASE = (
-    "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/03-soulful-vintage"
-)
 DRUM_FILES = {
     "kick": (
-        "kicks/vintage-kick-01.wav",
-        "7623b0357f54e90c9c85ef9570b7782e0ab5ef1287de45279f9ccb8e27d42dd6",
-        0.80,
+        (
+            "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Tape/TAPE/SAMPLES/"
+            "KICKS/CDS_TAPE_KICK_ONE_SHOT_TRIXON.wav"
+        ),
+        "1ce5adcf77763bdbd3ad9492e1d7bf1f16b8b77877d183d21804a0c6aae42b4e",
+        0.42,
     ),
     "snare": (
-        "snares/vintage-snare-01.wav",
-        "c05f292f7a004b4e7452682b6cd75e0f2b37aaee2e3555401b360f44d695c08f",
-        0.48,
+        (
+            "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Jazzfeezy X "
+            "Sikky Beats - Verified Bounce/Jazzfeezy_-_Verified_Bounce/one_shots/drums/rims/"
+            "JSB_VB_rim_soft.wav"
+        ),
+        "9c1e1e3d5f4a777204ff60b4f578498bd9662e44deb48caabbff1bda027d0fba",
+        0.055,
     ),
     "hat": (
-        "hi-hats/hi-hat-closed-01.wav",
+        (
+            "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/"
+            "03-soulful-vintage/hi-hats/ch-lofi.wav"
+        ),
         "c1af239d645c4f6a4e769e10bde768bd2395f7a29ed60d68838ee77b7b98c984",
-        0.10,
+        0.06,
     ),
     "ride": (
-        "open-hats/open-hat-01.wav",
+        (
+            "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/"
+            "03-soulful-vintage/open-hats/oh00-lofi.wav"
+        ),
         "1e8ded3118c6530655e07ad1d4472bfa2cc1f2472ec954f7d7c576d56ffe8888",
-        0.07,
+        0.035,
     ),
 }
+LOFI_DRUM_LOOP = (
+    (
+        "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Lofi By Nature/"
+        "CPA_Lofi_By_Nature/Drum_&_Perc_Loops/Drum_Loops/LBN_120_drum_loop_bottled_rolla.wav"
+    ),
+    "183d6ef248b28a41b7e2b795138052781bd325f37d6397bacf7016432e5b45c1",
+    0.34,
+)
+LOFI_LOOP_EQ = {
+    "sub_cut_hz": 110,
+    "sub_cut_amount": 0.28,
+    "presence_dip_hz": 3_200,
+    "presence_dip_width_hz": 1_700,
+    "presence_dip_amount": 0.34,
+    "output_gain": 0.78,
+}
 PROGRAMS = {"piano": (0, 5.0), "guitar": (24, 1.7), "strings": (48, 1.2), "lead": (26, 3.2)}
+MIDI_TICKS_PER_BEAT = 480
 
 SECTIONS = [
     ("intro", 4),
@@ -191,7 +222,7 @@ def sampled_drums() -> dict[str, np.ndarray]:
     """Read four pinned one-shots from Rytho without changing its originals."""
     result = {}
     for kind, (filename, expected_sha, gain) in DRUM_FILES.items():
-        path = LIBRARY / DRUM_BASE / filename
+        path = LIBRARY / filename
         actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual_sha != expected_sha:
             raise ValueError(f"Drum source changed: {path}")
@@ -208,12 +239,45 @@ def sampled_drums() -> dict[str, np.ndarray]:
     return result
 
 
+def sampled_drum_loop() -> np.ndarray:
+    """Read one pinned 120 BPM stereo drum loop without changing its source bytes."""
+    filename, expected_sha, gain = LOFI_DRUM_LOOP
+    path = LIBRARY / filename
+    actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_sha != expected_sha:
+        raise ValueError(f"Drum-loop source changed: {path}")
+    signal, source_rate = sf.read(path, dtype="float32", always_2d=True)
+    frames = int(len(signal) * RATE / source_rate)
+    original = np.arange(len(signal), dtype=np.float32) / source_rate
+    target = np.arange(frames, dtype=np.float32) / RATE
+    resampled = np.column_stack(
+        [np.interp(target, original, signal[:, channel]) for channel in range(signal.shape[1])]
+    ).astype(np.float32)
+    frequencies = np.fft.rfftfreq(len(resampled), 1 / RATE)
+    sub_cut = 1 - LOFI_LOOP_EQ["sub_cut_amount"] * np.exp(
+        -0.5 * (frequencies / LOFI_LOOP_EQ["sub_cut_hz"]) ** 2
+    )
+    presence_dip = 1 - LOFI_LOOP_EQ["presence_dip_amount"] * np.exp(
+        -0.5
+        * (
+            (frequencies - LOFI_LOOP_EQ["presence_dip_hz"])
+            / LOFI_LOOP_EQ["presence_dip_width_hz"]
+        )
+        ** 2
+    )
+    shaped = np.fft.irfft(np.fft.rfft(resampled, axis=0) * (sub_cut * presence_dip)[:, None], axis=0)
+    return shaped.astype(np.float32) * gain * LOFI_LOOP_EQ["output_gain"]
+
+
 def add(
     bus: np.ndarray, sound: np.ndarray, start: float, gain: float = 1.0, pan: float = 0
 ) -> None:
     position = max(0, round(start * RATE))
     end = min(position + len(sound), len(bus))
     if end <= position:
+        return
+    if sound.ndim == 2:
+        bus[position:end] += sound[: end - position] * gain
         return
     angle = (pan + 1) * np.pi / 4
     bus[position:end, 0] += sound[: end - position] * gain * np.cos(angle)
@@ -283,9 +347,110 @@ def ambience(signal: np.ndarray, wet: float) -> np.ndarray:
     return result
 
 
-def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
+def midi_variable_length(value: int) -> bytes:
+    """Encode a non-negative Standard MIDI variable-length quantity."""
+    encoded = [value & 0x7F]
+    value >>= 7
+    while value:
+        encoded.append((value & 0x7F) | 0x80)
+        value >>= 7
+    return bytes(reversed(encoded))
+
+
+def render_sfz_piano(
+    notes: list[tuple[float, float, int, int]], total_seconds: float, sfz_path: Path, sfizz: str
+) -> np.ndarray:
+    """Render one continuous MIDI piano performance through a pinned SFZ instrument."""
+    if not sfz_path.is_file():
+        raise FileNotFoundError(f"SFZ piano was not found: {sfz_path}")
+    if not shutil.which(sfizz):
+        raise FileNotFoundError(f"sfizz renderer was not found: {sfizz}")
+
+    events: list[tuple[int, int, bytes]] = [
+        (0, 0, bytes((0xC0, 0))),
+        (0, 0, bytes((0xB0, 64, 127))),
+    ]
+    # Release the pedal just before each harmony change. Leaving it down for
+    # the whole song makes adjacent chords accumulate beneath the melody.
+    for bar in range(1, round(total_seconds / BAR)):
+        change = bar * BAR
+        off = round((change - 0.055) * BPM / 60 * MIDI_TICKS_PER_BEAT)
+        on = round((change + 0.030) * BPM / 60 * MIDI_TICKS_PER_BEAT)
+        events.extend(
+            [
+                (off, 0, bytes((0xB0, 64, 0))),
+                (on, 0, bytes((0xB0, 64, 127))),
+            ]
+        )
+    for start, duration, pitch, velocity in notes:
+        on = max(0, round(start * BPM / 60 * MIDI_TICKS_PER_BEAT))
+        off = max(on + 1, round((start + duration) * BPM / 60 * MIDI_TICKS_PER_BEAT))
+        events.extend(
+            [
+                (on, 1, bytes((0x90, pitch, max(1, min(127, velocity))))),
+                (off, 0, bytes((0x80, pitch, 0))),
+            ]
+        )
+    pedal_off = round((total_seconds + 1.4) * BPM / 60 * MIDI_TICKS_PER_BEAT)
+    events.append((pedal_off, 0, bytes((0xB0, 64, 0))))
+    events.sort()
+
+    track = bytearray(b"\x00\xff\x51\x03" + int(60_000_000 / BPM).to_bytes(3, "big"))
+    previous_tick = 0
+    for tick, _, message in events:
+        track.extend(midi_variable_length(tick - previous_tick))
+        track.extend(message)
+        previous_tick = tick
+    track.extend(b"\x00\xff\x2f\x00")
+    header = b"MThd\x00\x00\x00\x06\x00\x00\x00\x01" + MIDI_TICKS_PER_BEAT.to_bytes(2, "big")
+    midi = header + b"MTrk" + len(track).to_bytes(4, "big") + track
+
+    with tempfile.TemporaryDirectory(prefix="tactus-code-sfz-") as scratch:
+        midi_path = Path(scratch) / "performance.mid"
+        wav_path = Path(scratch) / "piano.wav"
+        midi_path.write_bytes(midi)
+        subprocess.run(
+            [
+                sfizz,
+                "--sfz",
+                str(sfz_path),
+                "--midi",
+                str(midi_path),
+                "--wav",
+                str(wav_path),
+                "--samplerate",
+                str(RATE),
+                "--quality",
+                "10",
+                "--polyphony",
+                "128",
+                "--use-eot",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        rendered, source_rate = sf.read(wav_path, dtype="float32", always_2d=True)
+    if source_rate != RATE:
+        raise ValueError(f"sfizz rendered at {source_rate} Hz, expected {RATE} Hz")
+    frames = int((total_seconds + 2) * RATE)
+    result = np.zeros((frames, 2), dtype=np.float32)
+    result[: min(frames, len(rendered))] = rendered[:frames]
+    return result
+
+
+def _render(
+    palette: str,
+    out: Path,
+    soundfont: SoundFont | None,
+    sfz_path: Path | None,
+    sfizz: str | None,
+    drum_mode: str,
+) -> dict:
     rng = np.random.default_rng(SEED)
-    drum_samples = sampled_drums() if palette == "sampled" else None
+    drum_samples = sampled_drums() if drum_mode == "one-shots" and palette in ("sampled", "sfz") else None
+    drum_loop = sampled_drum_loop() if drum_mode == "loop" else None
+    piano_notes: list[tuple[float, float, int, int]] = []
 
     def tone(kind: str, pitch: int, seconds: float) -> np.ndarray:
         if soundfont is not None:
@@ -305,6 +470,7 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
         for name in ("piano", "guitar", "strings", "lead", "bass", "drums")
     }
     timeline = []
+    loop_bar = 0
     for bar in range(total_bars):
         name, local, section_bars = section_at(bar)
         chord_name, root, notes = harmony(name, local)
@@ -323,16 +489,19 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
             if name == "outro":
                 velocity *= 0.70 * (1 - local / (section_bars + 2))
             velocity *= float(rng.uniform(0.93, 1.07))
-            timing = float(rng.normal(0, 0.006))
-            add(
-                buses["piano"],
-                tone("piano", notes[index], 0.58),
-                start + step * BEAT / 2 + timing,
-                velocity,
-                -0.24 + 0.48 * (step % 2),
-            )
+            note_start = start + step * BEAT / 2
+            if sfz_path is not None:
+                piano_notes.append((note_start, 0.58, notes[index], round(72 * velocity)))
+            else:
+                add(
+                    buses["piano"],
+                    tone("piano", notes[index], 0.58),
+                    note_start,
+                    velocity,
+                    -0.24 + 0.48 * (step % 2),
+                )
 
-        if name not in ("intro", "outro"):
+        if sfz_path is None and name not in ("intro", "outro"):
             for beat, index in [(0.5, 1), (1.5, 2), (2.5, 3), (3.5, 1)]:
                 add(
                     buses["guitar"],
@@ -342,7 +511,7 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
                     0.46,
                 )
 
-        if is_chorus or is_pre or name == "bridge" or name == "outro":
+        if sfz_path is None and (is_chorus or is_pre or name == "bridge" or name == "outro"):
             pad_gain = 0.68 if is_pre else 1.0 if is_chorus else 0.57
             for index in (0, 1, 2):
                 add(
@@ -365,14 +534,17 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
             for beat, length, pitch in phrase:
                 # Small first-verse restraint; the final chorus is the emotional peak.
                 gain = 0.70 if name == "verse_1" else 1.22 if name == "final_chorus" else 1.0
-                add(
-                    buses["lead"],
-                    tone("lead", pitch, length * BEAT),
-                    start + beat * BEAT,
-                    gain,
-                    -0.06,
-                )
-            if name == "final_chorus" and local in (0, 4):
+                if sfz_path is not None:
+                    piano_notes.append((start + beat * BEAT, length * BEAT, pitch, round(92 * gain)))
+                else:
+                    add(
+                        buses["lead"],
+                        tone("lead", pitch, length * BEAT),
+                        start + beat * BEAT,
+                        gain,
+                        -0.06,
+                    )
+            if sfz_path is None and name == "final_chorus" and local in (0, 4):
                 add(
                     buses["guitar"],
                     tone("guitar", notes[2] + 12, 1.1 * BEAT),
@@ -383,38 +555,77 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
 
         if name not in ("intro", "outro"):
             for beat, pitch, length in [(0, root, 1.35), (2, root + 7, 1.25)]:
-                add(
-                    buses["bass"],
-                    bass(pitch, length * BEAT),
-                    start + beat * BEAT,
-                    0.7 if is_verse else 1.0,
-                )
+                if sfz_path is not None:
+                    piano_notes.append((start + beat * BEAT, length * BEAT, pitch, 55 if is_verse else 64))
+                else:
+                    add(
+                        buses["bass"],
+                        bass(pitch, length * BEAT),
+                        start + beat * BEAT,
+                        0.7 if is_verse else 1.0,
+                    )
+
+        # Keep the source loop bar-aligned; the arrangement controls when it enters.
+        if drum_loop is not None and name not in ("intro", "outro", "interlude"):
+            bar_frames = round(BAR * RATE)
+            if len(drum_loop) < bar_frames:
+                raise ValueError("Pinned drum loop is shorter than one bar")
+            loop_bars = len(drum_loop) // bar_frames
+            loop_start = (loop_bar % loop_bars) * bar_frames
+            add(buses["drums"], drum_loop[loop_start : loop_start + bar_frames], start)
+            loop_bar += 1
 
         # Half-time verse, wider backbeat in the chorus; never four-on-the-floor.
-        if name not in ("intro", "outro", "interlude"):
+        elif drum_mode == "one-shots" and name not in ("intro", "outro", "interlude"):
             kick_beats = (0, 2.5) if is_verse or is_pre else (0, 2, 3.5)
             snare_beats = (2,) if is_verse or is_pre else (1, 3)
-            for beat in kick_beats:
-                add(buses["drums"], hit("kick"), start + beat * BEAT, 0.72 if is_verse else 1.0)
-            for beat in snare_beats:
-                add(buses["drums"], hit("snare"), start + beat * BEAT, 0.62 if is_verse else 0.95)
-            for step in range(8):
-                timing = float(rng.normal(0, 0.004)) if drum_samples is not None else 0
-                strength = float(rng.uniform(0.88, 1.06)) if drum_samples is not None else 1
+            kick_accents = (1.0, 0.62) if is_verse or is_pre else (1.0, 0.76, 0.56)
+            snare_accents = (0.70,) if is_verse or is_pre else (0.96, 0.84)
+            section_gain = 0.82 if is_verse else 0.91 if is_pre else 1.0
+            for beat, accent in zip(kick_beats, kick_accents, strict=True):
+                add(
+                    buses["drums"],
+                    hit("kick"),
+                    start + beat * BEAT,
+                    accent * section_gain * float(rng.uniform(0.94, 1.04)),
+                )
+            for beat, accent in zip(snare_beats, snare_accents, strict=True):
+                add(
+                    buses["drums"],
+                    hit("snare"),
+                    start + beat * BEAT,
+                    accent * section_gain * float(rng.uniform(0.93, 1.03)),
+                )
+            if is_verse and local % 2:
+                add(buses["drums"], hit("snare"), start + 3.72 * BEAT, 0.13, 0.06)
+            hat_steps = range(0, 8, 2) if is_verse else range(8)
+            for step in hat_steps:
+                hat_accents = (0.78, 0.46, 0.62, 0.44, 0.74, 0.45, 0.59, 0.42)
+                strength = hat_accents[step] * float(rng.uniform(0.92, 1.06))
                 add(
                     buses["drums"],
                     hit("hat"),
-                    start + step * BEAT / 2 + timing,
-                    (0.34 if is_verse else 0.48) * strength,
+                    start + step * BEAT / 2,
+                    (0.30 if is_verse else 0.44) * section_gain * strength,
                     0.35,
                 )
             if is_chorus and local in (0, 4):
-                add(buses["drums"], hit("ride"), start, 1.0, -0.47)
+                add(buses["drums"], hit("ride"), start, 0.82, -0.47)
             if (is_pre or name == "bridge") and local == section_bars - 1:
                 for beat, gain in [(2.5, 0.28), (3.0, 0.38), (3.5, 0.55)]:
-                    add(buses["drums"], hit("snare"), start + beat * BEAT, gain, 0.12)
+                    add(
+                        buses["drums"],
+                        hit("snare"),
+                        start + beat * BEAT,
+                        gain * float(rng.uniform(0.92, 1.05)),
+                        0.12,
+                    )
 
-    buses["piano"] = ambience(buses["piano"], 0.36)
+    if sfz_path is not None:
+        buses["piano"] = render_sfz_piano(
+            piano_notes, total_bars * BAR, sfz_path, sfizz or "sfizz_render"
+        )
+    buses["piano"] = ambience(buses["piano"], 0.18 if sfz_path is not None else 0.36)
     buses["guitar"] = ambience(buses["guitar"], 0.28)
     buses["strings"] = ambience(buses["strings"], 0.44)
     buses["lead"] = ambience(buses["lead"], 0.62)
@@ -441,12 +652,22 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
         "seed": SEED,
         "palette": palette,
         "soundfont": str(SOUNDFONT) if palette == "sampled" else None,
+        "sfz_piano": str(sfz_path) if sfz_path is not None else None,
+        "sfizz_renderer": sfizz if sfz_path is not None else None,
+        "drums": drum_mode,
         "drum_sources": {
-            kind: {"path": f"{DRUM_BASE}/{filename}", "sha256": sha}
+            kind: {"path": filename, "sha256": sha}
             for kind, (filename, sha, _) in DRUM_FILES.items()
         }
-        if palette == "sampled"
+        if drum_mode == "one-shots" and palette in ("sampled", "sfz")
         else {},
+        "drum_loop": {
+            "path": LOFI_DRUM_LOOP[0],
+            "sha256": LOFI_DRUM_LOOP[1],
+            "eq": LOFI_LOOP_EQ,
+        }
+        if drum_mode == "loop"
+        else None,
         "reference_audio_used_in_render": False,
         "sections": SECTIONS,
         "timeline": timeline,
@@ -456,22 +677,46 @@ def _render(palette: str, out: Path, soundfont: SoundFont | None) -> dict:
     return receipt
 
 
-def render(palette: str = "sampled", out: Path = OUT) -> dict:
+def render(
+    palette: str = "sampled",
+    out: Path = OUT,
+    sfz_piano: Path | None = None,
+    sfizz: str | None = None,
+    drum_mode: str = "one-shots",
+) -> dict:
     if palette == "sampled":
         with SoundFont(SOUNDFONT, RATE) as soundfont:
-            return _render(palette, out, soundfont)
+            return _render(palette, out, soundfont, None, None, drum_mode)
     if palette == "synthetic":
-        return _render(palette, out, None)
+        return _render(palette, out, None, None, None, drum_mode)
+    if palette == "sfz":
+        if sfz_piano is None:
+            raise ValueError("--sfz-piano is required when --palette sfz")
+        return _render(palette, out, None, sfz_piano, sfizz or "sfizz_render", drum_mode)
     raise ValueError(f"Unknown palette: {palette}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--palette", choices=("sampled", "synthetic"), default="sampled")
+    parser.add_argument("--palette", choices=("sampled", "synthetic", "sfz"), default="sampled")
     parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--sfz-piano", type=Path)
+    parser.add_argument("--sfizz-render", default=os.environ.get("SFIZZ_RENDER", "sfizz_render"))
+    parser.add_argument("--drums", choices=("one-shots", "loop", "none"), default="one-shots")
     args = parser.parse_args()
     print(
         json.dumps(
-            {k: v for k, v in render(args.palette, args.out).items() if k != "timeline"}, indent=2
+            {
+                k: v
+                for k, v in render(
+                    args.palette,
+                    args.out,
+                    args.sfz_piano,
+                    args.sfizz_render,
+                args.drums,
+                ).items()
+                if k != "timeline"
+            },
+            indent=2,
         )
     )
