@@ -81,11 +81,11 @@ it does not change the priorities on this board.
 
 ## ▶ Next
 
-- **Formal stateful and transactional audition** — after the production workflow exposes
-  real audition requests, test range/stem correctness and temporary parameter candidates
-  against an unchanged source, then promote one guarded source edit. See
-  [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md) and
-  [`transactional audition`](thoughts/2026-09-23-transactional-audition.md).
+- **Audition acceptance and Git revision record** — `tactus accept RUN_DIR` promotes a
+  candidate's parameters into `render` defaults, guarded against any source change and verified
+  by re-render. Receipts record Git `HEAD`, dirty state and a restoring patch. In progress; see the
+  [`plan`](plans/2026-09-24-audition-acceptance.md). Range/stem audition is deferred until a
+  production asks for it; see [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md).
 - **Effect integration where the slice needs it** — use Pedalboard + small helpers as the
   initial effect/VST3 path; keep external sidechain explicitly unsupported until a real
   production requires and validates a native extension. See
