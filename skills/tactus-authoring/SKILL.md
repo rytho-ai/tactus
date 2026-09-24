@@ -82,6 +82,10 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
 - `material("sha256:<hex>") -> Path` returns a verified path into the machine's pool
   (`$TACTUS_POOL`, default `~/.local/share/tactus/pool`). Read it with SoundFile or NumPy as
   the work requires. Handle bounded reads, sample-rate checks, and headroom in the work itself.
+  Files in one pack often differ in sample rate and channel count. Converting them to the
+  work's rate and layout is the work's job, done explicitly, for example with
+  `scipy.signal.resample_poly`. Tactus never resamples, and a relabelled rate is not a
+  conversion.
   - A missing entry fails the run with `material_unavailable`; import the file with
     `tactus material add`.
   - Changing a sample means changing its ref in source. That is a reviewable diff.
@@ -101,11 +105,12 @@ path}`.
 `receipt.json` (`format_version` 2) attributes the run:
 
 - `entry`, `parameters`: effective values, defaults included.
-- `source_files`: the SHA-256 of each `.py` file under the entry directory.
+- `source_files`: the SHA-256 of each `.py` file under the entry directory. Scratch scripts
+  placed there are recorded as well, even when `render` never imports them.
 - `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256}` for each declared tool.
-- `python_packages`: the imported distributions and their versions.
+- `python_packages`: an object mapping each imported distribution name to its version.
 - `runtime`, `reproducibility`, `attribution_scope`.
 
 A receipt guarantees the saved outputs. It does not guarantee that re-running the source
@@ -117,6 +122,9 @@ request, load, and bind errors, 1 otherwise, and 130 when cancelled. A failed ru
 output directory.
 
 ### Worked examples
+
+Both examples live in the Tactus repository
+(`https://github.com/rytho-ai/tactus`, or the local checkout that installed the package):
 
 - `examples/real-chop-flip/`: a real sample with a beat grid, bounded reads, a Rubber Band
   warp declared with `tool`, and a bass-level candidate parameter.
