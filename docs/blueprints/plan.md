@@ -87,7 +87,10 @@ it does not change the priorities on this board.
   checking the receipt against the current source and getting re-approval on a moved base.
   `tactus accept` was built and then shelved on `shelved/tactus-accept`: in a 12-Agent A/B
   probe, clear guidance alone produced 6/6 correct disclosures. See the
-  [accept probe](thoughts/2026-09-24-accept-necessity-probe.md). Range/stem audition is deferred
+  [accept probe](thoughts/2026-09-24-accept-necessity-probe.md). A five-scenario Git probe found
+  Git use sound but approved audio lost with removed worktrees; the skill now fixes run
+  locations and archives approved mixes in the pool. See the
+  [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md). Range/stem audition is deferred
   until a production asks for it; see
   [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md).
 - **Effect integration where the slice needs it** — use Pedalboard + small helpers as the

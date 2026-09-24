@@ -110,6 +110,14 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 
 接受候選由作者或 Agent 自己完成：把參數值寫回 `render` 預設值、重跑，再用 Git commit。在那之前，先比對候選 receipt 的 `git.commit` 與 `source_files` 是否仍是目前的 source。若 source 已經移動，聽者選中的版本已不存在，必須告知聽者，並在目前的 source 上重跑、取得重新確認。尚未提供 range audition。
 
+Git 與音檔的分工如下：
+- **Git 只保存 source**：`.py`、`uv.lock` 與 `sha256:` refs。
+- **Render 的音檔不進 Git**：它們體積大、無法 diff 或 merge，而且屬於衍生物。
+- **Run 輸出放在固定位置**：主 checkout 的 ignored `runs/`，或 repository 外。不要放在會被移除的 worktree 內。
+- **聽者認可或聽過的版本要封存**：用 `tactus material add` 存入 pool。pool 與 manifest 使用同一個 SHA-256，commit 訊息引用的 hash 因此可以用 `material()` 取回。
+- **Runtime 只唯讀地記錄 Git 狀態**：commit、branch、merge 由人或 Agent 直接使用 Git，Tactus 不包裝這些指令。
+- **Pool 只在本機**：需要備份或分享時，再評估 Git LFS 或同步儲存，並且只放認可的版本。
+
 曾實作 guarded promotion（`tactus accept`：base 檢查、改寫 `render` 預設值、重跑驗證）。A/B probe 顯示，清楚的指引就能讓 fresh Agents 正確處理 source 移動的情況，因此這個功能暫存在 `shelved/tactus-accept` 分支，等出現實際錯誤時再啟用。結構性的修改在 Git branch／worktree 上試，接受時用 Git 合併。
 
 **尚未定案：**正式 audition／promotion API、state isolation 的實作、range／stem 的效率與延遲目標。Real-time transport 由 live input 或人類即時協作的實際需求再評估；cache 不是候選隔離成立的前提。

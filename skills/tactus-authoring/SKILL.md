@@ -24,10 +24,11 @@ allowed, including Track-like groupings; none is required.
    JSON-valued defaults. Done when each candidate you intend to compare differs only by
    `--params`.
 4. **Run it**: `tactus run song.py --out NEW_DIR [--params '{"name": value}']`. Every run needs
-   a directory that does not exist yet. Keep run directories out of Git: put them outside the
-   repository or under an ignored folder (for example `runs/` listed in `.gitignore`). Git holds
-   the source, `uv.lock` and the `sha256:` refs; audio lives in the pool and in run outputs,
-   and can be rendered again. Done when stdout reports `"status": "ok"`. On failure, fix what
+   a directory that does not exist yet. Keep run directories out of Git, in one fixed place:
+   the main checkout's ignored `runs/` (listed in `.gitignore`) or a folder outside the
+   repository. Git holds the source, `uv.lock` and the `sha256:` refs; audio lives in run
+   outputs and the pool. A file you hand to a listener stays at the path you gave until they
+   are done with it. Done when stdout reports `"status": "ok"`. On failure, fix what
    `error.code` and `error.phase` point at (see Reference).
 5. **Listen and compare.** A passing run proves the technical contract only. Judge the music by
    listening and comparing candidates. Discarding a candidate needs no action.
@@ -43,8 +44,11 @@ allowed, including Track-like groupings; none is required.
    approves that new render. When you report a result, compare every output hash in the two
    manifests; matching one stem does not show the mix matches.
 
-   The commit message names the approved run and its mix hash, so the revision points to what
-   the listener heard:
+   Archive what the listener approved before committing: `tactus material add` the approved
+   run's mix (and any stems you delivered). The pool keys files by the same SHA-256 the
+   manifest records, so the hash in the commit message stays retrievable with
+   `material("sha256:…")` after run directories are cleaned up. The commit message names the
+   approved run and its mix hash, so the revision points to what the listener heard:
 
    ```
    Keep c2: bass -9 dB, pad 1800 Hz
@@ -54,7 +58,8 @@ allowed, including Track-like groupings; none is required.
 
 Structural experiments, such as a new stage or reordered processing, cannot be expressed as
 parameters. Make them on a Git branch or `git worktree`, run each, and keep one by merging
-with Git.
+with Git. Give runs made inside a worktree an `--out` in the main checkout's `runs/`, because
+removing the worktree deletes everything inside it.
 
 ## Functional discipline
 
@@ -150,7 +155,9 @@ path}`.
 - `runtime`, `reproducibility`, `attribution_scope`.
 
 A receipt guarantees the saved outputs. It does not guarantee that re-running the source
-reproduces them.
+reproduces them. Say an old version can be reproduced only after you re-render it and every
+output hash matches; until then, say it is expected but unverified, and point to the archived
+file if there is one.
 
 Errors print `{"status": "error", "error": {code, phase, message}}`. `phase` is one of
 `request`, `load`, `bind`, `execute`, `validate`, or `publish`. The exit code is 2 for
