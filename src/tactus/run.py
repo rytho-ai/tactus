@@ -20,12 +20,14 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from . import revision
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .store import MaterialStore
 
@@ -329,6 +331,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
     phase = "load"
     try:
         before = _inventory(source.parent, out)
+        git = revision.record(source.parent, out)
         _reset_record()
         sys.path.insert(0, str(source.parent))
         namespace = runpy.run_path(str(source), run_name="__tactus__")
@@ -336,7 +339,9 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         factory = namespace.get("render")
         arguments, effective = _bind(factory, request["params"])
         phase = "execute"
+        started = time.perf_counter()
         result = factory(**arguments)
+        elapsed_seconds = round(time.perf_counter() - started, 3)
         inputs_used = _record_snapshot()
         python_packages = _python_packages()
         phase = "validate"
@@ -355,9 +360,11 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
             **before,
+            "git": git,
             "materials": inputs_used["materials"],
             "tools": inputs_used["tools"],
             "python_packages": python_packages,
+            "elapsed_seconds": elapsed_seconds,
             "runtime": {
                 "python": sys.version.split()[0],
                 **{name: version(name) for name in ("tactus", "numpy", "soundfile")},

@@ -27,8 +27,22 @@ allowed, including Track-like groupings; none is required.
    a directory that does not exist yet. Done when stdout reports `"status": "ok"`. On failure,
    fix what `error.code` and `error.phase` point at (see Reference).
 5. **Listen and compare.** A passing run proves the technical contract only. Judge the music by
-   listening and comparing candidates. To keep a candidate, edit its values into the source
-   defaults and run again, so the accepted version is the source itself.
+   listening and comparing candidates. Discarding a candidate needs no action.
+6. **Keep one candidate**: edit its parameter values into `render`'s defaults, run again, and
+   commit the source with `git` once the result is the version you chose. Discard edits you do
+   not keep with `git checkout`.
+
+   Before keeping it, check that the source has not moved since the candidate was rendered:
+   compare the candidate receipt's `git.commit` and `source_files` with the current source.
+   If it moved, the version the listener chose no longer exists. Tell the listener the source
+   changed and what changed (`git log`, `git diff` against that commit). Render the same
+   parameters from the current source as a new candidate, and keep it only after the listener
+   approves that new render. When you report a result, compare every output hash in the two
+   manifests; matching one stem does not show the mix matches.
+
+Structural experiments, such as a new stage or reordered processing, cannot be expressed as
+parameters. Make them on a Git branch or `git worktree`, run each, and keep one by merging
+with Git.
 
 ## Functional discipline
 
@@ -114,6 +128,10 @@ path}`.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory. Scratch scripts
   placed there are recorded as well, even when `render` never imports them.
 - `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.
+- `git`: null outside a repository, or `{commit, dirty, untracked, patch}`. `patch` names
+  `source.patch` in the run directory when the tree was dirty. `commit` plus that patch
+  restores the source that actually ran.
+- `elapsed_seconds`: the wall time of the `render` call.
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256}` for each declared tool.
 - `python_packages`: an object mapping each imported distribution name to its version.
