@@ -10,6 +10,9 @@
 For implementation decisions, read the
 [product positioning and principles](../positioning.md), then the [current design](../design.md)
 for chosen approaches and undecided interfaces. Implementation gaps live in the plans below.
+The dated [implementation inventory and checklist](thoughts/2026-09-24-implementation-evidence-inventory.md)
+maps the existing experiments to remaining work, completed foundations, and conditional directions;
+it does not change the priorities on this board.
 
 ## ✅ Shipped
 
@@ -61,6 +64,10 @@ for chosen approaches and undecided interfaces. Implementation gaps live in the 
 
 ## ▶ Next
 
+- **Second production through `run`** — port phonon-ballad to `render()`, add pinned input
+  materials and declared tools to the receipt, and ship an Agent-facing authoring guide.
+  Implementation authorized; the guide carrier (skill or `AGENTS.md`) is still open. See
+  [`plan`](plans/2026-09-24-second-production-through-run.md).
 - **Formal stateful and transactional audition** — after the production workflow exposes
   real audition requests, test range/stem correctness and temporary parameter candidates
   against an unchanged source, then promote one guarded source edit. See
