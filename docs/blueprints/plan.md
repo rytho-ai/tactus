@@ -81,11 +81,15 @@ it does not change the priorities on this board.
 
 ## ▶ Next
 
-- **Audition acceptance and Git revision record** — `tactus accept RUN_DIR` promotes a
-  candidate's parameters into `render` defaults, guarded against any source change and verified
-  by re-render. Receipts record Git `HEAD`, dirty state and a restoring patch. In progress; see the
-  [`plan`](plans/2026-09-24-audition-acceptance.md). Range/stem audition is deferred until a
-  production asks for it; see [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md).
+- **Git revision record and candidate keeping** — shipped in `d102e83`: receipts record Git
+  `HEAD`, dirty state, untracked sources, a restoring `source.patch` and `elapsed_seconds`. The
+  skill tells Agents to keep a candidate by editing defaults and committing with Git, after
+  checking the receipt against the current source and getting re-approval on a moved base.
+  `tactus accept` was built and then shelved on `shelved/tactus-accept`: in a 12-Agent A/B
+  probe, clear guidance alone produced 6/6 correct disclosures. See the
+  [accept probe](thoughts/2026-09-24-accept-necessity-probe.md). Range/stem audition is deferred
+  until a production asks for it; see
+  [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md).
 - **Effect integration where the slice needs it** — use Pedalboard + small helpers as the
   initial effect/VST3 path; keep external sidechain explicitly unsupported until a real
   production requires and validates a native extension. See

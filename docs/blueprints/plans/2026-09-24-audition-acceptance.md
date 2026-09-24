@@ -5,8 +5,11 @@
 > and A4 from the
 > [implementation inventory](../thoughts/2026-09-24-implementation-evidence-inventory.md); A5 is
 > deferred. · Grounding: fresh reads of `src/tactus/run.py` and the
-> audition/Git thoughts and probes (listed in Context). Status: implementation authorized by
-> Paul, 2026-09-24.
+> audition/Git thoughts and probes (listed in Context). Status: steps 1–2 and 5 shipped in `d102e83`.
+> Step 3 (`tactus accept`) was built and tested, then shelved on branch `shelved/tactus-accept`:
+> an A/B probe with fresh Agents showed that explicit skill guidance alone prevents the error it
+> guards against. See the [accept probe](../thoughts/2026-09-24-accept-necessity-probe.md). Step 4 and
+> step 5's guidance now describe keeping a candidate with Git.
 
 ## Context
 

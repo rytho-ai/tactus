@@ -103,9 +103,14 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 
 第一個試聽介面以明確宣告的參數為範圍。多個候選從同一份 immutable base 執行，receipt 辨識 base source、素材、候選參數、range／stems 與 runtime／plugin 身分。Range audition 需要正確的 pre-roll、latency 對齊與 tail 處理，不能只把輸出區間前的處理全部省略。
 
-目前 `run` 支援完整執行的參數候選，各次 process 與輸出目錄分開，Tactus 不修改 source。它尚未建立 immutable source snapshot，也未提供 range audition 或自動接受候選；第一版由作者明確修改 source 後重跑，比較接受結果與候選。
+目前 `run` 支援完整執行的參數候選，各次 process 與輸出目錄分開，Tactus 不修改 source。每次執行的 receipt 會記錄：
+- Git `HEAD` 與未提交狀態；
+- 可還原實際 source 的 `source.patch`；
+- `render` 的執行時間。
 
-接受候選時，先確認 base revision 與目標 expression 仍相符，再進行一次 guarded source edit，並驗證正式輸出。其他人或 Agent 在此期間修改 source 時應回報衝突。任意 Python 結構修改可能需要 source snapshot 或 disposable worktree，不承諾任意 literal 都能安全地用參數覆寫。
+接受候選由作者或 Agent 自己完成：把參數值寫回 `render` 預設值、重跑，再用 Git commit。在那之前，先比對候選 receipt 的 `git.commit` 與 `source_files` 是否仍是目前的 source。若 source 已經移動，聽者選中的版本已不存在，必須告知聽者，並在目前的 source 上重跑、取得重新確認。尚未提供 range audition。
+
+曾實作 guarded promotion（`tactus accept`：base 檢查、改寫 `render` 預設值、重跑驗證）。A/B probe 顯示，清楚的指引就能讓 fresh Agents 正確處理 source 移動的情況，因此這個功能暫存在 `shelved/tactus-accept` 分支，等出現實際錯誤時再啟用。結構性的修改在 Git branch／worktree 上試，接受時用 Git 合併。
 
 **尚未定案：**正式 audition／promotion API、state isolation 的實作、range／stem 的效率與延遲目標。Real-time transport 由 live input 或人類即時協作的實際需求再評估；cache 不是候選隔離成立的前提。
 
