@@ -5,7 +5,7 @@
 > (B1 wiring, A2 minimal, A7 receipt extension, A8 first version) · Grounding: fresh reads of
 > `src/tactus/run.py`, `src/tactus/material.py`, both real examples, and the reference
 > `tactus-daw` asset/hosting modules. Status: implementation authorized by Paul on
-> 2026-09-24; step 5 waits for the guide-carrier choice.
+> 2026-09-24.
 
 ## Context
 
@@ -44,6 +44,9 @@ and moves to `format_version: 2`; tests are its only consumers.
 
 - **Inline digests.** Works reference materials as `material("sha256:…")` module constants; no
   material lock file (Paul, 2026-09-24).
+- **The guide is an Agent skill.** It lives in this repository at
+  `skills/tactus-authoring/SKILL.md`, versioned with the runtime and installed through Paul's skills
+  marketplace for Claude Code and Codex; it loads only when writing a Tactus work (Paul, 2026-09-24).
 - **No GitPython; no Git work in this slice.** A4 remains separate (Paul, 2026-09-24).
 - **Input bytes live in the shared pool.** They go under `$XDG_DATA_HOME/tactus/pool`, with a
   `TACTUS_POOL` override. The layout is byte-compatible with the tactus-daw pool, so identical
@@ -70,15 +73,13 @@ and moves to `format_version: 2`; tests are its only consumers.
 
 ## Open questions
 
-1. **Guide carrier: skill or `AGENTS.md`** (blocks step 5). Paul narrowed the carrier to an Agent
-   skill or an `AGENTS.md`, rather than a CLI-printed document; the choice between them is open.
-2. **SFZ piano on this machine** (blocks only the `sfz` palette's parity check). No
+1. **SFZ piano on this machine** (blocks only the `sfz` palette's parity check). No
    `UprightPiano.sfz` exists here; only Karoryfer bass SFZs under `music-agent-os/sfz/`. Until one
    is provided, the `sfz` palette keeps an explicit, unpinned path parameter. It is recorded in
    receipt parameters and marked unpinned. Whole-directory SFZ identity (a tree digest over
    sorted `(relpath, sha256)` pairs, as in tactus-daw `bundle/sfz.py`) waits for a pinned
    instrument that can be verified.
-3. **First-version completion definition** (blocks nothing here). Proposed: A1–A8 each have a
+2. **First-version completion definition** (blocks nothing here). Proposed: A1–A8 each have a
    minimal adopted form, one fresh Agent takes over and revises a real song through the guide, and
    Paul listens to the result. To be settled on the board, not in this plan.
 
@@ -131,7 +132,7 @@ Export `material` and `tool` from `tactus`.
   there. The new receipt attributes every sampled input. Update the README to show `tactus run`
   commands.
 
-**5. Agent guide (A8 first version).** Write the guide in the carrier chosen in open question 1,
+**5. Agent guide (A8 first version).** Write `skills/tactus-authoring/SKILL.md`,
 covering:
 - the `render` contract and output limits;
 - `run` and the CLI;
@@ -162,7 +163,7 @@ when their materials are not in the pool.
 | `src/tactus/inputs/` (new) | Pool, `material`, `tool`, run-scoped record log; header required |
 | `src/tactus/__init__.py` | Export `material`, `tool` |
 | `src/tactus/cli.py` | `material add` subcommand |
-| Guide (skill or `AGENTS.md`, open question 1) | Agent-facing contract and functional discipline |
+| `skills/tactus-authoring/SKILL.md` (new) | Agent-facing contract and functional discipline |
 | `examples/real-chop-flip/materials.py`, `chops.py` | Adopt `material`/`tool`; drop env overrides |
 | `examples/phonon-ballad/song.py`, `soundfont.py`, `README.md` | Port to `render(*, ...)`; adopt `material`/`tool` |
 | `tests/test_inputs.py`, `tests/test_examples.py` (new) | Resolver and receipt behavior; example regression |
@@ -198,6 +199,6 @@ when their materials are not in the pool.
 ## Out of scope
 
 Git integration (A4), transactional or range audition (A3, A5), Pedalboard (A6), time helpers
-(A1), directory/SFZ tree identity (pending open question 2), processor pinning or refusal on mismatch, pool
+(A1), directory/SFZ tree identity (pending open question 1), processor pinning or refusal on mismatch, pool
 garbage collection or cloud sync, decoded-audio identity, headroom or import-gain policy, and
 Mido adoption (phonon-ballad hand-encodes its SMF and keeps doing so).

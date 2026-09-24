@@ -66,7 +66,7 @@ it does not change the priorities on this board.
 
 - **Second production through `run`** — port phonon-ballad to `render()`, add pinned input
   materials and declared tools to the receipt, and ship an Agent-facing authoring guide.
-  Implementation authorized; the guide carrier (skill or `AGENTS.md`) is still open. See
+  Implementation authorized; in progress. See
   [`plan`](plans/2026-09-24-second-production-through-run.md).
 - **Formal stateful and transactional audition** — after the production workflow exposes
   real audition requests, test range/stem correctness and temporary parameter candidates

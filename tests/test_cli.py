@@ -15,6 +15,36 @@ import pytest
 from tactus.cli import main
 
 
+def test_material_add_imports_files_and_prints_refs(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    a = tmp_path / "a.wav"
+    a.write_bytes(b"a bytes")
+    b = tmp_path / "b.wav"
+    b.write_bytes(b"b bytes")
+    assert main(["material", "add", str(a), str(b)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "ok"
+    import hashlib
+
+    assert report["materials"] == {
+        str(a): f"sha256:{hashlib.sha256(a.read_bytes()).hexdigest()}",
+        str(b): f"sha256:{hashlib.sha256(b.read_bytes()).hexdigest()}",
+    }
+
+
+def test_material_add_missing_path_is_a_structured_error_with_nothing_reported(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    present = tmp_path / "present.wav"
+    present.write_bytes(b"present bytes")
+    missing = tmp_path / "missing.wav"
+    assert main(["material", "add", str(present), str(missing)]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+    assert not (tmp_path / "pool").exists()  # nothing partially imported
+
+
 def test_doctor_reports_environment(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["doctor"]) == 0
     report = json.loads(capsys.readouterr().out)

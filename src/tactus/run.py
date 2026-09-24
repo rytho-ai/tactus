@@ -2,7 +2,9 @@
 
 The public runner owns request validation, process lifetime and failed-run cleanup.
 The private worker calls _execute for source binding, attribution and MaterialStore
-publication. Manifests identify saved audio; receipts attribute the bounded execution.
+publication. Manifests identify saved audio; receipts attribute the bounded execution,
+including resolved input materials, declared tools and imported package versions
+(`tactus.inputs`).
 """
 
 from __future__ import annotations
@@ -18,12 +20,13 @@ import signal
 import subprocess
 import sys
 import tempfile
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, packages_distributions, version
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .material import MaterialStore
 
 
@@ -216,6 +219,19 @@ def run(
             shutil.rmtree(out, ignore_errors=True)
 
 
+def _find_lock(start: Path) -> Path | None:
+    """Walk upward from `start` for the nearest `uv.lock`, stopping at the filesystem root."""
+    current = start
+    while True:
+        candidate = current / "uv.lock"
+        if candidate.is_file():
+            return candidate
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
+
+
 def _inventory(root: Path, output: Path) -> dict[str, Any]:
     excluded = {".tactus", ".tactus-code", ".venv", "__pycache__", ".git"}
     files = {}
@@ -231,13 +247,35 @@ def _inventory(root: Path, output: Path) -> dict[str, Any]:
                 files[path.relative_to(root).as_posix()] = hashlib.sha256(
                     path.read_bytes()
                 ).hexdigest()
-    lock = root / "uv.lock"
+    lock = _find_lock(root)
     return {
         "source_files": files,
-        "dependency_lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest()
-        if lock.is_file()
+        "dependency_lock": {
+            "path": str(lock),
+            "sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+        }
+        if lock is not None
         else None,
     }
+
+
+def _python_packages() -> dict[str, str]:
+    """Map imported top-level modules to installed distribution versions, minus stdlib."""
+    mapping = packages_distributions()
+    stdlib = sys.stdlib_module_names
+    result: dict[str, str] = {}
+    for name in list(sys.modules):
+        top = name.split(".", 1)[0]
+        if top in stdlib:
+            continue
+        for distribution in mapping.get(top, ()):
+            if distribution in result:
+                continue
+            try:
+                result[distribution] = version(distribution)
+            except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
+                pass
+    return dict(sorted(result.items()))
 
 
 def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -291,6 +329,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
     phase = "load"
     try:
         before = _inventory(source.parent, out)
+        _reset_record()
         sys.path.insert(0, str(source.parent))
         namespace = runpy.run_path(str(source), run_name="__tactus__")
         phase = "bind"
@@ -298,6 +337,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         arguments, effective = _bind(factory, request["params"])
         phase = "execute"
         result = factory(**arguments)
+        inputs_used = _record_snapshot()
+        python_packages = _python_packages()
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
@@ -305,27 +346,33 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         references = {name: store.add(audio).to_dict() for name, audio in outputs.items()}
         if _inventory(source.parent, out) != before:
             raise RunError(
-                "source_changed", phase, "source or root uv.lock changed during execution"
+                "source_changed", phase, "source or nearest uv.lock changed during execution"
             )
-        identity = {"kind": "tactus.functional-run", "format_version": 1}
+        identity = {"kind": "tactus.functional-run"}
         receipt = {
             **identity,
+            "format_version": 2,
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
             **before,
+            "materials": inputs_used["materials"],
+            "tools": inputs_used["tools"],
+            "python_packages": python_packages,
             "runtime": {
                 "python": sys.version.split()[0],
                 **{name: version(name) for name in ("tactus", "numpy", "soundfile")},
             },
             "reproducibility": "saved outputs only; source rebuild not guaranteed",
-            "attribution_scope": "Python files beneath entry parent and its uv.lock; "
-            "external imports, media and processor identities are not traced",
+            "attribution_scope": "Traced: entry-directory Python files, the nearest uv.lock, "
+            "resolved materials, declared tools and imported third-party distributions. "
+            "Not traced: undeclared files or executables, network access and randomness.",
         }
         _write_json(out / "receipt.json", receipt)
         _write_json(
             out / "manifest.json",
             {
                 **identity,
+                "format_version": 1,
                 "sample_rate": rate,
                 "outputs": references,
             },
@@ -339,6 +386,9 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "manifest": str(out / "manifest.json"),
             "receipt": str(out / "receipt.json"),
         }
+    except (MaterialError, ToolError) as exc:
+        code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"
+        raise RunError(code, phase, str(exc)) from exc
     except RunError:
         raise
     except BaseException as exc:
