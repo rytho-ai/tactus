@@ -1,6 +1,6 @@
 # Time-stretch algorithm listening probe
 
-> 2026-09-24 · Evidence for the pending Tactus time-stretch backend decision, returned to Paul for listening. Perceptual verdict **pending**; this is not a quality ranking.
+> 2026-09-24 · Evidence for the Tactus time-stretch backend decision. Paul prefers A and chooses to keep Rubber Band as the baseline. The specific listening cell is not yet identified, so this is not a universal quality ranking.
 
 ## Question and preregistered decision rule
 
@@ -20,6 +20,17 @@ All 18 processed outputs (2 sources × 3 ratios × 3 engines) were finite and ha
 
 Audition: [`../mockups/2026-09-24-stretch-listening/index.html`](../mockups/2026-09-24-stretch-listening/index.html). The standalone file is about 3.75 MB because it embeds lossless FLAC audio. The disposable render harness is not product code.
 
-## Pending listening verdict
+## Listening decision and its limit
 
-Paul has not yet selected a preferred version for any cell. Do not infer a winner from backend reputation, waveform measurements, or the technical duration check. Once listening feedback arrives, record which source/ratio/label was preferred, reveal that cell's mapping, and decide whether the advantage justifies another optional engine.
+Paul reported that A sounded best and chose to retain Rubber Band as the Tactus baseline. Because A/B/C were randomized independently in each cell, the report does not yet identify one specific engine or settle R2 versus R3:
+
+| Cell | A |
+| --- | --- |
+| Beat, 0.5× | Rubber Band R3 |
+| Beat, 1.5× | Rubber Band R2 |
+| Beat, 3× | Rubber Band R2 |
+| Pad, 0.5× | Rubber Band R3 |
+| Pad, 1.5× | Signalsmith |
+| Pad, 3× | Rubber Band R3 |
+
+Keep Rubber Band as the working choice; do not add Signalsmith as a required backend on this evidence. If the precise perceptual result matters later, first ask which source/ratio cells Paul listened to. A preference for A in the pad 1.5× cell would be evidence for Signalsmith in that particular case, not Rubber Band. No code dependency or default-engine change was made by this listening decision.

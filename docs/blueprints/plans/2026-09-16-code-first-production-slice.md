@@ -2,14 +2,89 @@
 
 > Generated: 2026-09-16 · Source: conversation on code-as-source-of-truth, modular music, and Music Agent OS coverage · Grounding: fresh `tactus-code` bootstrap plus `music-agent-os/lab/chop_flip.py`, `jam.py`, `beatlib.py`, and its older Tactus migration plan
 
+> Progress as of 2026-09-24: functional real-source production and A/B listening are complete;
+> Paul prefers the first version A. Broader effect/MIDI integration and sonic parity remain open.
+> The Project/Track arrangement prototype has been removed at Paul's request; see the
+> [retirement plan](2026-09-24-retire-arrangement-prototype.md). Its descriptions below are historical.
+
+> Authoring supersession (2026-09-24): the mandatory `Project`/`Track`, transport, and
+> graph-expansion prescriptions below describe the early prototype, not the current target
+> architecture. [Functional authoring](../thoughts/2026-09-21-functional-audio-authoring-core.md)
+> and [optional clocks](../thoughts/2026-09-23-optional-clock-temporal-abstraction.md) supersede
+> those prescriptions. Preserve this plan's real-production, revision, replay, and listening
+> acceptance case; use the [product positioning and principles](../../positioning.md) and
+> [current design](../../design.md) when planning the next runtime change. The original
+> graph examples and format-v1 replay are historical behavior, no longer supported after
+> the explicit prototype retirement.
+
 ## Context
 
-`tactus-code` currently has only an installable package and a `doctor` CLI. It has no project API,
-audio engine, or build artifacts. The sibling `tactus` package can independently replay a compiled
-`SongState` and content-addressed audio bundle, but its existing operation/history model is not an
-assumed foundation here. The 2026-09-16 graph-only probe also found a real limitation: Python DSP
-results replay, while undeclared randomness and processor implementation identity are not honestly
-captured for source rebuilds.
+### Current execution slice — 2026-09-24
+
+Paul authorized using the completed functional entry for a real production and revision cycle.
+Use the existing local Music Agent OS source `CErZvbcaOeE_inst.wav` and its beat-grid sidecar,
+already present in ignored dogfood assets. Keep their identities pinned in production source.
+The current interface is `render()`, executed through `tactus run`; the historical graph/Track
+prescriptions below are superseded as noted above.
+
+Create `examples/real-chop-flip/` as an ordinary Python production: four source bars near
+54.1 seconds, pitch-preserving Rubber Band warp to 90 BPM, an eight-bar long-phrase rearrangement,
+authored drums and bass, and explicit project-local filtering/delay. The original Music Agent OS
+long-phrase approach is a reference; this is a bounded adaptation, not full algorithm/sonic parity.
+No new Tactus core API or effect-host integration is required to author this production.
+
+Use the same source to produce a base and a candidate with bass reduced by 4 dB. Record actual
+CLI requests/responses under `dogfood/2026-09-24-functional-production/responses/`. Verify source
+stability, unchanged sample/drum outputs, changed bass/mix, repeatability in this environment,
+and finite, unclipped WAV delivery. Measure duration/peak/LUFS as observations, not taste gates.
+Compare direct Python/SoundFile delivery with Tactus on the same musical functions.
+
+Provide a localhost listening page with original source excerpt, base/candidate playback,
+aligned A/B switching and optional level matching. Keep all media local and ignored. Record
+actual authoring/delivery friction in the dogfood report. Human listening and the choice of
+which version to accept remain pending until Paul responds; do not label a proposed candidate
+as accepted. After feedback, make the chosen source edit and verify its output against that
+candidate. Run pytest and Ruff after production-source changes.
+
+Critical files: `examples/real-chop-flip/{song,chops,rhythm,materials}.py` and README;
+the ignored dogfood folder owns captures, generated audio and the listening page. The plan board
+records delivered work and the listening gate. Existing runtime source is not changed by dogfood.
+
+#### Execution evidence
+
+The production and bass-level candidate are complete. Both are 22.333-second stereo PCM24
+at 44.1 kHz; source and grid identities are pinned. The same source produced a base at
+`bass_gain_db=-5.0`, candidate at `-9.0`, and byte-identical base repeat. Sample/drum outputs
+remained identical; bass/mix changed. Direct Python/SoundFile export matched every base WAV.
+The authored master gain was explicitly raised from 0.85 to 1.5 after the first quiet draft;
+final base/candidate measure -18.88/-20.02 LUFS and -3.26/-4.93 dBFS sample peak.
+
+Actual CLI captures, measurements and the listening page are in ignored
+`dogfood/2026-09-24-functional-production/final/`; the session's `report.md` records friction.
+Confirmed: paired listening required an external page; external transform versions required
+supplemental provenance. Applying legacy inspect to a functional manifest also failed, but
+Paul clarified that the new workflow does not need to inherit inspect: the run response and
+readable manifest/receipt already supply results. Its initial classification as a feature gap
+was withdrawn; this is a legacy workflow distinction, not a new inspect requirement. No runtime fix
+was made during dogfood. 58 tests, Ruff and whitespace checks passed. Browser transport/A-B
+switching passed; that is not a musical listening verdict.
+
+**Listening outcome:** Paul said “我好像喜歡1”, interpreted as a preference for the first
+version A. Retain A for this study; its -5 dB bass default already matches production source,
+so no musical source edit is needed. A fresh installed-wheel run after prototype retirement
+reproduced every selected output hash and the same source inventory. Evidence:
+`dogfood/2026-09-24-functional-production/final/responses/selected-a.json` and `selection.json`.
+This records a preference between these two takes, not a broad musical-quality approval.
+Original Music Agent OS sonic parity, its full effect/drum workflow and MIDI export remain open.
+
+At the time of this plan, `tactus-code` had only an installable package and a `doctor` CLI. The
+subsequent prototype implemented `Project`/`Track` authoring, `compute`, declared media inputs,
+compiled arrangement/materials, graph-only mix/stem rendering, and diff; those APIs have since
+been retired. The former sibling
+implementation is now `tactus-daw` and remains a reference, not an assumed foundation. The
+2026-09-16 graph-only probe found a limitation that still matters: Python DSP results replay,
+while undeclared randomness and processor implementation identity are not honestly captured for
+source rebuilds.
 
 The first production case should be a bounded adaptation of Music Agent OS
 `lab/chop_flip.py::make_beat`: select and chop a musical source, warp and rearrange it, add drums
@@ -92,13 +167,12 @@ Music Agent OS coverage.
 
 | File | Role and planned change |
 |---|---|
-| `src/tactus_code/project.py` | Small author-facing project/track declarations consumed by example `song.py`. |
-| `src/tactus_code/compute.py` | Generic Python media computation and explicit dependency/materialization boundary. |
-| `src/tactus_code/material.py` | Content-addressed asset owner used by compute, compile, and render. |
-| `src/tactus_code/graph.py` | Versioned compiled arrangement codec; only compiler writes it. |
-| `src/tactus_code/build.py` | Executes source, validates declarations, and writes snapshot plus receipt. |
-| `src/tactus_code/render.py` | Graph-only mix/stem render and ephemeral audition requests. |
-| `src/tactus_code/cli.py` | Existing entry point gains `build`, `inspect`, and `render` without duplicating owners. |
+| `src/tactus/project.py` | Small author-facing project/track declarations and the generic `compute` boundary. |
+| `src/tactus/material.py` | Content-addressed asset owner used by compute, compile, and render. |
+| `src/tactus/graph.py` | Versioned compiled arrangement codec; only compiler writes it. |
+| `src/tactus/build.py` | Executes source, validates declarations, and writes snapshot plus receipt. |
+| `src/tactus/render.py` | Graph-only mix/stem render; ephemeral audition requests remain planned. |
+| `src/tactus/cli.py` | Entry point with `build`, `inspect`, `render`, and `diff`. |
 | `examples/chop-flip/` | Modular acceptance project and commands, using local media inputs. |
 | `tests/` | Focused API, codec, material, graph-only replay, and revision tests. |
 | `README.md` | Replace bootstrap-only claim only when the vertical slice really works. |

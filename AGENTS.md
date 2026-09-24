@@ -4,13 +4,14 @@ This repository is the active Tactus product, formerly `tactus-code`. Start with
 `docs/blueprints/plan.md` for current work. `../tactus-daw` is a reference implementation;
 reuse mechanisms only when the active product needs them. Its package and CLI use distinct names.
 
-Python source, declared material identities, and dependency locks own creative intent;
-Git owns revision history. Generated arrangements and audio are derived artifacts. A graph
-authoring model is not required. See the temporal and functional-authoring thoughts before
-changing that responsibility split.
+Before implementation, design changes, or review, read `docs/positioning.md` for product principles
+and `docs/design.md` for current approaches and undecided interfaces. Both are self-contained and
+maintained independently of the historical thoughts; design choices do not imply shipped behavior.
 
 Use the installed small-change skill for decided fixes and the planning skill for new
-capabilities. Store grounded plans in `docs/blueprints/plans/`, decisions in `thoughts/`,
+capabilities. Maintain principles in `docs/positioning.md`, current approaches in `docs/design.md`,
+grounded plans in `docs/blueprints/plans/`, decision rationale and experiments in
+`docs/blueprints/thoughts/`,
 and current status in `docs/blueprints/plan.md`. Historical docs retain their original names;
 follow supersession notices before treating them as current requirements.
 

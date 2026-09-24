@@ -1,4 +1,4 @@
-"""The minimal executable entry point for the Tactus experiment."""
+"""JSON command adapters for functional productions and environment diagnostics."""
 
 from __future__ import annotations
 
@@ -9,15 +9,22 @@ from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
 
-from .build import build
-from .graph import read_graph, semantic_diff
-from .render import render
+from .run import RunError, parse_params, run
+
+
+class _RunParser(argparse.ArgumentParser):
+    """Keep run argument failures in the same JSON envelope as execution failures."""
+
+    def error(self, message: str) -> None:
+        raise RunError("invalid_request", "request", message)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the bootstrap CLI without claiming unimplemented production features."""
+    """Execute a command; functional runs reserve stdout for one JSON result."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
     package_version = version("tactus")
-    parser = argparse.ArgumentParser(
+    parser_type = _RunParser if arguments[:1] == ["run"] else argparse.ArgumentParser
+    parser = parser_type(
         prog="tactus",
         description="Experimental code-first music production framework.",
     )
@@ -25,21 +32,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--version", action="version", version=f"%(prog)s {package_version}"
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("doctor", help="Report the installed bootstrap environment")
-    build_command = commands.add_parser("build", help="Compile a Python music project")
-    build_command.add_argument("source", type=Path, help="Entry point defining TRANSPORT and build")
-    build_command.add_argument("--out", type=Path, help="Generated build directory")
-    inspect_command = commands.add_parser("inspect", help="Summarize a compiled arrangement")
-    inspect_command.add_argument("graph", type=Path)
-    render_command = commands.add_parser("render", help="Render from compiled state only")
-    render_command.add_argument("graph", type=Path)
-    render_command.add_argument("--out", required=True, type=Path)
-    render_command.add_argument("--mute", action="append", default=[])
-    render_command.add_argument("--solo", action="append", default=[])
-    diff_command = commands.add_parser("diff", help="Compare two compiled arrangements")
-    diff_command.add_argument("before", type=Path)
-    diff_command.add_argument("after", type=Path)
-    args = parser.parse_args(argv)
+    commands.add_parser("doctor", help="Report the installed environment")
+    run_command = commands.add_parser("run", help="Execute a Python render() production")
+    run_command.add_argument("source", type=Path, help="Python file defining render(*, ...)")
+    run_command.add_argument("--out", required=True, type=Path, help="New run directory")
+    run_command.add_argument("--params", default="{}", help="JSON object of parameter overrides")
+    try:
+        args = parser.parse_args(arguments)
+        if args.command == "run":
+            result = run(args.source, out=args.out, params=parse_params(args.params))
+            print(json.dumps(result, sort_keys=True))
+            return 0
+    except RunError as exc:
+        print(json.dumps(exc.to_dict(), sort_keys=True))
+        return exc.exit_code
 
     if args.command == "doctor":
         print(
@@ -48,42 +54,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "package": "tactus",
                     "version": package_version,
                     "python": sys.version.split()[0],
-                    "status": "bootstrap",
+                    "status": "ok",
                 },
                 sort_keys=True,
             )
         )
-        return 0
-
-    if args.command == "build":
-        output = args.out or args.source.resolve().parent / ".tactus" / "build"
-        print(json.dumps({key: str(path) for key, path in build(args.source, output).items()}))
-        return 0
-    if args.command == "inspect":
-        graph = read_graph(args.graph)
-        print(
-            json.dumps(
-                {
-                    "transport": graph["transport"],
-                    "tracks": [
-                        {"name": track["name"], "events": len(track["events"])}
-                        for track in graph["tracks"]
-                    ],
-                    "computations": len(graph["computations"]),
-                    "outputs": graph["outputs"],
-                },
-                sort_keys=True,
-            )
-        )
-        return 0
-    if args.command == "render":
-        files = render(
-            args.graph, args.out, mute=frozenset(args.mute), solo=frozenset(args.solo)
-        )
-        print(json.dumps({key: str(path) for key, path in files.items()}, sort_keys=True))
-        return 0
-    if args.command == "diff":
-        print(json.dumps(semantic_diff(read_graph(args.before), read_graph(args.after)), sort_keys=True))
         return 0
 
     parser.error(f"unknown command: {args.command}")

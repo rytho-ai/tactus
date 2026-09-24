@@ -1,0 +1,352 @@
+"""Run functional Python productions in fresh processes and publish named PCM outputs.
+
+The public runner owns request validation, process lifetime and failed-run cleanup.
+The private worker calls _execute for source binding, attribution and MaterialStore
+publication. Manifests identify saved audio; receipts attribute the bounded execution.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import inspect
+import json
+import math
+import os
+import runpy
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+from importlib.metadata import version
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from .material import MaterialStore
+
+
+class RunError(Exception):
+    """A failed run with a stable code and the phase in which it failed."""
+
+    def __init__(self, code: str, phase: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.phase = phase
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": "error",
+            "error": {
+                "code": self.code,
+                "phase": self.phase,
+                "message": str(self),
+            },
+        }
+
+    @property
+    def exit_code(self) -> int:
+        if self.code == "cancelled":
+            return 130
+        return 2 if self.phase in {"request", "load", "bind"} else 1
+
+
+def _json_copy(value: Any) -> Any:
+    """Validate JSON values without silently coercing tuples or nonstring keys."""
+    if value is None or type(value) in (str, bool, int):
+        return value
+    if type(value) is float and math.isfinite(value):
+        return value
+    if type(value) is list:
+        return [_json_copy(item) for item in value]
+    if type(value) is dict and all(isinstance(key, str) for key in value):
+        return {key: _json_copy(item) for key, item in value.items()}
+    raise ValueError("parameters must contain finite JSON values and string object keys")
+
+
+def parse_params(raw: str) -> dict[str, Any]:
+    """Parse CLI overrides, rejecting duplicate keys and nonstandard JSON numbers."""
+
+    def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError(f"duplicate parameter key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        params = _json_copy(json.loads(raw, object_pairs_hook=pairs))
+        if not isinstance(params, dict):
+            raise TypeError("--params must be a JSON object")
+        return params
+    except (ValueError, TypeError, RecursionError) as exc:
+        raise RunError("invalid_request", "request", str(exc)) from exc
+
+
+def _write_json(path: Path, value: dict[str, Any]) -> None:
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(
+        json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
+
+
+def _stop(process: subprocess.Popen[str]) -> None:
+    """Reap the worker on cancellation; include its process group on POSIX."""
+    if os.name == "posix":
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    elif process.poll() is None:
+        process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+    finally:
+        if os.name == "posix":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def run(
+    source: str | Path,
+    *,
+    out: str | Path,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Execute source's render(**params), returning paths to a completed new run.
+
+    Relative assets/imports resolve from the source directory. Overrides leave
+    source unchanged. Child diagnostics go to stderr; this function prints no
+    result. Arbitrary author code is trusted, not sandboxed.
+    """
+    try:
+        source = Path(source).resolve()
+        out = Path(out).resolve()
+        params = _json_copy({} if params is None else params)
+        if not isinstance(params, dict):
+            raise TypeError("params must be a dictionary")
+        if not source.is_file() or source.suffix != ".py":
+            raise ValueError(f"source must be an existing Python file: {source}")
+        if source.parent == out or source.parent.is_relative_to(out):
+            raise ValueError("output cannot be the source directory or an ancestor")
+    except (ValueError, TypeError, OSError, RecursionError) as exc:
+        raise RunError("invalid_request", "request", str(exc)) from exc
+
+    try:
+        out.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise RunError("output_exists", "request", f"output already exists: {out}") from exc
+    except OSError as exc:
+        raise RunError("publication_failed", "publish", str(exc)) from exc
+
+    process = None
+    completed = False
+    try:
+        with tempfile.TemporaryDirectory(prefix="tactus-run-") as temporary:
+            request = Path(temporary) / "request.json"
+            response = Path(temporary) / "response.json"
+            _write_json(request, {"source": str(source), "out": str(out), "params": params})
+            # Load this installed Tactus before adding the author's import directory.
+            bootstrap = (
+                f"import sys; sys.path.insert(0, {str(Path(__file__).parent.parent)!r}); "
+                "from tactus._worker import main; raise SystemExit(main())"
+            )
+            process = subprocess.Popen(
+                # Ignore existing timestamp-based .pyc files: a rapid same-size source
+                # revision must execute the bytes that the receipt inventories.
+                [
+                    sys.executable,
+                    "-B",
+                    "-X",
+                    f"pycache_prefix={temporary}/pycache",
+                    "-c",
+                    bootstrap,
+                    str(request),
+                    str(response),
+                ],
+                cwd=source.parent,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                errors="replace",
+                start_new_session=os.name == "posix",
+            )
+            assert process.stdout is not None
+            with process.stdout:
+                for diagnostic in process.stdout:
+                    sys.stderr.write(diagnostic)
+            process.wait()
+            if not response.is_file():
+                raise RunError(
+                    "worker_failed",
+                    "execute",
+                    f"worker exited with status {process.returncode} without a result",
+                )
+            result = json.loads(response.read_text(encoding="utf-8"))
+            if result.get("status") == "error":
+                raise RunError(**result["error"])
+            if process.returncode != 0 or result.get("status") != "ok":
+                raise RunError(
+                    "worker_failed",
+                    "execute",
+                    f"worker did not complete successfully: {process.returncode}",
+                )
+            if not (out / "manifest.json").is_file():
+                raise RunError("worker_failed", "publish", "worker omitted the completion manifest")
+        completed = True
+        return result
+    except KeyboardInterrupt as exc:
+        raise RunError("cancelled", "execute", "run cancelled") from exc
+    except RunError:
+        raise
+    except Exception as exc:
+        raise RunError("worker_failed", "execute", str(exc)) from exc
+    finally:
+        if not completed:
+            if process is not None:
+                _stop(process)
+            shutil.rmtree(out, ignore_errors=True)
+
+
+def _inventory(root: Path, output: Path) -> dict[str, Any]:
+    excluded = {".tactus", ".tactus-code", ".venv", "__pycache__", ".git"}
+    files = {}
+    for directory, children, names in os.walk(root):
+        children[:] = [
+            name
+            for name in children
+            if name not in excluded and (Path(directory) / name).resolve() != output
+        ]
+        for name in sorted(names):
+            if name.endswith(".py"):
+                path = Path(directory) / name
+                files[path.relative_to(root).as_posix()] = hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+    lock = root / "uv.lock"
+    return {
+        "source_files": files,
+        "dependency_lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest()
+        if lock.is_file()
+        else None,
+    }
+
+
+def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    if not inspect.isfunction(factory) or inspect.iscoroutinefunction(factory):
+        raise ValueError("source must define a synchronous render function")
+    if inspect.isgeneratorfunction(factory) or inspect.isasyncgenfunction(factory):
+        raise ValueError("render must return audio, not yield it")
+    signature = inspect.signature(factory)
+    for parameter in signature.parameters.values():
+        if parameter.kind != inspect.Parameter.KEYWORD_ONLY:
+            raise ValueError("render accepts only explicitly named keyword-only parameters")
+        if parameter.default is not inspect.Parameter.empty:
+            _json_copy(parameter.default)
+    bound = signature.bind(**params)
+    bound.apply_defaults()
+    effective = _json_copy(dict(bound.arguments))
+    # Author mutation must not change the receipt's record of the input values.
+    return _json_copy(effective), effective
+
+
+def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
+    if not isinstance(result, dict) or set(result) != {"sample_rate", "outputs"}:
+        raise ValueError("render must return exactly {sample_rate, outputs}")
+    rate = result["sample_rate"]
+    if type(rate) is not int or rate <= 0:
+        raise ValueError("sample_rate must be a positive integer")
+    outputs = result["outputs"]
+    if not isinstance(outputs, dict) or not outputs:
+        raise ValueError("outputs must be a nonempty dictionary")
+    for name, audio in outputs.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError("output labels must be nonempty strings")
+        if not isinstance(audio, np.ndarray) or audio.dtype.kind not in "iuf":
+            raise ValueError(f"output {name!r} must be a real numeric NumPy array")
+        if (
+            audio.ndim not in (1, 2)
+            or not len(audio)
+            or (audio.ndim == 2 and audio.shape[1] not in (1, 2))
+        ):
+            raise ValueError(f"output {name!r} must contain nonempty mono or stereo frames")
+        if not np.isfinite(audio).all():
+            raise ValueError(f"output {name!r} contains NaN or infinity")
+        if np.any(audio < -1) or np.any(audio > 1):
+            raise ValueError(f"output {name!r} exceeds full scale; set gain explicitly")
+    return rate, outputs
+
+
+def _execute(request: dict[str, Any]) -> dict[str, Any]:
+    """Worker-only execution; phase labels keep diagnostics useful to callers."""
+    source, out = Path(request["source"]), Path(request["out"])
+    phase = "load"
+    try:
+        before = _inventory(source.parent, out)
+        sys.path.insert(0, str(source.parent))
+        namespace = runpy.run_path(str(source), run_name="__tactus__")
+        phase = "bind"
+        factory = namespace.get("render")
+        arguments, effective = _bind(factory, request["params"])
+        phase = "execute"
+        result = factory(**arguments)
+        phase = "validate"
+        rate, outputs = _validate(result)
+        phase = "publish"
+        store = MaterialStore(out / "materials", rate)
+        references = {name: store.add(audio).to_dict() for name, audio in outputs.items()}
+        if _inventory(source.parent, out) != before:
+            raise RunError(
+                "source_changed", phase, "source or root uv.lock changed during execution"
+            )
+        identity = {"kind": "tactus.functional-run", "format_version": 1}
+        receipt = {
+            **identity,
+            "entry": {"path": str(source), "function": "render"},
+            "parameters": effective,
+            **before,
+            "runtime": {
+                "python": sys.version.split()[0],
+                **{name: version(name) for name in ("tactus", "numpy", "soundfile")},
+            },
+            "reproducibility": "saved outputs only; source rebuild not guaranteed",
+            "attribution_scope": "Python files beneath entry parent and its uv.lock; "
+            "external imports, media and processor identities are not traced",
+        }
+        _write_json(out / "receipt.json", receipt)
+        _write_json(
+            out / "manifest.json",
+            {
+                **identity,
+                "sample_rate": rate,
+                "outputs": references,
+            },
+        )
+        return {
+            "status": "ok",
+            "outputs": {
+                name: str(out / "materials" / "audio" / f"{ref['sha256']}.wav")
+                for name, ref in references.items()
+            },
+            "manifest": str(out / "manifest.json"),
+            "receipt": str(out / "receipt.json"),
+        }
+    except RunError:
+        raise
+    except BaseException as exc:
+        codes = {
+            "load": "load_failed",
+            "bind": "invalid_parameters",
+            "execute": "execution_failed",
+            "validate": "invalid_output",
+            "publish": "publication_failed",
+        }
+        raise RunError(codes[phase], phase, f"{type(exc).__name__}: {exc}") from exc

@@ -2,6 +2,11 @@
 
 > Generated: 2026-09-16 · Source: real-source chop-flip dogfood · Grounding: `Project.asset`, `MaterialStore.import_file`, build receipt, and the existing production-slice tests
 
+> Retired 2026-09-24: `Project.file`, `Project.asset_region` and the arrangement prototype were
+> removed at Paul's request. See the [retirement plan](2026-09-24-retire-arrangement-prototype.md).
+> This plan retains the original problem and verification evidence, not supported APIs.
+> The paths in the historical file table below use the former package name.
+
 ## Context
 
 The current `Project.asset` imports an entire audio file into the material store, requires its
