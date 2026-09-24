@@ -51,7 +51,27 @@ commit。這不算錯誤，只是會沿用自身習慣的例子。
 - **Render 的音檔不進 Git。**音檔體積大、無法 diff 或 merge，而且屬於衍生物；認可的版本存入
   本機 pool。需要備份或分享時，再評估 Git LFS 或同步儲存，並且只放認可的版本。
 
+## 修正後重測
+
+同一個 fixture、同樣五段 prompt，換一個新的 fresh sonnet agent，使用 skill `e8d4412` 與獨立的
+pool。通過標準在第一輪之前寫定：三個問題都不再出現，且原本做對的行為沒有退步。
+
+| 問題 | 上一輪 | 重測 |
+|---|---|---|
+| 聽過或認可的檔案被刪 | 兩次（情境 3、4） | 沒有發生。worktree 內的 run 都用 `--out` 指到主 checkout 的 `runs/`，移除 worktree 後檔案仍在 |
+| 認可的 mix 存入 pool | 沒有 | 有。情境 2 與 3 在 commit 前 `tactus material add`，pool 內可找到 commit 訊息寫的 hash（`2b0fd2d…`、`b671b29…`） |
+| 未驗證就宣稱可重現 | 有（情境 5） | 沒有。情境 4 先比對 hash 才說一致；情境 5 實際重跑舊 commit，四個輸出 hash 全部相同（已核對 manifest）後才回答，並說明原檔尚未封存 |
+
+沒有退步：
+- Git 內只有 `song.py` 與 `.gitignore`；
+- 沒有破壞性指令；
+- 保留前都有 base 檢查；
+- 結構改動用 worktree、branch 加 merge；
+- worktree 都有清理。
+
+判定：**修正有效**。
+
 ## 未驗證
 
-- 修正後的指引尚未再跑一次同樣的情境。
-- 只有一個 Agent（sonnet），沒有觀察多人協作或 remote／push。
+- 修正前後各只有一個 Agent（sonnet）。
+- 沒有觀察多人協作或 remote／push。
