@@ -1,8 +1,8 @@
 # Tactus development
 
 This repository is the active Tactus product, formerly `tactus-code`. Start with
-`docs/blueprints/plan.md` for current work. `../tactus-legacy` is a reference implementation;
-reuse mechanisms only when the active product needs them. Keep its environment separate.
+`docs/blueprints/plan.md` for current work. `../tactus-daw` is a reference implementation;
+reuse mechanisms only when the active product needs them. Its package and CLI use distinct names.
 
 Python source, declared material identities, and dependency locks own creative intent;
 Git owns revision history. Generated arrangements and audio are derived artifacts. A graph

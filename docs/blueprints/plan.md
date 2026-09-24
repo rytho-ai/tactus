@@ -2,7 +2,7 @@
 
 > 2026-09-23 · Short status index. Design lives in `thoughts/`; implementation plans live in
 > `plans/`; shipped behavior lives in Git. This is the sole active Tactus product, formerly
-> `tactus-code`; `tactus-legacy` is reference-only. See
+> `tactus-code`; `tactus-daw` is reference-only. See
 > [`product succession`](thoughts/2026-09-23-tactus-product-succession.md).
 
 ## ✅ Shipped

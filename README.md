@@ -5,9 +5,9 @@ Python production source, declared materials, and dependency locks own creative 
 Git records accepted changes. The runtime renders and verifies the resulting audio.
 
 The previous implementation is preserved in
-[tactus-legacy](https://github.com/rytho-ai/tactus-legacy) as a reference for tested mechanisms.
-This product succession does not imply API compatibility or feature parity. Both implementations
-use the Python name `tactus`; keep them in separate virtual environments.
+[tactus-daw](https://github.com/rytho-ai/tactus-daw) as a reference for tested mechanisms.
+This product succession does not imply API compatibility or feature parity. The reference
+implementation installs as `tactus-daw`, imports as `tactus_daw`, and runs as `tactus-daw`.
 
 ## Current status
 
