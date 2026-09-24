@@ -8,18 +8,28 @@ This is a bounded adaptation of its musical approach, not a claim of sonic parit
 
 ## Local inputs and dependencies
 
-Source and beat-grid SHA256 identities are pinned in `materials.py`. The default
-paths use the existing ignored `dogfood/2026-09-16-real-chop-flip/project/assets/`.
-To use another location for those exact bytes, set `TACTUS_CHOP_SOURCE` and
-`TACTUS_CHOP_GRID`. A different source requires an intentional identity/source edit.
-No source recording, sidecar or rendered audio is committed with this example.
+Source and beat-grid identities are pinned as `sha256:<hex>` constants in
+`materials.py` and resolved through `tactus.material`. Import the two bytes once,
+from the repository root, into the shared pool:
+
+```bash
+uv run tactus material add \
+  dogfood/2026-09-16-real-chop-flip/project/assets/CErZvbcaOeE_inst.wav \
+  dogfood/2026-09-16-real-chop-flip/project/assets/CErZvbcaOeE.npy
+```
+
+The printed `sha256:…` refs must match `SOURCE`/`GRID` in `materials.py`; a different
+source requires an intentional identity/source edit. No source recording, sidecar or
+rendered audio is committed with this example. No environment variables or path
+overrides are read; moving this example's directory does not change what it resolves.
 
 The Tactus environment supplies NumPy, SciPy and SoundFile. This production also
-uses `pyrubberband` 0.4.0 and the system `rubberband` executable (tested with 3.3.0),
-already present in the local probe environment. They are project requirements,
-not newly declared Tactus core dependencies. Use `uv run --inexact` to preserve
-the locally installed experimental package. On a new machine, provision these
-dependencies and the pinned inputs before running this example.
+uses `pyrubberband` 0.4.0 and the system `rubberband` executable (tested with 3.3.0,
+declared via `tactus.tool` at point of use), already present in the local probe
+environment. They are project requirements, not newly declared Tactus core
+dependencies. Use `uv run --inexact` to preserve the locally installed experimental
+package. On a new machine, provision these dependencies and import the pinned inputs
+before running this example.
 
 ## Produce and audition
 

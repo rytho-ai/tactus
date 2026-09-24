@@ -8,10 +8,13 @@ import numpy as np
 import pyrubberband as rubberband
 from scipy.signal import butter, sosfilt
 
+from tactus import tool
+
 ORDER = (0, 1, 2, 3, 2, 3, 0, 3)
 
 
 def warp(audio: np.ndarray, rate: int, frames: int) -> np.ndarray:
+    tool("rubberband")
     stretched = rubberband.time_stretch(audio, rate, len(audio) / frames)
     if len(stretched) != frames:
         raise ValueError(f"stretch returned {len(stretched)} frames; expected {frames}")

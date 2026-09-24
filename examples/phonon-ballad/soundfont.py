@@ -2,6 +2,10 @@
 
 FluidR3 is provided by the host's ``fluid-soundfont-gm`` package (MIT license).
 Only rendered audio is exported; the soundfont itself is not redistributed here.
+libfluidsynth is declared with ``tactus.tool`` using the path of the shared object
+Linux actually mapped into this process (scanned from ``/proc/self/maps``), so the
+receipt names the binary that was used, not just the ``ctypes.CDLL`` search name.
+This resolution is Linux-only; a different platform needs its own equivalent.
 """
 
 from __future__ import annotations
@@ -12,12 +16,24 @@ from typing import Self
 
 import numpy as np
 
+from tactus import tool
+
+
+def _loaded_library_path(soname_fragment: str) -> str:
+    """The absolute path Linux mapped for a loaded shared object, from /proc/self/maps."""
+    with open("/proc/self/maps", encoding="utf-8") as maps:
+        for line in maps:
+            if soname_fragment in line:
+                return line.rsplit(" ", 1)[-1].strip()
+    raise RuntimeError(f"{soname_fragment} is not mapped in this process")
+
 
 class SoundFont:
     def __init__(self, path: Path, sample_rate: int) -> None:
         self.sample_rate = sample_rate
         self.cache: dict[tuple[int, int, int, int], np.ndarray] = {}
         self.lib = ct.CDLL("libfluidsynth.so.3")
+        tool(_loaded_library_path("libfluidsynth.so"))
         lib = self.lib
         lib.new_fluid_settings.restype = ct.c_void_p
         lib.fluid_settings_setnum.argtypes = (ct.c_void_p, ct.c_char_p, ct.c_double)

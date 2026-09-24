@@ -7,11 +7,6 @@ to a supplied multi-sampled instrument through ``sfizz_render``.
 
 from __future__ import annotations
 
-import argparse
-import hashlib
-import json
-import os
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -20,60 +15,26 @@ import numpy as np
 import soundfile as sf
 from soundfont import SoundFont
 
+from tactus import material, tool
+
 RATE = 32_000
 BPM = 120
 BEAT = 60.0 / BPM
 BAR = 4 * BEAT
 SEED = 41377
-OUT = Path(__file__).resolve().parents[2] / "dist" / "phonon-ballad"
-LIBRARY = Path(
-    os.environ.get(
-        "RYTHO_LIBRARY_ROOT",
-        str(Path(__file__).resolve().parents[4] / "knowledge/libraries/rytho-library"),
-    )
-)
-SOUNDFONT = Path(os.environ.get("FLUID_SOUNDFONT", "/usr/share/sounds/sf2/FluidR3_GM.sf2"))
-DRUM_FILES = {
-    "kick": (
-        (
-            "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Tape/TAPE/SAMPLES/"
-            "KICKS/CDS_TAPE_KICK_ONE_SHOT_TRIXON.wav"
-        ),
-        "1ce5adcf77763bdbd3ad9492e1d7bf1f16b8b77877d183d21804a0c6aae42b4e",
-        0.42,
-    ),
-    "snare": (
-        (
-            "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Jazzfeezy X "
-            "Sikky Beats - Verified Bounce/Jazzfeezy_-_Verified_Bounce/one_shots/drums/rims/"
-            "JSB_VB_rim_soft.wav"
-        ),
-        "9c1e1e3d5f4a777204ff60b4f578498bd9662e44deb48caabbff1bda027d0fba",
-        0.055,
-    ),
-    "hat": (
-        (
-            "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/"
-            "03-soulful-vintage/hi-hats/ch-lofi.wav"
-        ),
-        "c1af239d645c4f6a4e769e10bde768bd2395f7a29ed60d68838ee77b7b98c984",
-        0.06,
-    ),
-    "ride": (
-        (
-            "assets/audio/gamut-library/opensource-sounds/drums/boochi44/drum-samples/"
-            "03-soulful-vintage/open-hats/oh00-lofi.wav"
-        ),
-        "1e8ded3118c6530655e07ad1d4472bfa2cc1f2472ec954f7d7c576d56ffe8888",
-        0.035,
-    ),
+
+# Drum one-shots and soundfont are pinned by content: import once with
+# `tactus material add <file>` (see README) before running the "sampled" palette or
+# "one-shots"/"loop" drum modes.
+SOUNDFONT = "sha256:74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
+DRUM_MATERIALS = {
+    "kick": ("sha256:1ce5adcf77763bdbd3ad9492e1d7bf1f16b8b77877d183d21804a0c6aae42b4e", 0.42),
+    "snare": ("sha256:9c1e1e3d5f4a777204ff60b4f578498bd9662e44deb48caabbff1bda027d0fba", 0.055),
+    "hat": ("sha256:c1af239d645c4f6a4e769e10bde768bd2395f7a29ed60d68838ee77b7b98c984", 0.06),
+    "ride": ("sha256:1e8ded3118c6530655e07ad1d4472bfa2cc1f2472ec954f7d7c576d56ffe8888", 0.035),
 }
 LOFI_DRUM_LOOP = (
-    (
-        "assets/audio/gamut-library/sample-library/audio/splice/sounds/packs/Lofi By Nature/"
-        "CPA_Lofi_By_Nature/Drum_&_Perc_Loops/Drum_Loops/LBN_120_drum_loop_bottled_rolla.wav"
-    ),
-    "183d6ef248b28a41b7e2b795138052781bd325f37d6397bacf7016432e5b45c1",
+    "sha256:183d6ef248b28a41b7e2b795138052781bd325f37d6397bacf7016432e5b45c1",
     0.34,
 )
 LOFI_LOOP_EQ = {
@@ -219,13 +180,10 @@ def drum(kind: str, rng: np.random.Generator) -> np.ndarray:
 
 
 def sampled_drums() -> dict[str, np.ndarray]:
-    """Read four pinned one-shots from Rytho without changing its originals."""
+    """Read four pinned one-shots from the shared pool without changing their originals."""
     result = {}
-    for kind, (filename, expected_sha, gain) in DRUM_FILES.items():
-        path = LIBRARY / filename
-        actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
-        if actual_sha != expected_sha:
-            raise ValueError(f"Drum source changed: {path}")
+    for kind, (ref, gain) in DRUM_MATERIALS.items():
+        path = material(ref)
         signal, source_rate = sf.read(path, dtype="float32", always_2d=True)
         mono = signal.mean(axis=1)
         frames = int(len(mono) * RATE / source_rate)
@@ -240,12 +198,9 @@ def sampled_drums() -> dict[str, np.ndarray]:
 
 
 def sampled_drum_loop() -> np.ndarray:
-    """Read one pinned 120 BPM stereo drum loop without changing its source bytes."""
-    filename, expected_sha, gain = LOFI_DRUM_LOOP
-    path = LIBRARY / filename
-    actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual_sha != expected_sha:
-        raise ValueError(f"Drum-loop source changed: {path}")
+    """Read the pinned 120 BPM stereo drum loop without changing its source bytes."""
+    ref, gain = LOFI_DRUM_LOOP
+    path = material(ref)
     signal, source_rate = sf.read(path, dtype="float32", always_2d=True)
     frames = int(len(signal) * RATE / source_rate)
     original = np.arange(len(signal), dtype=np.float32) / source_rate
@@ -259,13 +214,12 @@ def sampled_drum_loop() -> np.ndarray:
     )
     presence_dip = 1 - LOFI_LOOP_EQ["presence_dip_amount"] * np.exp(
         -0.5
-        * (
-            (frequencies - LOFI_LOOP_EQ["presence_dip_hz"])
-            / LOFI_LOOP_EQ["presence_dip_width_hz"]
-        )
+        * ((frequencies - LOFI_LOOP_EQ["presence_dip_hz"]) / LOFI_LOOP_EQ["presence_dip_width_hz"])
         ** 2
     )
-    shaped = np.fft.irfft(np.fft.rfft(resampled, axis=0) * (sub_cut * presence_dip)[:, None], axis=0)
+    shaped = np.fft.irfft(
+        np.fft.rfft(resampled, axis=0) * (sub_cut * presence_dip)[:, None], axis=0
+    )
     return shaped.astype(np.float32) * gain * LOFI_LOOP_EQ["output_gain"]
 
 
@@ -358,13 +312,12 @@ def midi_variable_length(value: int) -> bytes:
 
 
 def render_sfz_piano(
-    notes: list[tuple[float, float, int, int]], total_seconds: float, sfz_path: Path, sfizz: str
+    notes: list[tuple[float, float, int, int]], total_seconds: float, sfz_path: Path
 ) -> np.ndarray:
     """Render one continuous MIDI piano performance through a pinned SFZ instrument."""
     if not sfz_path.is_file():
         raise FileNotFoundError(f"SFZ piano was not found: {sfz_path}")
-    if not shutil.which(sfizz):
-        raise FileNotFoundError(f"sfizz renderer was not found: {sfizz}")
+    sfizz = tool("sfizz_render")
 
     events: list[tuple[int, int, bytes]] = [
         (0, 0, bytes((0xC0, 0))),
@@ -411,7 +364,7 @@ def render_sfz_piano(
         midi_path.write_bytes(midi)
         subprocess.run(
             [
-                sfizz,
+                str(sfizz),
                 "--sfz",
                 str(sfz_path),
                 "--midi",
@@ -441,14 +394,14 @@ def render_sfz_piano(
 
 def _render(
     palette: str,
-    out: Path,
     soundfont: SoundFont | None,
     sfz_path: Path | None,
-    sfizz: str | None,
     drum_mode: str,
 ) -> dict:
     rng = np.random.default_rng(SEED)
-    drum_samples = sampled_drums() if drum_mode == "one-shots" and palette in ("sampled", "sfz") else None
+    drum_samples = (
+        sampled_drums() if drum_mode == "one-shots" and palette in ("sampled", "sfz") else None
+    )
     drum_loop = sampled_drum_loop() if drum_mode == "loop" else None
     piano_notes: list[tuple[float, float, int, int]] = []
 
@@ -535,7 +488,9 @@ def _render(
                 # Small first-verse restraint; the final chorus is the emotional peak.
                 gain = 0.70 if name == "verse_1" else 1.22 if name == "final_chorus" else 1.0
                 if sfz_path is not None:
-                    piano_notes.append((start + beat * BEAT, length * BEAT, pitch, round(92 * gain)))
+                    piano_notes.append(
+                        (start + beat * BEAT, length * BEAT, pitch, round(92 * gain))
+                    )
                 else:
                     add(
                         buses["lead"],
@@ -556,7 +511,9 @@ def _render(
         if name not in ("intro", "outro"):
             for beat, pitch, length in [(0, root, 1.35), (2, root + 7, 1.25)]:
                 if sfz_path is not None:
-                    piano_notes.append((start + beat * BEAT, length * BEAT, pitch, 55 if is_verse else 64))
+                    piano_notes.append(
+                        (start + beat * BEAT, length * BEAT, pitch, 55 if is_verse else 64)
+                    )
                 else:
                     add(
                         buses["bass"],
@@ -622,9 +579,7 @@ def _render(
                     )
 
     if sfz_path is not None:
-        buses["piano"] = render_sfz_piano(
-            piano_notes, total_bars * BAR, sfz_path, sfizz or "sfizz_render"
-        )
+        buses["piano"] = render_sfz_piano(piano_notes, total_bars * BAR, sfz_path)
     buses["piano"] = ambience(buses["piano"], 0.18 if sfz_path is not None else 0.36)
     buses["guitar"] = ambience(buses["guitar"], 0.28)
     buses["strings"] = ambience(buses["strings"], 0.44)
@@ -639,84 +594,31 @@ def _render(
     mix = sum(buses.values())
     mix = np.tanh(mix * 1.25).astype(np.float32)
     mix *= 0.88 / max(float(np.max(np.abs(mix))), 1e-9)
-    out.mkdir(parents=True, exist_ok=True)
-    sf.write(out / "mix.wav", mix, RATE, subtype="PCM_24")
+    outputs = {"mix": mix}
     for name, signal in buses.items():
-        sf.write(out / f"{name}.wav", np.clip(signal, -1, 1), RATE, subtype="PCM_24")
-    receipt = {
-        "title": "The Space Between Replies",
-        "tempo_bpm": BPM,
-        "key": "D major / B minor",
-        "duration_seconds": round(total_bars * BAR, 3),
-        "rendered_duration_seconds": round(frames / RATE, 3),
-        "seed": SEED,
-        "palette": palette,
-        "soundfont": str(SOUNDFONT) if palette == "sampled" else None,
-        "sfz_piano": str(sfz_path) if sfz_path is not None else None,
-        "sfizz_renderer": sfizz if sfz_path is not None else None,
-        "drums": drum_mode,
-        "drum_sources": {
-            kind: {"path": filename, "sha256": sha}
-            for kind, (filename, sha, _) in DRUM_FILES.items()
-        }
-        if drum_mode == "one-shots" and palette in ("sampled", "sfz")
-        else {},
-        "drum_loop": {
-            "path": LOFI_DRUM_LOOP[0],
-            "sha256": LOFI_DRUM_LOOP[1],
-            "eq": LOFI_LOOP_EQ,
-        }
-        if drum_mode == "loop"
-        else None,
-        "reference_audio_used_in_render": False,
-        "sections": SECTIONS,
-        "timeline": timeline,
-        "mix_sha256": hashlib.sha256((out / "mix.wav").read_bytes()).hexdigest(),
-    }
-    (out / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-    return receipt
+        outputs[name] = np.clip(signal, -1, 1).astype(np.float32)
+    return {"sample_rate": RATE, "outputs": outputs}
 
 
 def render(
+    *,
     palette: str = "sampled",
-    out: Path = OUT,
-    sfz_piano: Path | None = None,
-    sfizz: str | None = None,
-    drum_mode: str = "one-shots",
+    drums: str = "one-shots",
+    sfz_piano: str | None = None,
 ) -> dict:
+    if palette not in ("sampled", "synthetic", "sfz"):
+        raise ValueError(f"Unknown palette: {palette!r}")
+    if drums not in ("one-shots", "loop", "none"):
+        raise ValueError(f"Unknown drums mode: {drums!r}")
     if palette == "sampled":
-        with SoundFont(SOUNDFONT, RATE) as soundfont:
-            return _render(palette, out, soundfont, None, None, drum_mode)
+        with SoundFont(material(SOUNDFONT), RATE) as soundfont:
+            return _render(palette, soundfont, None, drums)
     if palette == "synthetic":
-        return _render(palette, out, None, None, None, drum_mode)
-    if palette == "sfz":
-        if sfz_piano is None:
-            raise ValueError("--sfz-piano is required when --palette sfz")
-        return _render(palette, out, None, sfz_piano, sfizz or "sfizz_render", drum_mode)
-    raise ValueError(f"Unknown palette: {palette}")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--palette", choices=("sampled", "synthetic", "sfz"), default="sampled")
-    parser.add_argument("--out", type=Path, default=OUT)
-    parser.add_argument("--sfz-piano", type=Path)
-    parser.add_argument("--sfizz-render", default=os.environ.get("SFIZZ_RENDER", "sfizz_render"))
-    parser.add_argument("--drums", choices=("one-shots", "loop", "none"), default="one-shots")
-    args = parser.parse_args()
-    print(
-        json.dumps(
-            {
-                k: v
-                for k, v in render(
-                    args.palette,
-                    args.out,
-                    args.sfz_piano,
-                    args.sfizz_render,
-                args.drums,
-                ).items()
-                if k != "timeline"
-            },
-            indent=2,
-        )
-    )
+        return _render(palette, None, None, drums)
+    # palette == "sfz": no pinned SFZ piano exists on this machine yet, so the path
+    # stays an explicit, unpinned parameter until a verifiable instrument is provided
+    # (see docs/blueprints/plans/2026-09-24-second-production-through-run.md, open
+    # question 1).
+    if sfz_piano is None:
+        raise ValueError("sfz_piano is required when palette='sfz'")
+    return _render(palette, None, Path(sfz_piano), drums)
