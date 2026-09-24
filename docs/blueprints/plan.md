@@ -62,12 +62,20 @@ it does not change the priorities on this board.
   are ready for runtime work. See [foundation evidence](plans/2026-09-24-implementation-foundation.md)
   and [analysis dependencies](thoughts/2026-09-23-analysis-core-dependencies.md).
 
+- **Second production through `run`** — implemented: `tactus.material`/`tool`, the shared
+  input pool, `tactus material add`, receipt v2 (materials, tools, imported packages, nearest
+  lock), and the `tactus-authoring` skill. phonon-ballad and real-chop-flip both run through
+  `tactus run`. Every output is sample-identical to the pre-port baselines across six
+  palette/drum/candidate combinations. 83 tests and Ruff pass. A fresh sonnet Agent using only
+  the skill composed and then revised a lo-fi groove on the first pass; see the
+  [trial](thoughts/2026-09-24-fresh-agent-authoring-trial.md). Still open:
+  - installing the skill for Claude Code and Codex;
+  - the `sfz` palette's parity check, which needs an SFZ piano;
+  - Paul's listening of the trial output.
+  See the [`plan`](plans/2026-09-24-second-production-through-run.md).
+
 ## ▶ Next
 
-- **Second production through `run`** — port phonon-ballad to `render()`, add pinned input
-  materials and declared tools to the receipt, and ship an Agent-facing authoring guide.
-  Implementation authorized; in progress. See
-  [`plan`](plans/2026-09-24-second-production-through-run.md).
 - **Formal stateful and transactional audition** — after the production workflow exposes
   real audition requests, test range/stem correctness and temporary parameter candidates
   against an unchanged source, then promote one guarded source edit. See

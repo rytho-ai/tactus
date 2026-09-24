@@ -80,15 +80,19 @@ Parameter overrides do not edit source; accepting a candidate currently means an
 source edit. No output name, mix, common duration or musical grouping is required.
 
 The [entry contract](examples/functional/README.md) describes parameter/output validation,
-failure behavior and attribution limits. Receipts record effective parameters and a bounded
-source inventory; external media and processor dependencies are not automatically traced.
+failure behavior and attribution limits. Receipts record effective parameters, a bounded
+source inventory, the nearest `uv.lock`, pinned input materials resolved with `material()`,
+tools declared with `tool()`, and imported package versions. Undeclared files and executables
+are not traced. Import input files once with `tactus material add FILE...` and paste the
+printed `sha256:` refs into source.
 Saved WAVs are replayable, but arbitrary source rebuilds are not guaranteed deterministic.
 Stateful range audition and automatic candidate promotion remain future work.
 
 ## Supported surface
 
-The CLI provides `run`, `doctor`, help and version. The public Python exports are
-`run`, `RunError` and `AudioRef`. The production function is named `render()`; execute it
+The CLI provides `run`, `material add`, `doctor`, help and version. The public Python exports
+are `run`, `RunError`, `AudioRef`, `material`, `tool`, `MaterialError` and `ToolError`.
+Agents writing a work should use the [`tactus-authoring` skill](skills/tactus-authoring/SKILL.md). The production function is named `render()`; execute it
 through `tactus run`. Read the returned paths and manifest/receipt directly, and play the WAVs
 with your audio tools.
 

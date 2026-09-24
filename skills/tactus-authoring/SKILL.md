@@ -56,6 +56,7 @@ from tactus import material
 
 KICK = "sha256:…"  # printed by `tactus material add kick.wav`
 
+
 def render(*, bass_gain_db: float = -5.0) -> dict:
     kick, rate = sf.read(material(KICK), dtype="float32", always_2d=True)
     bass = bass_line(rate, gain_db=bass_gain_db)

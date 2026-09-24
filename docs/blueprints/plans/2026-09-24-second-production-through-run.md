@@ -4,8 +4,8 @@
 > [implementation inventory](../thoughts/2026-09-24-implementation-evidence-inventory.md)
 > (B1 wiring, A2 minimal, A7 receipt extension, A8 first version) · Grounding: fresh reads of
 > `src/tactus/run.py`, `src/tactus/material.py`, both real examples, and the reference
-> `tactus-daw` asset/hosting modules. Status: implementation authorized by Paul on
-> 2026-09-24.
+> `tactus-daw` asset/hosting modules. Status: implemented 2026-09-24
+> (commits f2c7e4e, 0d108e3, 8c1e7fe and the docs commit); open items are listed on the board.
 
 ## Context
 

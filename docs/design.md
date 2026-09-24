@@ -48,7 +48,9 @@ Pattern functions 用於可命名、組合與重用的規律，例如 cycle、ph
 
 匯入時可以從一般檔案路徑開始，但持久的創作依據應固定到內容。只在 build 時對可變路徑算 hash 並寫入 generated receipt，仍無法防止同一個 source revision 讀到不同素材。
 
-**尚未定案：**直接在 Python 寫入 digest，或用 tracked material lockfile 保存名稱與 digest 的對應。兩者都可滿足目前方向，選擇需連同實際匯入與替換流程決定。
+目前做法：作品在 Python 中以具名常數寫入 inline digest，並用 `material("sha256:…")` 取得驗證過的檔案路徑。`tactus material add FILE...` 把檔案匯入本機 pool（`$TACTUS_POOL`，預設 `~/.local/share/tactus/pool`），並印出對應的 ref。身分是原始檔 bytes 的 SHA-256。解碼、擷取區段、sample rate 與 headroom 由作品自行處理。缺檔與內容損壞分別回報。Pool 的目錄結構與 tactus-daw 相容。外部執行檔與 native library 由作品在使用處以 `tool(...)` 宣告，receipt 記錄其路徑與 hash；目前只記錄，不以 hash 鎖定。
+
+**尚未定案：**整個資料夾的素材身分（例如 SFZ 樂器與其 samples）、解碼後音訊的身分、import gain／headroom 政策，以及 processor 身分不符時是否拒絕執行。
 
 ## 執行與重現：先可靠產出，再按需要重用計算
 
@@ -56,7 +58,18 @@ Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照�
 
 第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕；可處理的執行失敗會清除該次新建的輸出。
 
-Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 使用現有 content-addressed MaterialStore 儲存。Manifest 最後發布，作為完成標記。`receipt.json` 保存實際參數（含預設值）、entry 目錄下 Python source 的 hash、該目錄的 `uv.lock` hash（若有），以及 Python／Tactus／NumPy／SoundFile 版本。執行中觀察到 source 或該 lock 改變時會失敗。這只是有限範圍的紀錄；外部 imports、素材身分與 processor 版本仍需作者負責，不宣稱完整追蹤，也不隔離任意 Python 的外部副作用。
+Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 使用現有 content-addressed MaterialStore 儲存。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 2）保存以下內容：
+- 實際參數（含預設值）
+- entry 目錄下 Python source 的 hash
+- 從 entry 目錄往上找到的最近一個 `uv.lock` 的路徑與 hash
+- 解析過的素材 refs
+- 宣告的 tools
+- 實際 import 的第三方套件版本
+- Python／Tactus／NumPy／SoundFile 版本
+
+執行中觀察到 source 或該 lock 改變時會失敗。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性仍不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
+
+Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。
 
 已保存的 WAV 可以直接播放，也可透過 MaterialStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
