@@ -27,7 +27,7 @@ from typing import Any
 import numpy as np
 
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
-from .material import MaterialStore
+from .store import MaterialStore
 
 
 class RunError(Exception):

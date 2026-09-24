@@ -14,7 +14,7 @@ import pytest
 import soundfile as sf
 
 from tactus import AudioRef, RunError, run
-from tactus.material import MaterialStore
+from tactus.store import MaterialStore
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "functional"
 
@@ -251,7 +251,7 @@ def test_partial_publication_is_cleaned(tmp_path):
     entry = source(
         tmp_path,
         """import numpy as np
-from tactus.material import MaterialStore
+from tactus.store import MaterialStore
 original = MaterialStore.add
 calls = 0
 def fail_second(self, audio):
