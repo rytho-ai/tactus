@@ -1,6 +1,6 @@
 # Tactus product succession
 
-> 2026-09-23 · **Status: in force** · The Python-first repository formerly called `tactus-code` is the active Tactus product; the previous implementation becomes `tactus-legacy`.
+> 2026-09-23 · **Status: in force** · The Python-first repository formerly called `tactus-code` is the active Tactus product; the previous implementation was preserved as `tactus-legacy` and renamed `tactus-daw` on 2026-09-24.
 
 ## The call
 
@@ -15,10 +15,13 @@ their imports and commands. Existing format-v1 compiled artifacts remain readabl
 
 ## Legacy role
 
-`rytho-ai/tactus-legacy` preserves the old Git history and completed session facade. The tag
-`legacy-handoff-2026-09-23` identifies the preserved implementation. Further legacy work requires
+`rytho-ai/tactus-daw` preserves the old Git history and completed session facade. The
+[handoff commit](https://github.com/rytho-ai/tactus-daw/commit/086aeb8a7d9910f8b8671859e38d7d69dc2fc79c)
+identifies the preserved implementation. Further legacy work requires
 an explicit request; its backlog is historical reference, not the active product roadmap.
-The old package retains its historical `tactus` import and must run in a separate environment.
+At handoff, the old package retained its historical `tactus` import. The 2026-09-24 identity
+rename changed its distribution and CLI to `tactus-daw` and its import to `tactus_daw`;
+persisted document identifiers and machine-local asset paths remain historical.
 
 ## Authoring direction
 
