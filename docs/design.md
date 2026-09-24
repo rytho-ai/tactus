@@ -113,6 +113,6 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 
 Runtime 檢查宣告的 shape、dtype、finite values、sample rate、時間關係與 output encoding 契約。音量是否需要限制等政策必須明確；mono 相容性、bass 是否置中或某個 reverb 比例，不能因 validator 的偏好而成為隱藏規則。
 
-分析結果作為音訊旁的可選觀察交給 Agent。短音訊可能無法量測 integrated LUFS，估計 tempo 也不代表作品採用該 BPM。Tactus 提供可比較的 audio／stems／range，音樂判斷由 Agent 的聽覺工具與人類回饋完成。
+分析結果作為音訊旁的可選觀察交給 Agent。短音訊可能無法量測 integrated LUFS，估計 tempo 也不代表作品採用該 BPM。用來做決定的分析（tempo、onset、切點、beat grid）在 `render` 之外執行一次，並把結果固定成素材或 source 常數。這樣做有兩個效果：採用的結果本身就是被版本化的創作決定；分析套件升級也不會悄悄移動切點。跟隨訊號即時變化的處理（compressor、sidechain）屬於 DSP，仍留在 `render` 內。Tactus 提供可比較的 audio／stems／range，音樂判斷由 Agent 的聽覺工具與人類回饋完成。
 
 **尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面。以真實製作與修訂流程驗證需要，再決定哪些觀察值得標準化。

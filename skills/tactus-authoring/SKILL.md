@@ -45,6 +45,12 @@ allowed, including Track-like groupings; none is required.
   of recomputing it per consumer.
 - **Randomness is explicit.** Create `np.random.default_rng(SEED)` inside `render` or a stage,
   and pass generators or derived seeds down.
+- **Analysis results are frozen.** Analysis that yields a decision (tempo, onsets, slice points,
+  beat grid, key) runs once, outside `render`. Freeze the result as a pinned material file
+  (for example a `.npy` grid) or as constants in source, and have `render` read only the frozen
+  result. Re-analysing is then an explicit revision, and a library upgrade cannot move a slice
+  point. Signal-following processing (compressors, sidechain ducking, envelope followers) is
+  DSP, not analysis, and stays in `render`.
 
 ## Reference
 
