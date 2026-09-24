@@ -24,8 +24,11 @@ allowed, including Track-like groupings; none is required.
    JSON-valued defaults. Done when each candidate you intend to compare differs only by
    `--params`.
 4. **Run it**: `tactus run song.py --out NEW_DIR [--params '{"name": value}']`. Every run needs
-   a directory that does not exist yet. Done when stdout reports `"status": "ok"`. On failure,
-   fix what `error.code` and `error.phase` point at (see Reference).
+   a directory that does not exist yet. Keep run directories out of Git: put them outside the
+   repository or under an ignored folder (for example `runs/` listed in `.gitignore`). Git holds
+   the source, `uv.lock` and the `sha256:` refs; audio lives in the pool and in run outputs,
+   and can be rendered again. Done when stdout reports `"status": "ok"`. On failure, fix what
+   `error.code` and `error.phase` point at (see Reference).
 5. **Listen and compare.** A passing run proves the technical contract only. Judge the music by
    listening and comparing candidates. Discarding a candidate needs no action.
 6. **Keep one candidate**: edit its parameter values into `render`'s defaults, run again, and
@@ -39,6 +42,15 @@ allowed, including Track-like groupings; none is required.
    parameters from the current source as a new candidate, and keep it only after the listener
    approves that new render. When you report a result, compare every output hash in the two
    manifests; matching one stem does not show the mix matches.
+
+   The commit message names the approved run and its mix hash, so the revision points to what
+   the listener heard:
+
+   ```
+   Keep c2: bass -9 dB, pad 1800 Hz
+
+   Approved from runs/c2-recheck (mix sha256 ff0b54d…)
+   ```
 
 Structural experiments, such as a new stage or reordered processing, cannot be expressed as
 parameters. Make them on a Git branch or `git worktree`, run each, and keep one by merging
