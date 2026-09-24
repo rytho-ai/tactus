@@ -70,7 +70,9 @@ it does not change the priorities on this board.
   the skill composed and then revised a lo-fi groove on the first pass; see the
   [trial](thoughts/2026-09-24-fresh-agent-authoring-trial.md). A three-agent probe with a
   69-file drum pack found per-file pinning sufficient at 14–21 materials per work, so no ref
-  generator or pack identity is needed; see the
+  generator or pack identity is needed. A shared read/resample helper was also declined:
+  works legitimately choose different resampling methods, and SoundFile plus SciPy/librosa
+  already cover the rest. See the
   [many-materials probe](thoughts/2026-09-24-many-materials-probe.md). Still open:
   - installing the skill for Claude Code and Codex;
   - the `sfz` palette's parity check, which needs an SFZ piano;
@@ -79,10 +81,6 @@ it does not change the priorities on this board.
 
 ## ▶ Next
 
-- **Shared input-reading adapter** — four fresh Agents each rewrote read → resample → stereo
-  on top of `material()`, which meets the second-consumer trigger from the second-production
-  plan. Plan the smallest helper that leaves the resampling method, channel mapping and region
-  choice to the work. See the [many-materials probe](thoughts/2026-09-24-many-materials-probe.md).
 - **Formal stateful and transactional audition** — after the production workflow exposes
   real audition requests, test range/stem correctness and temporary parameter candidates
   against an unchanged source, then promote one guarded source edit. See

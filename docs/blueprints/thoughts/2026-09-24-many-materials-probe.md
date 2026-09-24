@@ -50,8 +50,15 @@
 1. **讀檔 adapter 反覆出現。**三個 agent 都寫了「`material()` → `sf.read` → 重採樣
    （`scipy.signal.resample_poly` 或 librosa）→ mono 轉 stereo」。寫法各異，但做的事相同。
    [second production plan](../plans/2026-09-24-second-production-through-run.md) 把共用讀取
-   adapter 的條件設為「第二件作品重複同一套讀檔邏輯」，這個條件已經成立。這屬於 A2 的讀檔
-   銜接，與素材數量無關。仍需決定哪些選擇留給作品：重採樣演算法、聲道轉換方式、是否截取區段。
+   adapter 的條件設為「第二件作品重複同一套讀檔邏輯」，表面上已經成立。
+
+   **2026-09-24 後續判定：不做。**接地後發現，各作品真正重複的只有
+   `sf.read(material(ref), dtype="float32", always_2d=True)` 這一行。有份量的部分是重採樣，
+   而各作品的做法本來就不同：phonon-ballad 用 `np.interp` 線性內插，另兩個 agent 用
+   `resample_poly` 和 librosa，real-chop-flip 則拒絕非 44.1 kHz 的輸入。這些差異聽得出來，
+   屬於創作選擇。四個 agent 也都沒有寫錯。讀檔已有 SoundFile，重採樣已有 SciPy 與 librosa，
+   共用 helper 只會替作品選定音色，或只省下一行。等出現實際錯誤（例如只改 rate 標籤、聲道
+   錯置）時再重新評估。Skill 已提醒必須明確轉換。
 2. **receipt 會記錄非 render 的 scratch script。**Agent 2 在作品目錄放了用 glob 掃 pack 的
    `audition.py`，`render` 沒有 import 它，但 `source_files` 仍然記錄了它。這不影響聲音，只是
    紀錄範圍比實際依賴大。skill 已補上說明，runtime 暫不改動。
