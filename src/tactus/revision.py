@@ -3,9 +3,10 @@
 `record` shells out to `git` with list arguments only (never GitPython), scoped to the
 entry directory, and never writes to the repository. Any absence — no `git` binary, no
 repository, a git failure, or a timeout — yields `None` rather than raising, so a run
-never fails because of Git. When the entry directory is dirty, the diff against `HEAD`
-is saved alongside the run as `source.patch` so `commit` + `patch` can restore the
-exact executed source.
+never fails because of Git. When the entry directory has tracked changes or untracked
+`.py` files, one `source.patch` saved alongside the run holds the diff against `HEAD`
+plus each untracked file as a new-file diff, so `git apply` of `patch` on `commit`
+restores the exact executed source.
 
 Reads: nothing else in tactus; invoked by run.py at inventory time.
 """
@@ -39,8 +40,9 @@ def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str] | None:
 def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
     """Record HEAD, dirtiness and untracked .py files for `entry_dir`, or None.
 
-    `out` is the run's output directory; when dirty, `out/source.patch` receives
-    `git diff HEAD --binary -- entry_dir`. Returns None outside a repository, without
+    `out` is the run's output directory; when dirty or with untracked `.py` files,
+    `out/source.patch` receives `git diff HEAD --binary -- entry_dir` followed by a
+    `/dev/null` diff for each untracked file. Returns None outside a repository, without
     a `git` binary, or on any git failure (including a repository with no commits,
     where `HEAD` does not resolve).
     """
@@ -66,17 +68,23 @@ def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
     if untracked_proc is None or untracked_proc.returncode != 0:
         return None
     root = Path(toplevel.stdout.strip())
-    untracked = sorted(
-        (root / line).relative_to(entry_dir).as_posix()
-        for line in untracked_proc.stdout.splitlines()
-        if line.endswith(".py")
+    untracked_paths = sorted(
+        line for line in untracked_proc.stdout.splitlines() if line.endswith(".py")
     )
+    untracked = [(root / line).relative_to(entry_dir).as_posix() for line in untracked_paths]
 
     result: dict[str, Any] = {"commit": commit, "dirty": dirty, "untracked": untracked}
-    if dirty:
+    if dirty or untracked_paths:
         diff = _git(["diff", "HEAD", "--binary", "--", str(entry_dir)], entry_dir)
         if diff is None or diff.returncode != 0:
             return None
-        (out / "source.patch").write_text(diff.stdout, encoding="utf-8")
+        parts = [diff.stdout]
+        for path in untracked_paths:
+            # `--no-index` exits 1 when the files differ, which is always the case here.
+            added = _git(["diff", "--no-index", "--binary", "--", "/dev/null", path], root)
+            if added is None or added.returncode != 1:
+                return None
+            parts.append(added.stdout)
+        (out / "source.patch").write_text("".join(parts), encoding="utf-8")
         result["patch"] = "source.patch"
     return result

@@ -86,13 +86,27 @@ def test_edited_tracked_file_gives_dirty_true_and_patch_reproduces_source(tmp_pa
     assert hashlib.sha256(rebuilt).hexdigest() == expected_hash
 
 
-def test_untracked_py_file_is_listed(tmp_path):
-    _repo, entry = entry_repo(tmp_path)
+def test_untracked_py_files_are_listed_and_restored_by_patch(tmp_path):
+    # The full-song dogfood rendered its approved take before the first real commit:
+    # every stage module was untracked, so commit + patch must still restore them.
+    repo, entry = entry_repo(tmp_path)
+    head = git(["rev-parse", "HEAD"], repo).stdout.strip()
     (entry.parent / "scratch.py").write_text("# untracked\n", encoding="utf-8")
+    (entry.parent / "stages").mkdir()
+    (entry.parent / "stages" / "drums.py").write_text("KICK = 1\n", encoding="utf-8")
     result = run(entry, out=tmp_path / "out")
     receipt = json.loads(Path(result["receipt"]).read_text())
-    assert receipt["git"]["untracked"] == ["scratch.py"]
+    assert receipt["git"]["untracked"] == ["scratch.py", "stages/drums.py"]
     assert receipt["git"]["dirty"] is False
+    assert receipt["git"]["patch"] == "source.patch"
+
+    worktree = tmp_path / "worktree"
+    git(["worktree", "add", "-q", "--detach", str(worktree), head], repo)
+    patch = tmp_path / "out" / "source.patch"
+    git(["apply", "--binary", str(patch)], worktree)
+    for relative, digest in receipt["source_files"].items():
+        rebuilt = (worktree / "song" / relative).read_bytes()
+        assert hashlib.sha256(rebuilt).hexdigest() == digest, relative
 
 
 def test_non_repository_gives_null_git(tmp_path):

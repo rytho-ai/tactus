@@ -148,8 +148,8 @@ absolute path); the full `sha256` in the manifest is what verifies it.
   placed there are recorded as well, even when `render` never imports them.
 - `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.
 - `git`: null outside a repository, or `{commit, dirty, untracked, patch}`. `patch` names
-  `source.patch` in the run directory when the tree was dirty. `commit` plus that patch
-  restores the source that actually ran.
+  `source.patch` in the run directory when tracked files changed or untracked `.py` files
+  existed. `commit` plus that patch restores the source that actually ran.
 - `elapsed_seconds`: the wall time of the `render` call.
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256}` for each declared tool.
