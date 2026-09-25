@@ -1,6 +1,6 @@
 # Tactus — plan
 
-> 2026-09-24 · Short status index. Principles live in `../positioning.md`; current approaches
+> 2026-09-25 · Short status index. Principles live in `../positioning.md`; current approaches
 > live in `../design.md`; design history lives in `thoughts/`; implementation plans live in
 > `plans/`; shipped behavior lives in Git. This is the sole active Tactus product, formerly
 > `tactus-code`; `tactus-daw` is a reference implementation. See
@@ -9,10 +9,10 @@
 
 For implementation decisions, read the
 [product positioning and principles](../positioning.md), then the [current design](../design.md)
-for chosen approaches and undecided interfaces. Implementation gaps live in the plans below.
-The dated [implementation inventory and checklist](thoughts/2026-09-24-implementation-evidence-inventory.md)
-maps the existing experiments to remaining work, completed foundations, and conditional directions;
-it does not change the priorities on this board.
+for chosen approaches and undecided interfaces. The dated
+[implementation inventory](thoughts/2026-09-24-implementation-evidence-inventory.md) maps earlier
+experiments to remaining work; it does not set the priorities on this board. Agents writing a
+work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## ✅ Shipped
 
@@ -20,96 +20,73 @@ it does not change the priorities on this board.
   distribution, and CLI name `tactus` at `0.1.0`. Legacy implementation and history are retained
   separately. See [`handoff plan`](plans/2026-09-23-tactus-product-handoff.md).
 - **Independent repository bootstrap** — installable Python package, CLI, tests, and the
-  code-as-source-of-truth hypothesis. See the [current README](../../README.md) and Git history.
+  code-as-source-of-truth hypothesis. See the [current README](../../README.md).
+- **Default scientific stack** — NumPy, SciPy, SoundFile, pyloudnorm and librosa are base
+  dependencies with a lock. See [foundation evidence](plans/2026-09-24-implementation-foundation.md)
+  and [analysis dependencies](thoughts/2026-09-23-analysis-core-dependencies.md).
+- **Functional entry and CLI** — `render(*, ...)` returns named audio; `tactus.run` /
+  `tactus run` own isolated execution, parameter binding, PCM24 delivery and receipts. The
+  Project/Track prototype and its commands were retired at Paul's request (`9feccdd`). See the
+  [entry plan](plans/2026-09-24-functional-production-entry.md) and the
+  [retirement plan](plans/2026-09-24-retire-arrangement-prototype.md). The authoring boundary
+  (Functional Python, optional temporal and Pattern helpers, no mandatory Track/Session model)
+  is recorded in [`functional authoring`](thoughts/2026-09-21-functional-audio-authoring-core.md)
+  and [`optional clock`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md).
+- **Code-first vertical slice** — `examples/real-chop-flip/` produces a real-source eight-bar
+  piece end to end: warp, authored drums/bass, effects, a bass-level candidate and Paul's pick
+  (version A). It runs through `render()` with outputs sample-identical to the earlier path.
+  Closed on 2026-09-25: its purpose, proving the code-first path, is met and exceeded by later
+  work. Two remainders were folded elsewhere rather than pursued: sonic parity with the Music
+  Agent OS version is no longer a target, and MIDI is exercised by phonon-ballad (SFZ) and the
+  Pedalboard probes (VST3). See the [slice plan](plans/2026-09-16-code-first-production-slice.md)
+  and the [real-source probe](thoughts/2026-09-24-real-source-warp-boundary-probe.md).
+- **Second production, pinned inputs and the authoring skill** (`f2c7e4e`, `8c1e7fe`) —
+  `material()`/`tool()`, the shared input pool, `tactus material add`, receipt v2, and
+  phonon-ballad on `tactus run`. Six combinations are sample-identical to the pre-port
+  baselines. The `tactus-authoring` skill is symlinked into `~/.claude/skills` and
+  `~/.codex/skills`. Fresh-Agent trials passed; a 69-file pack probe found per-file pinning
+  sufficient; a shared read/resample helper was declined. See the
+  [plan](plans/2026-09-24-second-production-through-run.md), the
+  [trial](thoughts/2026-09-24-fresh-agent-authoring-trial.md) and the
+  [many-materials probe](thoughts/2026-09-24-many-materials-probe.md).
+- **Git revision record and candidate keeping** (`d102e83`, `e8d4412`, `59ae34a`) — receipts
+  record Git `HEAD`, dirty state, untracked sources, a restoring `source.patch` and
+  `elapsed_seconds`. Agents keep a candidate by editing defaults and committing with Git, after
+  checking the receipt against the current source. Approved mixes are archived in the pool.
+  `tactus accept` was built and then shelved on `shelved/tactus-accept`, because clear guidance
+  alone gave 6/6 correct disclosures. See the [plan](plans/2026-09-24-audition-acceptance.md),
+  the [accept probe](thoughts/2026-09-24-accept-necessity-probe.md) and the
+  [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md).
+- **Readable outputs and range audition v1** (`0b342a0`, `6e938d4`) — outputs are named
+  `<name>-<sha8>.wav`. `tactus run --range START:END [--outputs]` slices a full render and is
+  sample-identical to it. A full-song dogfood showed an Agent's self-windowed preview differing
+  from the song by up to 100% per bar. See the [naming probe](thoughts/2026-09-25-output-naming-probe.md),
+  the [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
+  [range plan](plans/2026-09-25-range-audition.md).
+- **Effects and VST3 via Pedalboard, A6 v1** (`3577f99`) — Pedalboard is a base dependency.
+  `tactus.fx` provides `set_param`, `process_automated` and `render_instrument`, and the skill
+  has an "Effects and plugins" section. A blind reverb test preferred Pedalboard over
+  hand-written DSP. Four probe rounds cut mean Agent cost from about 183k to 137k tokens and
+  removed hand-rolled loops and silent start transients. See the
+  [blind A/B](thoughts/2026-09-25-reverb-blind-ab.md) and the
+  [iterations](thoughts/2026-09-25-pedalboard-agent-iterations.md).
 
 ## 🚧 In progress
 
-- **Code-first production vertical slice** — finish the real-source adaptation, including
-  pitch-preserving warp, MIDI/groove, effects/routing, and a revision; compare it with the
-  existing production path and ask Paul to listen. `examples/real-chop-flip/` now delivers a
-  real-source eight-bar production through `render()`, including warp, authored drums/bass,
-  local filtering/delay and a bass-level candidate. Unrelated outputs remain identical and
-  direct Python export matches. Paul preferred version 1/A; the base is retained with its
-  existing -5 dB bass default. A fresh run after removing legacy compatibility reproduced all
-  selected WAV hashes without changing source. Full workflow/sonic parity and MIDI remain open.
-  Dogfood exposed external comparison handoff and supplementary processor attribution needs.
-  Run results and manifest/receipt are readable directly. See the
-  ignored `dogfood/2026-09-24-functional-production/report.md`. See
-  [`vertical-slice plan`](plans/2026-09-16-code-first-production-slice.md) and the
-  [real-source probe](thoughts/2026-09-24-real-source-warp-boundary-probe.md).
-- **Agent authoring boundary for that slice** — use Functional Python/NumPy, optional shared
-  temporal helpers, and optional local Pattern functions; do not require Track/Bus,
-  Session, or Project as the Agent's universal composition schema. See
-  [`functional authoring`](thoughts/2026-09-21-functional-audio-authoring-core.md) and
-  [`temporal/Pattern boundary`](thoughts/2026-09-22-python-pattern-authoring-boundary.md), with
-  the [optional-clock clarification](thoughts/2026-09-23-optional-clock-temporal-abstraction.md)
-  and [sampling affordance evidence](thoughts/2026-09-24-sampling-affordance-fresh-agent-probe.md).
-  The [functional entry and CLI](plans/2026-09-24-functional-production-entry.md) is implemented
-  and verified: `render(*, ...)` returns named audio; `tactus.run` / `tactus run` owns
-  isolated execution, parameter binding, PCM24 delivery and receipts. The same caller handles
-  mix/stems and unequal-length clips; a real-source production matches its plain-Python WAVs.
-  The format is an execution/handoff agreement, with initial support limits explicitly listed
-  in the plan. Automatic promotion and stateful range audition remain open.
-  The earlier Project/Track arrangement prototype, media-import API and build/render/inspect/diff
-  commands have been removed at Paul's request, together with their dedicated example/tests.
-  Current verification: 53 tests, Ruff, package build and 9 installed CLI checks passed; selected
-  A audio is unchanged. See the [retirement plan](plans/2026-09-24-retire-arrangement-prototype.md).
-  The entry plan retains the original implementation and plain-Python comparison evidence.
-- **Default scientific stack** — the decision to include NumPy, SciPy, SoundFile, pyloudnorm,
-  and librosa is implemented and verified with the existing lock. Audio
-  I/O, resampling, loudness, and STFT smoke checks passed; seven tests, Ruff, and CLI checks
-  passed. The self-contained principles and supersession notice
-  are ready for runtime work. See [foundation evidence](plans/2026-09-24-implementation-foundation.md)
-  and [analysis dependencies](thoughts/2026-09-23-analysis-core-dependencies.md).
-
-- **Second production through `run`** — implemented: `tactus.material`/`tool`, the shared
-  input pool, `tactus material add`, receipt v2 (materials, tools, imported packages, nearest
-  lock), and the `tactus-authoring` skill. phonon-ballad and real-chop-flip both run through
-  `tactus run`. Every output is sample-identical to the pre-port baselines across six
-  palette/drum/candidate combinations. 83 tests and Ruff pass. A fresh sonnet Agent using only
-  the skill composed and then revised a lo-fi groove on the first pass; see the
-  [trial](thoughts/2026-09-24-fresh-agent-authoring-trial.md). A three-agent probe with a
-  69-file drum pack found per-file pinning sufficient at 14–21 materials per work, so no ref
-  generator or pack identity is needed. A shared read/resample helper was also declined:
-  works legitimately choose different resampling methods, and SoundFile plus SciPy/librosa
-  already cover the rest. See the
-  [many-materials probe](thoughts/2026-09-24-many-materials-probe.md). Still open:
-  - installing the skill for Claude Code and Codex;
-  - the `sfz` palette's parity check, which needs an SFZ piano;
-  - Paul's listening of the trial output.
-  See the [`plan`](plans/2026-09-24-second-production-through-run.md).
+None.
 
 ## ▶ Next
 
-- **Git revision record and candidate keeping** — shipped in `d102e83`: receipts record Git
-  `HEAD`, dirty state, untracked sources, a restoring `source.patch` and `elapsed_seconds`. The
-  skill tells Agents to keep a candidate by editing defaults and committing with Git, after
-  checking the receipt against the current source and getting re-approval on a moved base.
-  `tactus accept` was built and then shelved on `shelved/tactus-accept`: in a 12-Agent A/B
-  probe, clear guidance alone produced 6/6 correct disclosures. See the
-  [accept probe](thoughts/2026-09-24-accept-necessity-probe.md). A five-scenario Git probe found
-  Git use sound but approved audio lost with removed worktrees; the skill now fixes run
-  locations and archives approved mixes in the pool. See the
-  [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md).
-- **Full-song dogfood and range audition v1** — a fresh Agent produced a 2:35 sectioned song.
-  Its self-made section preview differed from the song (88% at the cold-start bar, 50–100% at
-  loop-phase bars), so `tactus run --range START:END [--outputs]` now slices a full render and
-  is sample-identical to it. Receipts also restore untracked sources (`59ae34a`). Output files
-  are named `<name>-<sha8>.wav`. See the
-  [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
-  [range plan](plans/2026-09-25-range-audition.md).
-- **Effects and VST3 via Pedalboard (A6 v1)** — shipped. Pedalboard is a base dependency
-  and the skill has an "Effects and plugins" section. `tactus.fx` provides three helpers:
-  `set_param` (unit-aware nearest valid value), `process_automated` (block automation with
-  reset, tail and latency handled) and `render_instrument` (warm-up that removes an OB-Xf
-  start transient, Tactus layout). A blind reverb test preferred Pedalboard over
-  hand-written DSP. Four probe rounds with eight fresh Agents lowered mean cost from about
-  183k to 137k tokens and removed hand-rolled loops and silent transients. See the
-  [blind A/B](thoughts/2026-09-25-reverb-blind-ab.md) and the
-  [iterations](thoughts/2026-09-25-pedalboard-agent-iterations.md). Still open:
-  - latency compensation on a real latency-reporting VST3 effect;
-  - SFZ/VST bundle (folder) identity;
-  - external sidechain (unsupported).
+1. **Folder material and tool identity** — `material()` and `tool()` accept only single files.
+   An SFZ instrument (entry `.sfz` plus sample folders) cannot be pinned: the full-song dogfood
+   left it as an unpinned path. VST3 bundles are declared through the binary inside the bundle,
+   which every probe Agent had to work out. Give folders one identity (for example a digest over
+   sorted relative paths and file hashes, as tactus-daw's SFZ bundle does), then adopt it in
+   phonon-ballad's `sfz` palette, which also closes that palette's parity check.
+2. **Full-song rerun with Paul listening** — a fresh Agent produces a full song using
+   Pedalboard, `--range` and the new output names, and Paul listens to the result. It checks the
+   whole experience end to end and supplies the listening judgement no probe has had since the
+   reverb A/B.
 
 ## ⏸ Future — evidence-gated
 
@@ -132,9 +109,15 @@ it does not change the priorities on this board.
   Python remains the creative source of truth; a broader graph model is not a required roadmap
   item. See [`temporal conclusion`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md)
   and the [range plan](plans/2026-09-25-range-audition.md).
+- **Latency compensation on a real VST3 effect** — `process_automated` shifts out reported
+  latency, but it was verified only with a stub chain. Trigger: a latency-reporting VST3 effect
+  is available or a work needs one.
+- **Temporal helpers (A1)** — time maths was repeated in Agent code (four functions in one
+  trial), but no probe or dogfood produced a timing error. Trigger: a work with tempo changes or
+  a real conversion error.
 - **Commercial VST and broader host compatibility** — no confirmed licensed commercial VST
   is available on this machine; test the actual target plugin when one is available. Dynamic
-  latency, complex routing, and crash isolation remain open. See
+  latency, complex routing, crash isolation and external sidechain remain open. See
   [`effect-host boundary`](thoughts/2026-09-23-effect-hosting-boundary.md).
 - **Additional runtimes or languages** — only after Python-first workflows expose a concrete
   limitation that cannot be solved within the existing source model.
