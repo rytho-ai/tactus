@@ -124,11 +124,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [plan](plans/2026-09-25-levels-and-midi.md) and the
   [probe](thoughts/2026-09-25-levels-and-midi-probe.md).
 
+- **Full-song dogfood 3, Paul as producer** — an ambient lo-fi work revised over three rounds of
+  Paul's notes, relayed verbatim, until he approved v4. Each revision touched at most 2 of 5
+  stems (renders 11–17 s). It led to the level-reporting change and `mido`. See the
+  [dogfood notes](thoughts/2026-09-25-full-song-dogfood-3.md).
+
 ## 🚧 In progress
 
-- **Full-song dogfood 3, Paul as producer** — an ambient lo-fi work revised from Paul's notes,
-  relayed verbatim to one fresh Agent. Intents in `dogfood/2026-09-25-full-song-3/INTENTS.md`
-  (ignored).
+None.
 
 ## ▶ Next
 
