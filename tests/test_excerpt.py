@@ -274,3 +274,41 @@ def test_outputs_without_narrowing_publishes_every_source_output(tmp_path):
     result = excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.1])
     manifest = json.loads(Path(result["manifest"]).read_text())
     assert set(manifest["outputs"]) == {"mono", "stereo", "short", "early"}
+
+
+def test_excerpt_outputs_report_zero_clipped_samples_and_a_peak(tmp_path):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    run(entry, out=tmp_path / "full")
+    result = excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.5, 1.0])
+    manifest = json.loads(Path(result["manifest"]).read_text())
+    assert manifest["format_version"] == 2
+    for ref in manifest["outputs"].values():
+        assert ref["clipped_samples"] == 0
+        assert ref["peak_dbfs"] is None or ref["peak_dbfs"] <= 0
+
+
+def test_excerpt_accepts_a_v1_source_manifest_without_level_keys(tmp_path):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    full = run(entry, out=tmp_path / "full")
+    manifest_path = Path(full["manifest"])
+    manifest = json.loads(manifest_path.read_text())
+    manifest["format_version"] = 1
+    for ref in manifest["outputs"].values():
+        del ref["peak_dbfs"]
+        del ref["clipped_samples"]
+    manifest_path.write_text(json.dumps(manifest))
+    result = excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.5, 1.0])
+    assert set(result["outputs"]) == {"mono", "stereo", "short"}
+
+
+def test_excerpt_rejects_an_unsupported_source_manifest_format_version(tmp_path):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    full = run(entry, out=tmp_path / "full")
+    manifest_path = Path(full["manifest"])
+    manifest = json.loads(manifest_path.read_text())
+    manifest["format_version"] = 3
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(RunError) as failure:
+        excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.5])
+    assert failure.value.code == "source_corrupt"
+    assert not (tmp_path / "cut").exists()

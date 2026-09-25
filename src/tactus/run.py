@@ -2,11 +2,15 @@
 
 The public runner owns request validation, process lifetime and failed-run cleanup.
 The private worker calls _execute for source binding, attribution and OutputStore
-publication. Manifests identify saved audio; receipts attribute the bounded execution,
-including resolved input materials, declared tools and imported package versions
-(`tactus.inputs`). To hear part of a run, or only some of its outputs, slice an already
-completed run with `tactus.excerpt` instead of re-rendering — a work whose render is
-nondeterministic (e.g. a VST3 instrument) would otherwise produce a different performance.
+publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
+`clipped_samples` from `OutputStore.add` (manifest `format_version` 2); the run result's
+`levels` mirrors the same numbers so the Agent sees them without opening the manifest.
+Nothing about level is refused — over-full-scale audio publishes clipped. Receipts
+attribute the bounded execution, including resolved input materials, declared tools and
+imported package versions (`tactus.inputs`). To hear part of a run, or only some of its
+outputs, slice an already completed run with `tactus.excerpt` instead of re-rendering — a
+work whose render is nondeterministic (e.g. a VST3 instrument) would otherwise produce a
+different performance.
 
 Reads: inputs.MaterialError/ToolError/_record_snapshot/_reset_record · store.OutputStore
 """
@@ -332,8 +336,6 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
             raise ValueError(f"output {name!r} must contain nonempty mono or stereo frames")
         if not np.isfinite(audio).all():
             raise ValueError(f"output {name!r} contains NaN or infinity")
-        if np.any(audio < -1) or np.any(audio > 1):
-            raise ValueError(f"output {name!r} exceeds full scale; set gain explicitly")
     return rate, outputs
 
 
@@ -361,8 +363,11 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         phase = "publish"
         store = OutputStore(out, rate)
         references = {}
+        levels = {}
         for name, audio in outputs.items():
-            references[name] = store.add(name, audio).to_dict()
+            ref, output_levels = store.add(name, audio)
+            references[name] = {**ref.to_dict(), **output_levels}
+            levels[name] = output_levels
         if _inventory(source.parent, out) != before:
             raise RunError(
                 "source_changed", phase, "source or nearest uv.lock changed during execution"
@@ -391,7 +396,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         _write_json(out / "receipt.json", receipt)
         manifest = {
             **identity,
-            "format_version": 1,
+            "format_version": 2,
             "sample_rate": rate,
             "outputs": references,
         }
@@ -401,6 +406,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
             "manifest": str(out / "manifest.json"),
             "receipt": str(out / "receipt.json"),
+            "levels": levels,
         }
     except (MaterialError, ToolError) as exc:
         code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"

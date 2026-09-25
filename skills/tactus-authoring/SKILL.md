@@ -117,8 +117,9 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   - `sample_rate` is a positive int shared by all outputs.
   - `outputs` maps names matching `[A-Za-z0-9][A-Za-z0-9._-]*` (the name becomes part of
     the saved WAV's filename) to real NumPy arrays of shape `(frames,)` or `(frames, 1|2)`.
-  - Every value must be finite and within [-1, 1]. Tactus never normalizes, mixes, or
-    resamples, so set the gain yourself.
+  - Every value must be finite. Tactus never normalizes, mixes, or resamples, so set the
+    gain yourself. Nothing is refused for exceeding [-1, 1]: the saved WAV is clipped to
+    full scale, and the manifest and run result report it — see "Run results" below.
 - Outputs may differ in length. A mix, stems, and clips can live side by side, and no output
   name is required.
 - Relative imports and relative files resolve from the entry file's directory. Author logs go
@@ -146,7 +147,21 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   same as a file material's re-verified read. A missing or corrupt entry fails the run with
   `material_unavailable`, same as a file material.
 - `tool("sfizz_render")` or `tool("/abs/path/lib.so")` returns the resolved file and records its
-  path and SHA-256. `tool("/abs/path/Some.vst3")` on a folder (a plugin bundle) hashes the whole
+  path and SHA-256. `sfizz_render` takes a `--midi` file; write it with `mido` (installed with
+  Tactus) instead of hand-rolling a Standard MIDI File:
+
+  ```python
+  import mido
+
+  midi = mido.MidiFile(ticks_per_beat=480)
+  track = mido.MidiTrack([mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm))])
+  # `time` is in ticks since the previous message, not absolute.
+  track += [mido.Message("note_on", note=45, velocity=90, time=0),
+            mido.Message("note_off", note=45, velocity=0, time=480)]
+  midi.tracks.append(track)
+  midi.save(str(midi_path))
+  ```
+- `tool("/abs/path/Some.vst3")` on a folder (a plugin bundle) hashes the whole
   tree in place, without storing it, and returns that same folder path. A missing tool fails the
   run with `tool_unavailable`.
 - Imported Python distributions (for example `pytimestretch` or `scipy`) are recorded
@@ -250,9 +265,10 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
     that step and can leave that start transient in your stem.
 - **Check levels per section, not just a peak.** A plugin with missing samples renders
   silence without raising, and a parameter on the wrong scale can leave a part about 40 dB
-  too quiet without being silent. A peak above zero catches neither reliably. Measure each
-  plugin's output per section, compare it with what you intended, and raise on a part that
-  is far off:
+  too quiet without being silent. A peak above zero catches neither reliably (and the
+  manifest/result `peak_dbfs`, see "Run results" below, only tells you the loud end, not a
+  too-quiet one). Measure each plugin's output per section, compare it with what you
+  intended, and raise on a part that is far off:
 
   ```python
   def section_dbfs(audio, rate, bounds):  # bounds: [(start_s, end_s), ...]
@@ -268,15 +284,24 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
 ### Run results
 
 Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, "receipt":
-path}`.
+path, "levels": {name: {peak_dbfs, clipped_samples}}}`.
 
-`manifest.json` (`format_version` 1) identifies the saved audio: `kind`, `sample_rate`, and
-`outputs` as `{name: {sha256, frames, channels, file}}`. Each `file` is
-`<name>-<sha256[:8]>.wav`, written directly under `--out` (`wav_path` above is that file's
-absolute path); the full `sha256` in the manifest is what verifies it.
+`manifest.json` (`format_version` 2) identifies the saved audio: `kind`, `sample_rate`, and
+`outputs` as `{name: {sha256, frames, channels, file, peak_dbfs, clipped_samples}}`. Each
+`file` is `<name>-<sha256[:8]>.wav`, written directly under `--out` (`wav_path` above is that
+file's absolute path); the full `sha256` in the manifest is what verifies it.
 
-An excerpt directory has no receipt; its `manifest.json` has `kind` `tactus.excerpt` and
-carries:
+Level is never refused, only reported and clipped: `peak_dbfs` is the peak of the audio the
+work returned, before clipping (rounded to 0.01 dB, above 0 dB when it overflowed; `null` for
+digital silence), and `clipped_samples` counts the sample values (all channels) that were
+outside ±1 and got clipped to full scale before the write. The run result's `levels` mirrors
+the same two numbers per output name, so you can read them from the command output without
+opening the manifest. If a section is clipped, lower the gain or add a limiter (Pedalboard's
+`Limiter`) — don't call `np.clip` yourself just to make `clipped_samples` read 0; that hides
+the same distortion instead of fixing it.
+
+An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) has `kind`
+`tactus.excerpt` and carries:
 - `range`: `start_seconds`, `end_seconds`, `start_frame`, `end_frame` and `omitted`. These
   are the requested seconds and their rounded frames (`end_seconds` and `end_frame` are
   `null` for an open end), plus the requested outputs that had no frames in range and so

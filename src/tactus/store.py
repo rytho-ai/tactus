@@ -1,9 +1,18 @@
-"""Named, hash-verified PCM output at the production boundary."""
+"""Named, hash-verified PCM output at the production boundary.
+
+`OutputStore.add` is the only place audio is clipped and measured: it clips to full scale
+before the PCM24 write (soundfile already clips; this makes it the store's stated behavior)
+and returns the pre-clip peak and clipped-sample count alongside the saved `AudioRef`, so
+callers can report level without a second pass over the audio.
+
+Reads: numpy · soundfile
+"""
 
 from __future__ import annotations
 
 import hashlib
 import io
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,7 +53,14 @@ class OutputStore:
         self.root = root
         self.sample_rate = sample_rate
 
-    def add(self, name: str, audio: np.ndarray) -> AudioRef:
+    def add(self, name: str, audio: np.ndarray) -> tuple[AudioRef, dict[str, float | int | None]]:
+        """Clip to full scale, write PCM24, and return the ref plus the pre-clip levels.
+
+        `peak_dbfs` is the peak of `audio` as given (before clipping), `null` for digital
+        silence; `clipped_samples` counts sample values (all channels) outside ±1. Nothing
+        about level is refused here or anywhere upstream — over-full-scale audio publishes
+        clipped.
+        """
         validate_name(name)
         samples = np.asarray(audio, dtype=np.float32)
         if samples.ndim == 1:
@@ -53,10 +69,14 @@ class OutputStore:
             raise ValueError("audio must have nonempty mono or stereo frames")
         if not np.isfinite(samples).all():
             raise ValueError("audio contains NaN or infinity")
-        if np.max(np.abs(samples)) > 1.0:
-            raise ValueError("audio exceeds full scale; set gain explicitly before materialization")
+        peak = float(np.max(np.abs(samples)))
+        levels: dict[str, float | int | None] = {
+            "peak_dbfs": round(20 * math.log10(peak), 2) if peak > 0 else None,
+            "clipped_samples": int(np.count_nonzero(np.abs(samples) > 1.0)),
+        }
+        clipped = np.clip(samples, -1.0, 1.0)
         buffer = io.BytesIO()
-        sf.write(buffer, samples, self.sample_rate, format="WAV", subtype="PCM_24")
+        sf.write(buffer, clipped, self.sample_rate, format="WAV", subtype="PCM_24")
         payload = buffer.getvalue()
         digest = hashlib.sha256(payload).hexdigest()
         filename = f"{name}-{digest[:8]}.wav"
@@ -64,7 +84,7 @@ class OutputStore:
         self.root.mkdir(parents=True, exist_ok=True)
         if not path.exists():
             path.write_bytes(payload)
-        return AudioRef(digest, len(samples), samples.shape[1], filename)
+        return AudioRef(digest, len(samples), samples.shape[1], filename), levels
 
     def read(self, ref: AudioRef) -> np.ndarray:
         stem, _, suffix = ref.file.rpartition("-")

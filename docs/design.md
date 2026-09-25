@@ -10,7 +10,7 @@ Production 以普通 Python modules、functions、NumPy arrays 與資料結構�
 
 第一版執行介面採用 Python 檔案中的同步 `render(*, ...)` 函式。具名 keyword-only 參數及其預設值供候選試聽使用；回傳 `{"sample_rate": 整數, "outputs": {名稱: NumPy陣列}}`。Tactus 負責呼叫、音訊驗證與寫檔。這個約定讓同一個工具能執行不同作品，作品內部的結構仍由 Agent 決定。
 
-Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems 或 clips，沒有必要的 output 名稱。交付格式先採用非空 mono／stereo、有限且介於 [-1, 1] 的實數音訊，經 float32 轉成 PCM24 WAV；不自動混音、正規化或重採樣。這是輸出邊界的約定，並不限制中間 DSP 的 headroom。
+Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems 或 clips，沒有必要的 output 名稱。交付格式先採用非空 mono／stereo、有限的實數音訊，經 float32 轉成 PCM24 WAV；不自動混音、正規化或重採樣。這是輸出邊界的約定，並不限制中間 DSP 的 headroom。超過 ±1 全幅不會被拒絕：寫檔前裁切到全幅，manifest 與 run 結果回報每個 output 的 `peak_dbfs`（裁切前的峰值）與 `clipped_samples`，由 Agent 自行判斷要不要調整 gain。
 
 舊版 `build(project)`、`Project`／`Track`、arrangement 格式及其 CLI 已退役，不保留相容層。新版以 `render()` 和 `run` 為執行介面；結果可直接從回傳值、manifest 與 receipt 讀取，沒有另設 `inspect` 的需求。
 

@@ -81,11 +81,12 @@ def test_production_candidates_acceptance_and_clip_bank(tmp_path, monkeypatch):
     shutil.move(tmp_path / "base", moved)
     shutil.rmtree(project)
     store = OutputStore(moved, b["sample_rate"])
+    ref_fields = ("sha256", "frames", "channels", "file")
     for name, ref in b["outputs"].items():
-        assert len(store.read(AudioRef(**ref))) == ref["frames"]
+        assert len(store.read(AudioRef(**{key: ref[key] for key in ref_fields}))) == ref["frames"]
         assert ref["file"] == f"{name}-{ref['sha256'][:8]}.wav"
         assert (moved / ref["file"]).exists()
-    ref = AudioRef(**b["outputs"]["mix"])
+    ref = AudioRef(**{key: b["outputs"]["mix"][key] for key in ref_fields})
     wav = moved / ref.file
     payload = wav.read_bytes()
     wav.write_bytes(payload[:-1] + bytes([payload[-1] ^ 1]))
@@ -158,8 +159,6 @@ def render():
         "{'sample_rate': 8000, 'outputs': {'a': np.zeros(0)}}",
         "{'sample_rate': 8000, 'outputs': {'a': np.zeros((8, 3))}}",
         "{'sample_rate': 8000, 'outputs': {'a': np.array([np.nan])}}",
-        "{'sample_rate': 8000, 'outputs': {'a': np.array([1.000000001])}}",
-        "{'sample_rate': 8000, 'outputs': {'a': np.array([-2**63], dtype=np.int64)}}",
         "{'sample_rate': 8000, 'outputs': {'a': np.array([1j])}}",
         "{'sample_rate': 8000, 'outputs': {'a': np.array([True])}}",
         "{'sample_rate': 8000, 'outputs': {'a': [0.1]}}",
@@ -294,6 +293,41 @@ def render():
     assert hashlib.sha256(expected.read_bytes()).hexdigest() == ref["sha256"]
     # No materials/ subdirectory: outputs land directly at the top of --out.
     assert not (tmp_path / "out" / "materials").exists()
+
+
+def test_over_full_scale_output_publishes_clipped_with_reported_peak_and_count(tmp_path):
+    entry = source(
+        tmp_path,
+        """import numpy as np
+def render():
+    audio = np.array([1.5, -1.5, 0.2, 2.0], dtype=np.float32)
+    return {"sample_rate": 8000, "outputs": {"a": audio}}
+""",
+    )
+    result = run(entry, out=tmp_path / "out")
+    manifest = read(result["manifest"])
+    ref = manifest["outputs"]["a"]
+    assert ref["clipped_samples"] == 3
+    assert ref["peak_dbfs"] == pytest.approx(20 * np.log10(2.0), abs=0.01)
+    assert result["levels"]["a"] == {"peak_dbfs": ref["peak_dbfs"], "clipped_samples": 3}
+    audio, _ = sf.read(result["outputs"]["a"])
+    assert np.max(np.abs(audio)) <= 1.0 + 1e-6
+    np.testing.assert_allclose(audio, np.clip([1.5, -1.5, 0.2, 2.0], -1, 1), atol=2**-6)
+
+
+def test_silent_output_reports_null_peak_dbfs(tmp_path):
+    entry = source(
+        tmp_path,
+        """import numpy as np
+def render():
+    return {"sample_rate": 8000, "outputs": {"a": np.zeros(8)}}
+""",
+    )
+    result = run(entry, out=tmp_path / "out")
+    manifest = read(result["manifest"])
+    assert manifest["outputs"]["a"]["peak_dbfs"] is None
+    assert manifest["outputs"]["a"]["clipped_samples"] == 0
+    assert result["levels"]["a"] == {"peak_dbfs": None, "clipped_samples": 0}
 
 
 @pytest.mark.parametrize("name", ["a/b", "../x", ".hidden", ""])

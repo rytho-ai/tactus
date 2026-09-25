@@ -5,7 +5,10 @@ already published. A slice is a plain array slice of the verified, already-publi
 outputs — no padding, fade, re-normalization or re-render — so it is sample-identical to the
 same frames of the source run even when the work's render is nondeterministic (e.g. a VST3
 instrument whose oscillator phases differ every render). Provenance is the source run itself:
-an excerpt keeps no receipt, only a `source` pointer (run path + manifest hash).
+an excerpt keeps no receipt, only a `source` pointer (run path + manifest hash). Accepts a
+source manifest of `format_version` 1 or 2. Excerpt outputs are already-clipped published
+audio, so each carries `peak_dbfs`/`clipped_samples` for the published slice (`clipped_samples`
+is always 0 there); its own manifest is `format_version` 2, following the run manifest.
 
 Reads: run._write_json (shared JSON writer) · run.RunError · store.OutputStore/AudioRef
 """
@@ -173,6 +176,10 @@ def excerpt(
         manifest_bytes = manifest_path.read_bytes()
         try:
             manifest = json.loads(manifest_bytes)
+            if manifest.get("format_version") not in (1, 2):
+                raise ValueError(
+                    f"unsupported manifest format_version: {manifest.get('format_version')!r}"
+                )
             rate = manifest["sample_rate"]
             refs = manifest["outputs"]
             if type(rate) is not int or rate <= 0 or not isinstance(refs, dict) or not refs:
@@ -204,13 +211,14 @@ def excerpt(
             publish_store = OutputStore(out, rate)
             references = {}
             for name, audio in selected.items():
-                reference = publish_store.add(name, audio).to_dict()
+                ref, output_levels = publish_store.add(name, audio)
+                reference = {**ref.to_dict(), **output_levels}
                 reference["source_frames"] = source_frames[name]
                 references[name] = reference
 
             manifest_out = {
                 "kind": "tactus.excerpt",
-                "format_version": 1,
+                "format_version": 2,
                 "sample_rate": rate,
                 "outputs": references,
                 "range": range_record,

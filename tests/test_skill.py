@@ -35,6 +35,9 @@ def test_skill_names_every_manifest_and_receipt_field(tmp_path, monkeypatch):
     ]
     assert not missing, f"SKILL.md does not document: {missing}"
     assert f"`format_version` {manifest['format_version']}" in text
+    assert "`peak_dbfs`" in text
+    assert "`clipped_samples`" in text
+    assert "`levels`" in text
     assert f"`format_version` {receipt['format_version']}" in text
 
 
