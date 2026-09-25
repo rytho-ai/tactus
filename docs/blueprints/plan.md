@@ -116,6 +116,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   peaky level and its per-process seeded randomness. Paul's listening verdict is pending. See
   the [listening note](thoughts/2026-09-25-extreme-stretch-listening.md).
 
+- **Level reporting and `mido`** (`49a51d9`) — over-full-scale output is published clipped
+  instead of refused; the manifest (`format_version` 2) and the run result's `levels` report
+  `peak_dbfs` and `clipped_samples`. `mido` is a base dependency for `sfizz_render`'s `.mid`.
+  Two fresh Agents acted on reported clipping without `np.clip` and wrote MIDI with `mido`; the
+  skill's Limiter advice was corrected after the probe. See the
+  [plan](plans/2026-09-25-levels-and-midi.md) and the
+  [probe](thoughts/2026-09-25-levels-and-midi-probe.md).
+
 ## 🚧 In progress
 
 - **Full-song dogfood 3, Paul as producer** — an ambient lo-fi work revised from Paul's notes,
@@ -124,19 +132,10 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## ▶ Next
 
-After dogfood 3, in this order:
-
-1. **Report levels instead of refusing over-full-scale output** (Paul, 2026-09-25: Tactus should
-   not restrict here; the Agent should be aware). Drop the `exceeds full scale` validation
-   error; report each output's peak and clipped-sample count in the run result and manifest;
-   the skill explains them and the usual remedies (gain, limiter) without making them a rule.
-   Evidence: the dogfood 3 Agent `np.clip`-ed every output from its first draft to get past the
-   check, which the skill never mentions, leaving 26 hard-clipped samples in the v4 mix.
-2. **MIDI files for `sfizz_render`** — all three full-song dogfoods hand-wrote a ~40-line
-   Standard MIDI File writer because the environment has no MIDI library. Decide between a base
-   dependency (`mido`) and a skill snippet.
-
-Verify both with a fresh Agent afterwards.
+- **Decide: report samples sitting at full scale** — clipping inside a plugin (Pedalboard's
+  `Limiter` hard-clips at 0 dBFS) or a work's own `np.clip` reads as 0 `clipped_samples`; the
+  levels probe found 23–775 such samples. Paul to decide. See the
+  [levels probe](thoughts/2026-09-25-levels-and-midi-probe.md).
 
 ## ⏸ Future — evidence-gated
 

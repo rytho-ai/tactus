@@ -296,9 +296,12 @@ work returned, before clipping (rounded to 0.01 dB, above 0 dB when it overflowe
 digital silence), and `clipped_samples` counts the sample values (all channels) that were
 outside ±1 and got clipped to full scale before the write. The run result's `levels` mirrors
 the same two numbers per output name, so you can read them from the command output without
-opening the manifest. If a section is clipped, lower the gain or add a limiter (Pedalboard's
-`Limiter`) — don't call `np.clip` yourself just to make `clipped_samples` read 0; that hides
-the same distortion instead of fixing it.
+opening the manifest. If a section is clipped, lower the gain, or tame the peaks with a
+compressor before the gain — don't call `np.clip` yourself just to make `clipped_samples` read
+0; that hides the same distortion instead of fixing it. Pedalboard's `Limiter` hides it too:
+it is a loudness maximizer (JUCE `dsp::Limiter`) whose `threshold_db` is not a ceiling; it adds
+makeup gain and hard-clips at 0 dBFS inside the plugin, so its output always reads 0 clipped
+samples. Use it when you want that loudness, knowing it clips.
 
 An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) has `kind`
 `tactus.excerpt` and carries:
