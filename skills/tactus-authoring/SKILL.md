@@ -128,8 +128,8 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   for a multi-gigabyte instrument.
 - `tool("sfizz_render")` or `tool("/abs/path/lib.so")` returns the resolved file and records its
   path and SHA-256. `tool("/abs/path/Some.vst3")` on a folder (a plugin bundle) hashes the whole
-  tree in place and returns that folder, ready for `pedalboard.load_plugin`. A missing tool
-  fails the run with `tool_unavailable`.
+  tree in place and returns that folder as a `Path`; `load_plugin` needs a string:
+  `pedalboard.load_plugin(str(tool(...)))`. A missing tool fails the run with `tool_unavailable`.
 - Imported Python distributions are recorded automatically; declare only non-Python
   executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile, pyloudnorm,
   librosa, Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch) and
