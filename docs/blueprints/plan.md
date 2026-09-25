@@ -109,9 +109,25 @@ it does not change the priorities on this board.
 
 ## ⏸ Future — evidence-gated
 
-- **Selective computation reuse** — revisit only when a concrete runtime consumer demonstrates
-  a need. Python remains the creative source of truth; a broader graph model is not a required
-  roadmap item. See [`temporal conclusion`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md).
+- **Render speed at scale: stage caching and parallel stems** — Paul raised it on 2026-09-25:
+  render time grows roughly with tracks × effects, and it will matter for works with many
+  tracks and real VSTs. Today a 4-stem 2:35 song takes about 46 s, so this is deferred. Notes
+  for when it returns:
+  - Caching unchanged stages is the most effective lever for many tracks, because a revision
+    usually touches one or two. The functional authoring discipline (named stages with
+    explicit inputs) is what makes caching safe.
+  - Rendering independent stems in parallel is the second lever.
+  - Section-only computation helps least, because every track still needs its own warm-up.
+  - Any faster path must be verified against a full render; range audition v1 is that
+    reference.
+  - **First step when it returns:** measure before building. A synthetic 8/16/32/64-track
+    work with typical effects (no LLM cost) shows where render time crosses about 1 and
+    3 minutes and which part dominates.
+  - Trigger: a real production whose `elapsed_seconds` makes revision loops slow (minutes per
+    render, or dozens of renders per session).
+  Python remains the creative source of truth; a broader graph model is not a required roadmap
+  item. See [`temporal conclusion`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md)
+  and the [range plan](plans/2026-09-25-range-audition.md).
 - **Commercial VST and broader host compatibility** — no confirmed licensed commercial VST
   is available on this machine; test the actual target plugin when one is available. Dynamic
   latency, complex routing, and crash isolation remain open. See
