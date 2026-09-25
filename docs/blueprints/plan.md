@@ -111,6 +111,11 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   sliced saved WAVs exactly, 9/9) and is kept for convenience and traceability. A1's 43-minute
   session was environment contention, not Tactus. See the
   [probe notes](thoughts/2026-09-25-value-and-excerpt-probes.md).
+- **`extreme_stretch` (pytimestretch main `e43cc6d`)** — adopted with no Tactus code: the
+  dependency rev moved and the skill documents fitting its approximate length, capping its
+  peaky level and its per-process seeded randomness. Paul's listening verdict is pending. See
+  the [listening note](thoughts/2026-09-25-extreme-stretch-listening.md).
+
 ## 🚧 In progress
 
 None.

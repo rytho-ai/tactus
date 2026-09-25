@@ -181,6 +181,17 @@ stretched = pytimestretch.time_stretch(
 - These engines preserve pitch. When pitch should follow speed, as in a tape stop, spin-down
   or record slow-down, use `fx.varispeed(audio, rate, speed)`. `speed` holds one playback
   rate per output frame (1.0 normal, 0.0 hold), and you shape the curve.
+- `pytimestretch.extreme_stretch(audio, rate, duration_ratio=8.0)` (PaulStretch) is a
+  creative effect, not a replacement for `time_stretch`: it smears the input into a blurred
+  texture (below 1 it squeezes it). Mono or stereo only, at least 81,920 input frames.
+  - Its length is approximate (about 10% off on a 2-second input, 40% when squeezing one), so
+    fit the result to the slot it plays in: trim or pad with zeros to the exact frame count,
+    then fade both ends.
+  - It is not normalized and is very peaky: set level by RMS and cap the peak, or it clips.
+  - Its phases are random but seeded per process, so `tactus run` repeats them only while the
+    order of `extreme_stretch` calls stays the same; adding or moving one changes every
+    texture after it. To keep a texture you like, import the rendered file with
+    `tactus material add` and use it as a material.
 
 ### Effects and plugins (Pedalboard)
 

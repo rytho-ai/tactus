@@ -349,8 +349,8 @@ wheels = [
 
 [[package]]
 name = "pytimestretch"
-version = "0.1.0"
-source = { git = "https://github.com/openmirlab/pytimestretch?rev=ab6871ab9cc1c59956f6c9182b59d93cde61f585#ab6871ab9cc1c59956f6c9182b59d93cde61f585" }
+version = "0.2.0.dev0"
+source = { git = "https://github.com/openmirlab/pytimestretch?rev=e43cc6dc000c61715540d5031bb526b4a28f2ee9#e43cc6dc000c61715540d5031bb526b4a28f2ee9" }
 dependencies = [
     { name = "numpy" },
 ]
@@ -500,7 +500,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26" },
     { name = "pedalboard", specifier = ">=0.9.25" },
     { name = "pyloudnorm", specifier = ">=0.2" },
-    { name = "pytimestretch", git = "https://github.com/openmirlab/pytimestretch?rev=ab6871ab9cc1c59956f6c9182b59d93cde61f585" },
+    { name = "pytimestretch", git = "https://github.com/openmirlab/pytimestretch?rev=e43cc6dc000c61715540d5031bb526b4a28f2ee9" },
     { name = "scipy", specifier = ">=1.14" },
     { name = "soundfile", specifier = ">=0.13" },
 ]
