@@ -10,8 +10,9 @@
 - 第一回合，只有 A 組的指引談到 source 移動，結果 A 組 1/3 出錯、B 組 3/3 出錯，判定不明確。
 - 第二回合，兩組都拿到同樣清楚的指引，唯一差別是有沒有 `accept`。結果 **6/6 全對**。
 
-問題是由指引解決的，不是 guard。依預先登記的規則 2，`accept` 沒有存在理由。實作保留在
-`shelved/tactus-accept`（commit `cade5be`，含測試），等實際製作出現錯誤時再拿出來。
+問題是由指引解決的，不是 guard。依預先登記的規則 2，`accept` 沒有存在理由。實作曾保留在
+`shelved/tactus-accept`（commit `cade5be`，含測試）；該分支已於 2026-09-26 刪除，原因見
+[刪除紀錄](2026-09-26-delete-tactus-accept.md)。
 
 ## 方法
 

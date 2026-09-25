@@ -53,8 +53,9 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   record Git `HEAD`, dirty state, untracked sources, a restoring `source.patch` and
   `elapsed_seconds`. Agents keep a candidate by editing defaults and committing with Git, after
   checking the receipt against the current source. Approved mixes are archived in the pool.
-  `tactus accept` was built and then shelved on `shelved/tactus-accept`, because clear guidance
-  alone gave 6/6 correct disclosures. See the [plan](plans/2026-09-24-audition-acceptance.md),
+  `tactus accept` was built and then shelved, because clear guidance alone gave 6/6 correct
+  disclosures; after a 3/3 re-run on the trimmed skill its branch was deleted on 2026-09-26
+  ([why](thoughts/2026-09-26-delete-tactus-accept.md)). See the [plan](plans/2026-09-24-audition-acceptance.md),
   the [accept probe](thoughts/2026-09-24-accept-necessity-probe.md) and the
   [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md).
 - **Readable outputs and range audition v1** (`0b342a0`, `6e938d4`) — outputs are named

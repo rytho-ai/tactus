@@ -8,7 +8,8 @@
 > audition/Git thoughts and probes (listed in Context). Status: steps 1–2 and 5 shipped in `d102e83`.
 > Step 3 (`tactus accept`) was built and tested, then shelved on branch `shelved/tactus-accept`:
 > an A/B probe with fresh Agents showed that explicit skill guidance alone prevents the error it
-> guards against. See the [accept probe](../thoughts/2026-09-24-accept-necessity-probe.md). Step 4 and
+> guards against. See the [accept probe](../thoughts/2026-09-24-accept-necessity-probe.md); the branch
+> was deleted on 2026-09-26 ([why](../thoughts/2026-09-26-delete-tactus-accept.md)). Step 4 and
 > step 5's guidance now describe keeping a candidate with Git.
 
 ## Context

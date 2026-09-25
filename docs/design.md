@@ -122,7 +122,7 @@ Git 與音檔的分工如下：
 - **Runtime 只唯讀地記錄 Git 狀態**：commit、branch、merge 由人或 Agent 直接使用 Git，Tactus 不包裝這些指令。
 - **Pool 只在本機**：需要備份或分享時，再評估 Git LFS 或同步儲存，並且只放認可的版本。
 
-曾實作 guarded promotion（`tactus accept`：base 檢查、改寫 `render` 預設值、重跑驗證）。A/B probe 顯示，清楚的指引就能讓 fresh Agents 正確處理 source 移動的情況，因此這個功能暫存在 `shelved/tactus-accept` 分支，等出現實際錯誤時再啟用。結構性的修改在 Git branch／worktree 上試，接受時用 Git 合併。
+曾實作 guarded promotion（`tactus accept`：base 檢查、改寫 `render` 預設值、重跑驗證）。A/B probe 顯示，清楚的指引就能讓 fresh Agents 正確處理 source 移動的情況，因此不採用；2026-09-26 第三回合 probe 再次 3/3 通過後，暫存的分支已刪除（見 thoughts `2026-09-26-delete-tactus-accept.md`）。結構性的修改在 Git branch／worktree 上試，接受時用 Git 合併。
 
 **尚未定案：**state isolation 的實作、range／stem 的效率與延遲目標。Real-time transport 由 live input 或人類即時協作的實際需求再評估；cache 不是候選隔離成立的前提。
 
