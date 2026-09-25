@@ -132,13 +132,15 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## ▶ Next
 
-- **Decide: report samples sitting at full scale** — clipping inside a plugin (Pedalboard's
-  `Limiter` hard-clips at 0 dBFS) or a work's own `np.clip` reads as 0 `clipped_samples`; the
-  levels probe found 23–775 such samples. Paul to decide. See the
-  [levels probe](thoughts/2026-09-25-levels-and-midi-probe.md).
+None scheduled; decide the next design question with Paul.
 
 ## ⏸ Future — evidence-gated
 
+- **Report samples sitting at full scale** — clipping inside a plugin (Pedalboard's `Limiter`
+  hard-clips at 0 dBFS) or a work's own `np.clip` reads as 0 `clipped_samples`; the levels probe
+  found 23–775 such samples. Deferred by Paul on 2026-09-25. The corrected Limiter wording in the
+  skill is also untested. Trigger: an Agent ships audible clipping that the report missed. See
+  the [levels probe](thoughts/2026-09-25-levels-and-midi-probe.md).
 - **Render speed at scale: stage caching and parallel stems** — Paul raised it on 2026-09-25:
   render time grows roughly with tracks × effects, and it will matter for works with many
   tracks and real VSTs. Today a 4-stem 2:35 song takes about 46 s, so this is deferred. Notes
