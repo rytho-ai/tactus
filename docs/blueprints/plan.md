@@ -81,19 +81,22 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   full-song lengths and beat/pitch control tests passed. An unexplained SFZ bass difference
   from that probe stays a known issue.
 
+- **Folder material and tool identity** — `tree:sha256:` refs pin folders: SFZ instruments
+  keep their relative `#include`/sample paths, and a VST3 bundle is one `tool()` call whose
+  returned path loads directly. Version-control directories are ignored. The Karoryfer
+  swagbass imported in 0.9 s and rendered a note from its materialized folder, and OB-Xf
+  loaded from `tool()`. phonon-ballad's `sfz` palette now takes a pinned tree plus a program
+  name; it is still unverified for lack of an SFZ piano. `fx.varispeed` and the
+  pytimestretch guidance shipped alongside. See the [plan](plans/2026-09-25-folder-identity.md)
+  and the [pytimestretch Agent probe](thoughts/2026-09-25-pytimestretch-agent-probe.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-1. **Folder material and tool identity** — `material()` and `tool()` accept only single files.
-   An SFZ instrument (entry `.sfz` plus sample folders) cannot be pinned: the full-song dogfood
-   left it as an unpinned path. VST3 bundles are declared through the binary inside the bundle,
-   which every probe Agent had to work out. Give folders one identity (for example a digest over
-   sorted relative paths and file hashes, as tactus-daw's SFZ bundle does), then adopt it in
-   phonon-ballad's `sfz` palette, which also closes that palette's parity check.
-2. **Full-song rerun with Paul listening** — a fresh Agent produces a full song using
+1. **Full-song rerun with Paul listening** — a fresh Agent produces a full song using
    Pedalboard, `--range` and the new output names, and Paul listens to the result. It checks the
    whole experience end to end and supplies the listening judgement no probe has had since the
    reverb A/B.

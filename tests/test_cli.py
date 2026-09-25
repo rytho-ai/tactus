@@ -32,6 +32,37 @@ def test_material_add_imports_files_and_prints_refs(tmp_path, monkeypatch, capsy
     }
 
 
+def test_material_add_imports_a_folder_and_prints_a_tree_ref(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    folder = tmp_path / "instrument"
+    (folder / "samples").mkdir(parents=True)
+    (folder / "samples" / "note.wav").write_bytes(b"fake sample bytes")
+    (folder / "piano.sfz").write_text("<region> sample=samples/note.wav\n")
+    assert main(["material", "add", str(folder)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "ok"
+    ref = report["materials"][str(folder)]
+    assert ref.startswith("tree:sha256:")
+
+    from tactus.inputs import material
+
+    resolved = material(ref)
+    assert (resolved / "piano.sfz").read_text() == "<region> sample=samples/note.wav\n"
+
+
+def test_material_add_mixes_files_and_folders_in_one_call(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    a = tmp_path / "a.wav"
+    a.write_bytes(b"a bytes")
+    folder = tmp_path / "instrument"
+    (folder / "samples").mkdir(parents=True)
+    (folder / "samples" / "note.wav").write_bytes(b"fake sample bytes")
+    assert main(["material", "add", str(a), str(folder)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["materials"][str(a)].startswith("sha256:")
+    assert report["materials"][str(folder)].startswith("tree:sha256:")
+
+
 def test_material_add_missing_path_is_a_structured_error_with_nothing_reported(
     tmp_path, monkeypatch, capsys
 ):

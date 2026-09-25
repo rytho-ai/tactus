@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
 
-from .inputs import pool
+from .inputs import pool, tree
 from .run import RunError, parse_outputs, parse_params, parse_range, run
 
 
@@ -47,7 +47,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     add_command = material_subcommands.add_parser(
         "add", help="Import files into the pool, printing their sha256 refs"
     )
-    add_command.add_argument("paths", nargs="+", type=Path, help="Files to import")
+    add_command.add_argument("paths", nargs="+", type=Path, help="Files or folders to import")
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
@@ -62,11 +62,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "material" and args.material_command == "add":
             for path in args.paths:
-                if not path.is_file():
+                if not path.is_file() and not path.is_dir():
                     raise RunError(
-                        "invalid_request", "request", f"material path is not a file: {path}"
+                        "invalid_request",
+                        "request",
+                        f"material path is not a file or directory: {path}",
                     )
-            materials = {str(path): f"sha256:{pool.put(path)}" for path in args.paths}
+            materials: dict[str, str] = {}
+            try:
+                for path in args.paths:
+                    materials[str(path)] = (
+                        tree.add(path) if path.is_dir() else f"sha256:{pool.put(path)}"
+                    )
+            except ValueError as exc:
+                raise RunError("invalid_request", "request", str(exc)) from exc
             print(json.dumps({"status": "ok", "materials": materials}, sort_keys=True))
             return 0
     except RunError as exc:

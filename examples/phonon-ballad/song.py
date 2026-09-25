@@ -316,7 +316,7 @@ def render_sfz_piano(
 ) -> np.ndarray:
     """Render one continuous MIDI piano performance through a pinned SFZ instrument."""
     if not sfz_path.is_file():
-        raise FileNotFoundError(f"SFZ piano was not found: {sfz_path}")
+        raise FileNotFoundError(f"SFZ program was not found in the pinned instrument: {sfz_path}")
     sfizz = tool("sfizz_render")
 
     events: list[tuple[int, int, bytes]] = [
@@ -605,6 +605,7 @@ def render(
     palette: str = "sampled",
     drums: str = "one-shots",
     sfz_piano: str | None = None,
+    sfz_program: str | None = None,
 ) -> dict:
     if palette not in ("sampled", "synthetic", "sfz"):
         raise ValueError(f"Unknown palette: {palette!r}")
@@ -615,10 +616,14 @@ def render(
             return _render(palette, soundfont, None, drums)
     if palette == "synthetic":
         return _render(palette, None, None, drums)
-    # palette == "sfz": no pinned SFZ piano exists on this machine yet, so the path
-    # stays an explicit, unpinned parameter until a verifiable instrument is provided
-    # (see docs/blueprints/plans/2026-09-24-second-production-through-run.md, open
-    # question 1).
-    if sfz_piano is None:
-        raise ValueError("sfz_piano is required when palette='sfz'")
-    return _render(palette, None, Path(sfz_piano), drums)
+    # palette == "sfz": sfz_piano is a `tree:sha256:` ref to a folder material (the
+    # instrument's `.sfz` programs plus their sample folders); sfz_program names the
+    # `.sfz` file inside that tree, relative to its root. This cannot be parity-checked
+    # here — no SFZ piano is pinned on this machine.
+    if sfz_piano is None or sfz_program is None:
+        raise ValueError(
+            "sfz_piano (a tree:sha256: ref) and sfz_program (the .sfz file's relative "
+            "path) are both required when palette='sfz'"
+        )
+    sfz_root = material(sfz_piano)
+    return _render(palette, None, sfz_root / sfz_program, drums)

@@ -50,7 +50,9 @@ Pattern functions 用於可命名、組合與重用的規律，例如 cycle、ph
 
 目前做法：作品在 Python 中以具名常數寫入 inline digest，並用 `material("sha256:…")` 取得驗證過的檔案路徑。`tactus material add FILE...` 把檔案匯入本機 pool（`$TACTUS_POOL`，預設 `~/.local/share/tactus/pool`），並印出對應的 ref。身分是原始檔 bytes 的 SHA-256。解碼、擷取區段、sample rate 與 headroom 由作品自行處理。缺檔與內容損壞分別回報。Pool 的目錄結構與 tactus-daw 相容。外部執行檔與 native library 由作品在使用處以 `tool(...)` 宣告，receipt 記錄其路徑與 hash；目前只記錄，不以 hash 鎖定。
 
-**尚未定案：**整個資料夾的素材身分（例如 SFZ 樂器與其 samples）、解碼後音訊的身分、import gain／headroom 政策，以及 processor 身分不符時是否拒絕執行。
+資料夾（SFZ 樂器、VST3 bundle）以 `tree:sha256:` ref 固定。digest 是「排序後的相對路徑加上每個檔案 hash」這份清單的 hash；版本控制目錄（`.git` 等）不列入。`material()` 會在 pool 內以 hardlink 還原整個資料夾並逐檔驗證，所以相對路徑可以直接使用。`tool(資料夾)` 對整個 bundle 計算身分，並回傳資料夾路徑，可直接交給 `pedalboard.load_plugin`。
+
+**尚未定案：**解碼後音訊的身分、import gain／headroom 政策，以及 processor 身分不符時是否拒絕執行。
 
 ## 執行與重現：先可靠產出，再按需要重用計算
 

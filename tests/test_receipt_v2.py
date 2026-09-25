@@ -67,6 +67,7 @@ def render():
             "name": str(tool_script),
             "path": str(tool_script.resolve()),
             "sha256": pool.put(tool_script),  # same bytes, same digest
+            "kind": "file",
         }
     ]
 

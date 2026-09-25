@@ -116,3 +116,68 @@ def test_tool_resolves_via_path_lookup():
         pytest.skip("PATH lookup exercised on POSIX only")
     resolved = tool("sh")
     assert resolved.is_file()
+
+
+def test_tool_records_kind_file_for_a_resolved_file(tmp_path):
+    script = tmp_path / "fake-tool.sh"
+    script.write_text("#!/bin/sh\necho hi\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    tool(str(script))
+    from tactus.inputs import _tools
+
+    assert _tools[str(script)]["kind"] == "file"
+
+
+def test_tool_on_a_folder_hashes_the_tree_and_returns_the_folder(tmp_path):
+    bundle = tmp_path / "Some.vst3"
+    (bundle / "Contents").mkdir(parents=True)
+    (bundle / "Contents" / "plugin.so").write_bytes(b"fake plugin bytes")
+    resolved = tool(str(bundle))
+    assert resolved == bundle.resolve()
+
+    from tactus.inputs import _tools
+    from tactus.inputs.tree import digest_of_tree
+
+    expected_digest, _ = digest_of_tree(bundle)
+    entry = _tools[str(bundle)]
+    assert entry["kind"] == "tree"
+    assert entry["sha256"] == expected_digest
+    assert entry["path"] == str(bundle.resolve())
+
+
+def test_tool_on_a_folder_digest_is_stable_across_calls(tmp_path):
+    bundle = tmp_path / "Some.vst3"
+    (bundle / "Contents").mkdir(parents=True)
+    (bundle / "Contents" / "plugin.so").write_bytes(b"fake plugin bytes")
+    from tactus.inputs import _tools
+
+    tool(str(bundle))
+    first = _tools[str(bundle)]["sha256"]
+    tool(str(bundle))
+    second = _tools[str(bundle)]["sha256"]
+    assert first == second
+
+
+def test_material_resolves_a_tree_ref_to_a_materialized_folder(tmp_path):
+    from tactus.inputs import tree
+
+    root = tmp_path / "instrument"
+    (root / "samples").mkdir(parents=True)
+    (root / "samples" / "note.wav").write_bytes(b"fake sample bytes")
+    (root / "piano.sfz").write_text("<region> sample=samples/note.wav\n")
+    ref = tree.add(root)
+    resolved = material(ref)
+    assert (resolved / "piano.sfz").read_text() == "<region> sample=samples/note.wav\n"
+    assert (resolved / "samples" / "note.wav").read_bytes() == b"fake sample bytes"
+
+
+def test_material_missing_tree_ref_gives_missing_reason(scratch_pool):
+    with pytest.raises(MaterialError) as failure:
+        material(f"tree:sha256:{'0' * 64}")
+    assert failure.value.reason == "missing"
+
+
+def test_material_rejects_a_malformed_tree_ref(scratch_pool):
+    with pytest.raises(MaterialError) as failure:
+        material("tree:sha256:not-hex")
+    assert failure.value.reason == "invalid_ref"

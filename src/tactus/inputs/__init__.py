@@ -1,14 +1,17 @@
 """Resolve production inputs (pinned files, external executables) with a run-scoped record.
 
-`material` takes a `"sha256:<hex>"` reference and returns a verified path into the shared
-pool (`inputs.pool`); `tool` takes a name or path and returns a verified, resolved
-executable path, hashing whatever it finds. Both append to a process-local record that
-`run.py` reads after render returns, so a receipt can attribute every input a work
-actually resolved, in the order it resolved them, without either function needing to
-know it is running inside a receipted run. Calling `material` or `tool` outside a run
-(a REPL, a script, a test) works the same way; the record is simply never read.
+`material` takes a `"sha256:<hex>"` file reference or a `"tree:sha256:<hex>"` folder
+reference (see `inputs.tree`) and returns a verified path into the shared pool
+(`inputs.pool`); `tool` takes a name, a file path, or a folder path (a plugin bundle)
+and returns a verified, resolved path, hashing whatever it finds — a single file's
+bytes, or a folder's whole tree via `inputs.tree`. Both append to a process-local
+record that `run.py` reads after render returns, so a receipt can attribute every
+input a work actually resolved, in the order it resolved them, without either function
+needing to know it is running inside a receipted run. Calling `material` or `tool`
+outside a run (a REPL, a script, a test) works the same way; the record is simply never
+read.
 
-Reads: tactus/inputs/pool.py
+Reads: tactus/inputs/pool.py · tactus/inputs/tree.py
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from . import pool
+from . import pool, tree
 
 _REF_PREFIX = "sha256:"
 
@@ -72,7 +75,17 @@ def _digest_from_ref(ref: str) -> str:
 
 
 def material(ref: str) -> Path:
-    """Resolve a `"sha256:<hex>"` reference to a verified path in the shared pool."""
+    """Resolve a `"sha256:<hex>"` file ref or a `"tree:sha256:<hex>"` folder ref.
+
+    Returns a verified path in the shared pool — a file for the former, a materialized
+    folder for the latter.
+    """
+    if isinstance(ref, str) and ref.startswith(tree.PREFIX):
+        return _material_tree(ref)
+    return _material_file(ref)
+
+
+def _material_file(ref: str) -> Path:
     digest = _digest_from_ref(ref)
     try:
         path = pool.path_for(digest)
@@ -89,13 +102,45 @@ def material(ref: str) -> Path:
     return path
 
 
+def _material_tree(ref: str) -> Path:
+    try:
+        digest = tree.digest_from_ref(ref)
+    except ValueError as exc:
+        raise MaterialError("invalid_ref", ref, str(exc)) from exc
+    try:
+        path = tree.resolve(digest)
+    except tree.TreeError as exc:
+        raise MaterialError(exc.reason, ref, str(exc)) from exc
+    _materials[ref] = {"ref": ref}
+    return path
+
+
 def tool(name_or_path: str) -> Path:
-    """Resolve an executable by name (via PATH) or path, hashing the resolved file."""
+    """Resolve an executable by name (via PATH), a file path, or a folder (bundle) path.
+
+    Hashes whatever it finds: a single file's bytes, or a folder's whole tree via
+    `inputs.tree`. Records `kind: "file"` or `kind: "tree"` accordingly, and returns the
+    resolved path unchanged — a folder tool returns the folder, so
+    `pedalboard.load_plugin(tool(".../Name.vst3"))` is one step.
+    """
     if not isinstance(name_or_path, str) or not name_or_path:
         raise ToolError("missing", str(name_or_path), "tool name or path must be a nonempty string")
     is_path = os.sep in name_or_path or (os.altsep is not None and os.altsep in name_or_path)
     if is_path:
         candidate = Path(name_or_path)
+        if candidate.is_dir() and not candidate.is_symlink():
+            resolved = candidate.resolve()
+            try:
+                digest, _entries = tree.digest_of_tree(resolved)
+            except ValueError as exc:
+                raise ToolError("missing", name_or_path, str(exc)) from exc
+            _tools[name_or_path] = {
+                "name": name_or_path,
+                "path": str(resolved),
+                "sha256": digest,
+                "kind": "tree",
+            }
+            return resolved
         if not candidate.is_file():
             raise ToolError("missing", name_or_path, f"tool not found: {name_or_path}")
         resolved = candidate.resolve()
@@ -107,7 +152,12 @@ def tool(name_or_path: str) -> Path:
         if not resolved.is_file():
             raise ToolError("missing", name_or_path, f"tool not found: {name_or_path}")
     digest = pool.hash_file(resolved)
-    _tools[name_or_path] = {"name": name_or_path, "path": str(resolved), "sha256": digest}
+    _tools[name_or_path] = {
+        "name": name_or_path,
+        "path": str(resolved),
+        "sha256": digest,
+        "kind": "file",
+    }
     return resolved
 
 

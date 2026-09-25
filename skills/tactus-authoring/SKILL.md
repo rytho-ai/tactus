@@ -134,8 +134,19 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   - A missing entry fails the run with `material_unavailable`; import the file with
     `tactus material add`.
   - Changing a sample means changing its ref in source. That is a reviewable diff.
+- **Folder materials.** An instrument that is itself a folder — an SFZ program with sibling
+  `#include` files and sample folders it reaches by relative path, for instance — pins with
+  `tactus material add DIR`, which prints a `tree:sha256:<hex>` ref instead of a plain
+  `sha256:<hex>` one. `material("tree:sha256:…") -> Path` resolves it the same way: a verified
+  path, but a folder whose relative paths work exactly as the original did, so
+  `material(ref) / "programs/piano.sfz"` opens correctly. Verification hashes every file in the
+  folder, so its cost scales with the folder's size (seconds for a multi-gigabyte instrument),
+  same as a file material's re-verified read. A missing or corrupt entry fails the run with
+  `material_unavailable`, same as a file material.
 - `tool("sfizz_render")` or `tool("/abs/path/lib.so")` returns the resolved file and records its
-  path and SHA-256. A missing tool fails the run with `tool_unavailable`.
+  path and SHA-256. `tool("/abs/path/Some.vst3")` on a folder (a plugin bundle) hashes the whole
+  tree in place, without storing it, and returns that same folder path. A missing tool fails the
+  run with `tool_unavailable`.
 - Imported Python distributions (for example `pytimestretch` or `scipy`) are recorded
   automatically; declare only non-Python executables and libraries.
 
@@ -196,12 +207,12 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
   (shape, start, end) is yours; the helper handles block order, `reset` and tail silence, and
   it shifts out latency a plugin reports. Changes land on block boundaries, not
   sample-accurately.
-- **VST3 plugins.** Two paths are involved. `tool()` records one file, the binary inside the
-  bundle; `load_plugin` needs the bundle folder:
+- **VST3 plugins.** A VST3 plugin is a folder (`Name.vst3/Contents/...`); `tool()` on that
+  folder hashes the whole bundle in place and returns the folder itself, so it is one step
+  into `load_plugin`:
 
   ```python
-  binary = tool(str(Path.home() / ".vst3/OB-Xf.vst3/Contents/x86_64-linux/OB-Xf.so"))
-  synth = pedalboard.load_plugin(str(binary.parents[2]))  # the .vst3 folder
+  synth = pedalboard.load_plugin(str(tool(str(Path.home() / ".vst3/OB-Xf.vst3"))))
   ```
 
   - Set every parameter in source; the settings are part of the work. Use
@@ -257,7 +268,8 @@ next to its own (now shorter) `frames`.
   existed. `commit` plus that patch restores the source that actually ran.
 - `elapsed_seconds`: the wall time of the `render` call.
 - `materials`: the refs resolved, in order.
-- `tools`: `{name, path, sha256}` for each declared tool.
+- `tools`: `{name, path, sha256, kind}` for each declared tool. `kind` is `"file"` for a single
+  resolved file, or `"tree"` for a hashed folder (a plugin bundle).
 - `python_packages`: an object mapping each imported distribution name to its version.
 - `runtime`, `reproducibility`, `attribution_scope`.
 
