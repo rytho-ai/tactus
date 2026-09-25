@@ -58,8 +58,8 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   the [accept probe](thoughts/2026-09-24-accept-necessity-probe.md) and the
   [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md).
 - **Readable outputs and range audition v1** (`0b342a0`, `6e938d4`) — outputs are named
-  `<name>-<sha8>.wav`. `tactus run --range START:END [--outputs]` slices a full render and is
-  sample-identical to it. A full-song dogfood showed an Agent's self-windowed preview differing
+  `<name>-<sha8>.wav`. Section listening started as `tactus run --range`, and
+  `tactus excerpt` later replaced it (see below). A full-song dogfood showed an Agent's self-windowed preview differing
   from the song by up to 100% per bar. See the [naming probe](thoughts/2026-09-25-output-naming-probe.md),
   the [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
   [range plan](plans/2026-09-25-range-audition.md).
@@ -90,16 +90,28 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   pytimestretch guidance shipped alongside. See the [plan](plans/2026-09-25-folder-identity.md)
   and the [pytimestretch Agent probe](thoughts/2026-09-25-pytimestretch-agent-probe.md).
 
+- **Full-song dogfood 2, excerpt and plugin discovery** — a fresh Agent built a 52-bar song
+  with every new piece: a pinned SFZ tree, Pedalboard, OB-Xf, pytimestretch and section
+  previews. A full render took 7.9 s (46 s before). Paul found v2 much better after a revision.
+  Findings and fixes:
+  - `run --range` re-rendered, so an OB-Xf work's preview correlated only 0.42 with its
+    candidate. `tactus excerpt` now slices an existing run's saved audio.
+  - OB-Xf parameter scales (%, dB, 0–1) and its missing default patch led to a pad about
+    40 dB too quiet. `fx.describe`/`format_table` now list values, units and ranges, and
+    `set_param` errors show the range. A survey found unit metadata is plugin-specific:
+    OB-Xf 64%, Dexed 0%, Cardinal 1%.
+  - The skill now asks for per-section levels instead of a peak check.
+  See the dogfood in `dogfood/2026-09-25-full-song-2/` (ignored).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-1. **Full-song rerun with Paul listening** — a fresh Agent produces a full song using
-   Pedalboard, `--range` and the new output names, and Paul listens to the result. It checks the
-   whole experience end to end and supplies the listening judgement no probe has had since the
-   reverb A/B.
+1. **Verify `fx.describe` on plugins without unit metadata** — fresh Agents configure Dexed
+   (no reported units) and OB-Xf (64% units) using `describe`, range-aware errors and the
+   per-section level check, to confirm the scale mistakes from dogfood 2 do not recur.
 
 ## ⏸ Future — evidence-gated
 

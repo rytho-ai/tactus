@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tactus import RunError, run
+from tactus import RunError, excerpt, run
 
 SKILL = Path(__file__).parents[1] / "skills" / "tactus-authoring" / "SKILL.md"
 
@@ -38,21 +38,24 @@ def test_skill_names_every_manifest_and_receipt_field(tmp_path, monkeypatch):
     assert f"`format_version` {receipt['format_version']}" in text
 
 
-def test_skill_names_every_range_run_manifest_and_receipt_field(tmp_path, monkeypatch):
+def test_skill_names_every_excerpt_manifest_field(tmp_path, monkeypatch):
     monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
     entry = tmp_path / "work" / "song.py"
     entry.parent.mkdir()
     entry.write_text(SOURCE, encoding="utf-8")
-    result = run(entry, out=tmp_path / "out", range=[0.0, 0.0005], outputs=["tone"])
+    run(entry, out=tmp_path / "full")
+    result = excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.0005], outputs=["tone"])
     text = SKILL.read_text(encoding="utf-8")
     manifest = json.loads(Path(result["manifest"]).read_text())
-    receipt = json.loads(Path(result["receipt"]).read_text())
-    missing = [key for document in (manifest, receipt) for key in _missing_keys(document, text)]
+    missing = _missing_keys(manifest, text)
     assert not missing, f"SKILL.md does not document: {missing}"
-    # New nested keys a range run adds, beyond the plain-run fields already checked above.
+    # Nested keys an excerpt manifest adds beyond the plain-run fields already checked above.
     missing_range = _missing_keys(manifest["range"], text)
     assert not missing_range, f"SKILL.md does not document range fields: {missing_range}"
+    missing_source = _missing_keys(manifest["source"], text)
+    assert not missing_source, f"SKILL.md does not document source fields: {missing_source}"
     assert "`source_frames`" in text
+    assert "`tactus excerpt" in text
 
 
 def test_skill_names_every_error_phase():

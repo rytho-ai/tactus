@@ -86,7 +86,8 @@ tools declared with `tool()`, and imported package versions. Undeclared files an
 are not traced. Import input files once with `tactus material add FILE...` and paste the
 printed `sha256:` refs into source.
 Saved WAVs are replayable, but arbitrary source rebuilds are not guaranteed deterministic.
-Stateful range audition and automatic candidate promotion remain future work.
+To hear part of a run, `tactus excerpt RUN_DIR --range START:END --out NEW_DIR` cuts it from the
+saved audio without rendering again. Accepting a candidate is a source edit committed with Git.
 
 ## Supported surface
 
@@ -110,6 +111,5 @@ The distribution, Python import, and command are all `tactus` (version `0.1.0`).
   source, subject to an explicit execution and materialization boundary.
 
 Ordinary Python can already use installed DSP/analysis libraries. Shared temporal/Pattern APIs,
-formal material declarations, stateful range audition, plugin hosting, MIDI delivery and selective
-caching remain open directions, to be implemented when concrete production needs justify them. See the
+MIDI file delivery and selective caching remain open directions, to be implemented when concrete production needs justify them. See the
 [vertical-slice plan](docs/blueprints/plans/2026-09-16-code-first-production-slice.md).

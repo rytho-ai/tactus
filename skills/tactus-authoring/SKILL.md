@@ -34,10 +34,12 @@ allowed, including Track-like groupings; none is required.
 5. **Listen and compare.** A passing run proves the technical contract only. Judge the music by
    listening and comparing candidates. Discarding a candidate needs no action.
 
-   To hear part of the work, use `--range START:END` (seconds, `END` may be empty for the
-   output's end) and optionally `--outputs a,b` to publish only those outputs. The slice is cut
-   from a full render, after Tactus validates it, so it sounds exactly as it does in the song.
-   Do not window `render` yourself: processing state (reverb and compressor tails), a loop's
+   To hear part of the work, cut it from a run you already have:
+   `tactus excerpt RUN_DIR --range START:END [--outputs a,b] --out NEW_DIR` (seconds; `END` may
+   be empty for the output's end), or `excerpt(run_dir, out=…, range=[start, end])` from
+   Python. It verifies and slices that run's saved audio without
+   rendering again, so the excerpt is exactly what the listener hears in that candidate, even
+   with plugins that render differently every time. Do not window `render` yourself: processing state (reverb and compressor tails), a loop's
    phase, and whole-mix processing (normalization, master compression) all depend on material
    before the window, so a self-windowed render differs from the same span of the full song.
 6. **Keep one candidate**: edit its parameter values into `render`'s defaults, run again, and
@@ -221,7 +223,12 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
     discrete parameter, range-checks continuous ones, and suggests names on a typo. Other
     units work when they match the labels' own unit (`"semitones"`, `"voices"`). It
     returns the value actually set: record that value, not the one you requested.
-    `plugin.parameters[name]` shows `valid_values`, `min_value`, `max_value` and `units`.
+    Before setting a plugin's parameters, look at them:
+    `print(fx.format_table(fx.describe(synth, "env")))` lists each parameter's current value,
+    units, range and labels. Units are often missing (Dexed reports none, and Cardinal's
+    parameters are mostly 0–127), so read the range for the scale: 0–100 is a percentage, so
+    `1.0` means 1%. Some plugins start with no usable sound (OB-Xf's oscillators are off by
+    default), and the current values show it.
   - Render an instrument with
     `fx.render_instrument(synth, messages, duration=seconds, sample_rate=rate)`. Messages are
     `mido` messages or `(bytes, seconds)` tuples, timed in absolute seconds from the start of
@@ -229,8 +236,17 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
     `(frames, channels)` audio. Changing parameters can make the first render sound before
     any note, so it runs a silent warm-up render first; calling the plugin directly skips
     that step and can leave that start transient in your stem.
-- **Silent failure.** A plugin whose samples or presets are missing renders silence without
-  raising. Check that each plugin's output peak is above zero, and raise if it is not.
+- **Check levels per section, not just a peak.** A plugin with missing samples renders
+  silence without raising, and a parameter on the wrong scale can leave a part about 40 dB
+  too quiet without being silent. A peak above zero catches neither reliably. Measure each
+  plugin's output per section, compare it with what you intended, and raise on a part that
+  is far off:
+
+  ```python
+  def section_dbfs(audio, rate, bounds):  # bounds: [(start_s, end_s), ...]
+      rms = [np.sqrt(np.mean(audio[round(a * rate) : round(b * rate)] ** 2)) for a, b in bounds]
+      return [20 * np.log10(max(r, 1e-9)) for r in rms]
+  ```
 - **Not every plugin is deterministic.** Some VST3 instruments (OB-Xf, for one) render
   slightly different audio from identical input on every run. For works using them, a
   re-render's hashes will not match, even with unchanged source. Archive the approved audio,
@@ -247,19 +263,19 @@ path}`.
 `<name>-<sha256[:8]>.wav`, written directly under `--out` (`wav_path` above is that file's
 absolute path); the full `sha256` in the manifest is what verifies it.
 
-Given `--range`, the manifest also carries `range`: `start_seconds`, `end_seconds`,
-`start_frame`, `end_frame`, `omitted` — the requested seconds and their rounded frames
-(`end_seconds` and `end_frame` are `null` for an open end), and the list of requested output
-names that had no frames in range and so were not published. Each published output's entry also
-gains `source_frames`: that output's full-render length, so a clamped or short slice is visible
-next to its own (now shorter) `frames`.
+An excerpt directory has no receipt; its `manifest.json` has `kind` `tactus.excerpt` and
+carries:
+- `range`: `start_seconds`, `end_seconds`, `start_frame`, `end_frame` and `omitted`. These
+  are the requested seconds and their rounded frames (`end_seconds` and `end_frame` are
+  `null` for an open end), plus the requested outputs that had no frames in range and so
+  were not published.
+- `source`: `run` (the source run directory) and `manifest_sha256` (the hash of that run's
+  manifest), so the excerpt traces back to the run and its receipt.
+- A `source_frames` entry on each output: that output's length in the source run.
 
 `receipt.json` (`format_version` 2) attributes the run:
 
 - `entry`, `parameters`: effective values, defaults included.
-- `range`: the same `start_seconds`/`end_seconds`/`start_frame`/`end_frame`/`omitted` fields as
-  the manifest, or `null` without `--range`. `outputs`: the requested output names from
-  `--outputs`, or `null` without it.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory. Scratch scripts
   placed there are recorded as well, even when `render` never imports them.
 - `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.

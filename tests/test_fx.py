@@ -151,6 +151,28 @@ def test_set_param_continuous_out_of_range():
         fx.set_param(plugin, "level", 5.0)
 
 
+def test_set_param_continuous_out_of_range_message_includes_units():
+    plugin = FakePlugin({"level": FakeParam(min_value=0.0, max_value=100.0, units="%")})
+    with pytest.raises(ValueError, match=r"\[0.0, 100.0\].*%"):
+        fx.set_param(plugin, "level", 500.0)
+
+
+def test_set_param_unknown_discrete_label_message_has_samples_and_units():
+    plugin = FakePlugin(
+        {
+            "osc_2_pitch": FakeParam(
+                valid_values=["-12 semitones", "0 semitones", "7 semitones"],
+                units="semitones",
+            )
+        }
+    )
+    with pytest.raises(ValueError) as excinfo:
+        fx.set_param(plugin, "osc_2_pitch", 7, unit="furlongs")
+    message = str(excinfo.value)
+    assert "semitones" in message
+    assert "-12 semitones" in message or "0 semitones" in message
+
+
 def test_set_param_continuous_in_range():
     plugin = FakePlugin({"level": FakeParam(min_value=0.0, max_value=1.0)})
     assert fx.set_param(plugin, "level", 0.5) == 0.5
@@ -173,6 +195,100 @@ def test_set_param_builtin_unknown_attribute():
     rev = pedalboard.Reverb()
     with pytest.raises(KeyError):
         fx.set_param(rev, "not_a_real_param", 1.0)
+
+
+# ---------------------------------------------------------------------------
+# describe / format_table
+# ---------------------------------------------------------------------------
+
+
+def _describe_fake_plugin():
+    return FakePlugin(
+        {
+            "cutoff": FakeParam(min_value=20.0, max_value=20000.0, units="Hz"),
+            "amp_env_sustain": FakeParam(min_value=0.0, max_value=100.0, units="%"),
+            "mode": FakeParam(valid_values=["Off", "Sync", "Free"]),
+            "high_quality_mode": FakeParam(valid_values=[False, True]),
+            "transpose": FakeParam(
+                valid_values=[f"{i} semitones" for i in range(-24, 25)], units="semitones"
+            ),
+        }
+    )
+
+
+def test_describe_covers_range_labels_boolean_and_units():
+    plugin = _describe_fake_plugin()
+    plugin.cutoff = 1000.0
+    plugin.amp_env_sustain = 1.0
+    plugin.mode = "Sync"
+    plugin.high_quality_mode = True
+
+    rows = {row["name"]: row for row in fx.describe(plugin)}
+
+    assert rows["cutoff"]["kind"] == "range"
+    assert rows["cutoff"]["units"] == "Hz"
+    assert rows["cutoff"]["min"] == 20.0
+    assert rows["cutoff"]["max"] == 20000.0
+    assert rows["cutoff"]["value"] == 1000.0
+
+    assert rows["amp_env_sustain"]["kind"] == "range"
+    assert rows["amp_env_sustain"]["units"] == "%"
+    assert rows["amp_env_sustain"]["max"] == 100.0
+    assert rows["amp_env_sustain"]["value"] == 1.0
+
+    assert rows["mode"]["kind"] == "labels"
+    assert rows["mode"]["valid_values"] == ["Off", "Sync", "Free"]
+    assert rows["mode"]["value"] == "Sync"
+
+    assert rows["high_quality_mode"]["kind"] == "boolean"
+    assert rows["high_quality_mode"]["value"] is True
+
+    # sorted by name
+    assert list(rows.keys()) == sorted(rows.keys())
+
+
+def test_describe_contains_filter_is_case_insensitive():
+    plugin = _describe_fake_plugin()
+    rows = fx.describe(plugin, contains="SUSTAIN")
+    assert [row["name"] for row in rows] == ["amp_env_sustain"]
+
+
+def test_describe_truncates_long_valid_values_and_reports_count():
+    plugin = _describe_fake_plugin()
+    rows = {row["name"]: row for row in fx.describe(plugin)}
+    transpose = rows["transpose"]
+    assert transpose["valid_values_count"] == 49
+    assert len(transpose["valid_values"]) == 12
+
+
+def test_describe_builtin_plugin_lists_settable_attributes_with_values():
+    rev = pedalboard.Reverb(room_size=0.6, wet_level=0.25)
+    rows = {row["name"]: row for row in fx.describe(rev)}
+
+    for name in ("room_size", "wet_level", "damping", "width", "dry_level"):
+        assert name in rows, f"missing {name}"
+
+    assert rows["room_size"]["value"] == pytest.approx(0.6)
+    assert rows["wet_level"]["value"] == pytest.approx(0.25)
+    assert rows["room_size"]["kind"] == "range"
+    # read-only helper properties should not appear
+    assert "is_effect" not in rows
+    assert "is_instrument" not in rows
+
+
+def test_format_table_contains_every_row_name():
+    plugin = _describe_fake_plugin()
+    rows = fx.describe(plugin)
+    table = fx.format_table(rows)
+    for row in rows:
+        assert row["name"] in table
+
+
+def test_format_table_truncated_valid_values_show_more_count():
+    plugin = _describe_fake_plugin()
+    rows = fx.describe(plugin, contains="transpose")
+    table = fx.format_table(rows)
+    assert "more" in table
 
 
 # ---------------------------------------------------------------------------

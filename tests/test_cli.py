@@ -154,19 +154,21 @@ def test_functional_cli_argument_errors_are_json(capsys, arguments):
     assert json.loads(capsys.readouterr().out)["error"]["phase"] == "request"
 
 
-def test_functional_cli_range_and_outputs_select_and_slice(tmp_path, capsys):
+def test_functional_cli_excerpt_selects_and_slices_from_an_existing_run(tmp_path, capsys):
     entry = tmp_path / "song.py"
     entry.write_text("""import numpy as np
 def render():
     return {"sample_rate": 1000, "outputs": {"a": np.linspace(0, 0.5, 1000), "b": np.zeros(1000)}}
 """)
+    assert main(["run", str(entry), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
     assert (
         main(
             [
-                "run",
-                str(entry),
+                "excerpt",
+                str(tmp_path / "full"),
                 "--out",
-                str(tmp_path / "out"),
+                str(tmp_path / "cut"),
                 "--range",
                 "0.1:0.2",
                 "--outputs",
@@ -187,13 +189,18 @@ def render():
     }
 
 
-def test_functional_cli_range_with_open_end(tmp_path, capsys):
+def test_functional_cli_excerpt_with_open_end(tmp_path, capsys):
     entry = tmp_path / "song.py"
     entry.write_text("""import numpy as np
 def render():
     return {"sample_rate": 1000, "outputs": {"a": np.zeros(1000)}}
 """)
-    assert main(["run", str(entry), "--out", str(tmp_path / "out"), "--range", "0.9:"]) == 0
+    assert main(["run", str(entry), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
+    assert (
+        main(["excerpt", str(tmp_path / "full"), "--out", str(tmp_path / "cut"), "--range", "0.9:"])
+        == 0
+    )
     report = json.loads(capsys.readouterr().out)
     manifest = json.loads(Path(report["manifest"]).read_text())
     assert manifest["range"]["end_seconds"] is None
@@ -212,16 +219,39 @@ def render():
         ("--outputs", "a,,b"),
     ],
 )
-def test_functional_cli_bad_range_or_outputs_syntax_is_a_structured_request_error(
+def test_functional_cli_excerpt_bad_range_or_outputs_syntax_is_a_structured_request_error(
     tmp_path, capsys, flag, value
 ):
     entry = tmp_path / "song.py"
-    entry.write_text("def render(): pass\n")
-    assert main(["run", str(entry), "--out", str(tmp_path / "out"), flag, value]) == 2
+    entry.write_text("""import numpy as np
+def render():
+    return {"sample_rate": 1000, "outputs": {"a": np.zeros(1000)}}
+""")
+    assert main(["run", str(entry), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
+    arguments = ["excerpt", str(tmp_path / "full"), "--out", str(tmp_path / "cut")]
+    if flag == "--range":
+        arguments += [flag, value]
+    else:
+        arguments += ["--range", "0:0.5", flag, value]
+    assert main(arguments) == 2
     report = json.loads(capsys.readouterr().out)
     assert report["error"]["code"] == "invalid_request"
     assert report["error"]["phase"] == "request"
-    assert not (tmp_path / "out").exists()
+    assert not (tmp_path / "cut").exists()
+
+
+def test_functional_cli_excerpt_missing_range_is_an_argument_error(tmp_path, capsys):
+    entry = tmp_path / "song.py"
+    entry.write_text("""import numpy as np
+def render():
+    return {"sample_rate": 1000, "outputs": {"a": np.zeros(1000)}}
+""")
+    assert main(["run", str(entry), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
+    assert main(["excerpt", str(tmp_path / "full"), "--out", str(tmp_path / "cut")]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["phase"] == "request"
 
 
 def test_functional_cli_execution_error_reports_phase_and_exit_code(tmp_path, capsys):

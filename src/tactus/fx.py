@@ -18,6 +18,14 @@ two shipped instrument renders with an audible pop before the first note); this 
 gives every future work the same tested implementation. `varispeed` plays audio back at a
 per-frame speed so pitch moves with speed (tape stop, spin-down), which pytimestretch's
 pitch-preserving engines cannot do; two probe Agents hand-wrote it for a tape stop.
+`describe` lists a plugin's parameters (name, current value, units, range or valid
+values) instead of assuming a scale: a full-song dogfood had an Agent set OB-Xf's
+`amp_env_sustain` to 1.0 believing a 0-1 scale when it's 0-100%, and `set_param` accepted
+it silently because 1.0 was in range. A survey of installed plugins found unit metadata
+isn't general (OB-Xf reports units on most params, Dexed and the Cardinal/DrumCraker
+plugins mostly don't), but name/range/valid-values/current-value are always there, so
+discovery generalizes where units don't. `format_table` renders `describe`'s rows as
+fixed-width text for a quick `print`.
 
 Reads: pedalboard
 """
@@ -25,13 +33,21 @@ Reads: pedalboard
 from __future__ import annotations
 
 import difflib
+import inspect
 import math
 from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
 
-__all__ = ["process_automated", "render_instrument", "set_param", "varispeed"]
+__all__ = [
+    "describe",
+    "format_table",
+    "process_automated",
+    "render_instrument",
+    "set_param",
+    "varispeed",
+]
 
 # Canonical unit per family: ms (time), Hz (frequency), cents, dB, % (percent).
 _TIME_TO_MS = {"ms": 1.0, "s": 1000.0}
@@ -175,10 +191,15 @@ def _nearest_by_raw_unit(
     return best_candidate
 
 
+def _units_note(param_units: str | None) -> str:
+    return f"; units={param_units!r}" if param_units else ""
+
+
 def _choose_discrete(
     param: Any, valid_values: list[Any], name: str, value: Any, unit: str | None
 ) -> Any:
     param_units = getattr(param, "units", None)
+    unit_note = _units_note(param_units)
 
     if isinstance(value, str):
         for candidate in valid_values:
@@ -186,7 +207,7 @@ def _choose_discrete(
                 return candidate
         raise ValueError(
             f"{value!r} is not a valid value for parameter {name!r}; "
-            f"valid values include {valid_values[:10]!r}"
+            f"valid values include {valid_values[:10]!r}{unit_note}"
         )
 
     parsed = [(candidate, _parse_label(candidate, param_units)) for candidate in valid_values]
@@ -207,7 +228,7 @@ def _choose_discrete(
                         raise ValueError(
                             f"unit family mismatch for parameter {name!r}: requested unit "
                             f"{unit!r} is {family!r}, but valid values are in "
-                            f"{label_family!r}"
+                            f"{label_family!r}{unit_note}"
                         )
                     requested = _to_canonical(float(value), token)
             if requested is not None:
@@ -231,7 +252,7 @@ def _choose_discrete(
         f"could not match {value!r}"
         + (f" (unit {unit!r})" if unit is not None else "")
         + f" to a valid value for parameter {name!r}; some valid values: "
-        f"{valid_values[:10]!r}"
+        f"{valid_values[:10]!r}{unit_note}"
     )
 
 
@@ -242,14 +263,20 @@ def _set_vst_value(plugin: Any, param: Any, name: str, value: Any, unit: str | N
         setattr(plugin, name, chosen)
         return chosen
 
+    lo, hi = getattr(param, "min_value", None), getattr(param, "max_value", None)
+    param_units = getattr(param, "units", None)
+    unit_note = _units_note(param_units)
+    range_note = f"; range [{lo}, {hi}]" if lo is not None and hi is not None else ""
+
     if unit is not None:
         raise ValueError(
             f"unit must be None for continuous parameter {name!r} (no discrete valid_values); "
-            f"got {unit!r}"
+            f"got {unit!r}{range_note}{unit_note}"
         )
-    lo, hi = getattr(param, "min_value", None), getattr(param, "max_value", None)
     if lo is not None and hi is not None and not (lo <= value <= hi):
-        raise ValueError(f"{value!r} is outside valid range [{lo}, {hi}] for parameter {name!r}")
+        raise ValueError(
+            f"{value!r} is outside valid range [{lo}, {hi}] for parameter {name!r}{unit_note}"
+        )
     setattr(plugin, name, value)
     return value
 
@@ -288,6 +315,128 @@ def set_param(plugin: Any, name: str, value: Any, unit: str | None = None) -> An
         raise ValueError(f"unit must be None for built-in parameter {name!r}; got {unit!r}")
     setattr(plugin, name, value)
     return value
+
+
+def _valid_values_kind(valid_values: list[Any]) -> str:
+    if valid_values and all(isinstance(v, bool) for v in valid_values):
+        return "boolean"
+    if any(isinstance(v, str) for v in valid_values):
+        return "labels"
+    return "range"
+
+
+def _describe_vst_param(plugin: Any, name: str, param: Any) -> dict[str, Any]:
+    valid_values = list(getattr(param, "valid_values", None) or [])
+    return {
+        "name": name,
+        "value": getattr(plugin, name, None),
+        "units": str(getattr(param, "units", None) or ""),
+        "min": getattr(param, "min_value", None),
+        "max": getattr(param, "max_value", None),
+        "valid_values": valid_values[:12],
+        "valid_values_count": len(valid_values),
+        "kind": _valid_values_kind(valid_values),
+    }
+
+
+def _describe_builtin(plugin: Any) -> list[dict[str, Any]]:
+    rows = []
+    for name, prop in inspect.getmembers(type(plugin), lambda member: isinstance(member, property)):
+        if name.startswith("_") or prop.fset is None:
+            continue
+        value = getattr(plugin, name, None)
+        if isinstance(value, bool):
+            kind = "boolean"
+        elif isinstance(value, (int, float)):
+            kind = "range"
+        elif isinstance(value, str):
+            kind = "labels"
+        else:
+            continue  # not a bare float/int/bool/str attribute (e.g. an enum)
+        rows.append(
+            {
+                "name": name,
+                "value": value,
+                "units": "",
+                "min": None,
+                "max": None,
+                "valid_values": [],
+                "valid_values_count": 0,
+                "kind": kind,
+            }
+        )
+    return rows
+
+
+def describe(plugin: Any, contains: str | None = None) -> list[dict[str, Any]]:
+    """List `plugin`'s parameters: name, current value, units, range, and valid values.
+
+    One dict per parameter, sorted by name, with keys `name`, `value` (current value),
+    `units` (`""` when the plugin doesn't report one), `min`, `max` (`None` when
+    unknown), `valid_values` (up to 12 entries; see `valid_values_count` for the full
+    count), and `kind` (`"labels"` for string-valued discrete parameters, `"boolean"`
+    for two-valued True/False parameters, `"range"` otherwise). `contains` filters
+    parameter names case-insensitively (substring match).
+
+    VST3 plugins (anything with a `.parameters` dict) report this directly per
+    parameter. Built-in Pedalboard plugins (e.g. `pedalboard.Reverb`) have no
+    `.parameters`; for those, this inspects the class's settable float/int/bool/str
+    properties and reports their current values, with `min`/`max`/`valid_values`
+    left unknown (Pedalboard doesn't expose them for built-ins).
+
+    Use this before guessing a parameter's scale: unit metadata isn't consistent across
+    plugins (some report `%`, `ms`, or discrete labels; many report nothing), but name,
+    current value, and range or valid values are always available, and are enough to
+    tell a 0-100 percent knob from a 0-1 fraction.
+    """
+    params = getattr(plugin, "parameters", None)
+    if params is not None:
+        rows = [_describe_vst_param(plugin, name, param) for name, param in params.items()]
+    else:
+        rows = _describe_builtin(plugin)
+
+    if contains:
+        needle = contains.lower()
+        rows = [row for row in rows if needle in row["name"].lower()]
+
+    return sorted(rows, key=lambda row: row["name"])
+
+
+_TABLE_COLUMNS = ("name", "value", "units", "min", "max", "kind", "valid_values")
+
+
+def _table_cell(row: dict[str, Any], column: str) -> str:
+    if column == "valid_values":
+        shown = row.get("valid_values") or []
+        count = row.get("valid_values_count", len(shown))
+        text = ", ".join(str(v) for v in shown)
+        if count > len(shown):
+            text += f", ... (+{count - len(shown)} more)"
+        return text
+    value = row.get(column)
+    return "" if value is None else str(value)
+
+
+def format_table(rows: list[dict[str, Any]]) -> str:
+    """Render `describe()`'s rows as a fixed-width text table, e.g. for `print`.
+
+    Columns are name/value/units/min/max/kind/valid_values; `valid_values` shows the
+    truncated sample with a "+N more" suffix when `valid_values_count` exceeds it.
+    """
+    widths = {column: len(column) for column in _TABLE_COLUMNS}
+    cells = [{column: _table_cell(row, column) for column in _TABLE_COLUMNS} for row in rows]
+    for row_cells in cells:
+        for column in _TABLE_COLUMNS:
+            widths[column] = max(widths[column], len(row_cells[column]))
+
+    def format_line(row_cells: dict[str, str]) -> str:
+        return "  ".join(row_cells[column].ljust(widths[column]) for column in _TABLE_COLUMNS)
+
+    header = {column: column for column in _TABLE_COLUMNS}
+    separator = {column: "-" * widths[column] for column in _TABLE_COLUMNS}
+    lines = [format_line(header), format_line(separator)]
+    lines.extend(format_line(row_cells) for row_cells in cells)
+    return "\n".join(lines)
 
 
 def _total_latency(chain: Any) -> int:
