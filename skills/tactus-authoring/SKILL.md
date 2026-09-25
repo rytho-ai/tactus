@@ -17,7 +17,8 @@ allowed, including Track-like groupings; none is required.
    as a named constant, and resolve it with `material(REF)`. Declare each external executable or
    native library at its point of use with `tool(NAME_OR_PATH)`. Done when no file path or
    environment variable in source decides which bytes the work hears.
-2. **Write the work as a pipeline of functions.** Follow the discipline below. Done when
+2. **Write the work as a pipeline of functions.** Follow the discipline below; for effects and
+   plugins see Effects and plugins (Pedalboard) under Reference. Done when
    `render` reads top to bottom as the processing order, and every stage is a named function
    whose inputs arrive as arguments and whose result is returned.
 3. **Expose the choices you want to audition** as keyword-only parameters of `render`, with
@@ -137,6 +138,63 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   path and SHA-256. A missing tool fails the run with `tool_unavailable`.
 - Imported Python distributions (for example `pyrubberband` or `scipy`) are recorded
   automatically; declare only non-Python executables and libraries.
+
+### Effects and plugins (Pedalboard)
+
+`pedalboard` is installed with Tactus. It provides built-in effects, such as `Reverb`,
+`Compressor`, `Delay`, `LadderFilter`, `Limiter`, `Chorus` and `Convolution`. For audible
+filter sweeps use `LadderFilter`; `LowpassFilter` is a gentle 6 dB/octave slope. Pedalboard
+also hosts VST3 effects and instruments. Reach for these before writing effect DSP by hand:
+in a blind test the built-in reverb beat hand-written ones, and it ran about 9 times faster.
+
+- **Layout.** Effects accept Tactus's `(frames, channels)` arrays and return the same layout.
+  `fx.render_instrument` also returns `(frames, channels)`. Only a direct instrument call
+  (`plugin(messages, ...)`) returns `(channels, frames)`.
+- **One pass per stem.** Build one `Pedalboard([...])` per chain and process the whole stem in
+  one call. The default `reset=True` starts from a clean state and compensates latency the
+  plugin reports. A fresh instance per independent render keeps state from leaking between
+  renders.
+- **Tails.** Processing stops at the input's last frame, which cuts reverb and delay tails.
+  `fx.process_automated(..., tail_seconds=…)` appends that much silence for you. For a
+  direct chain call, append it yourself
+  (`np.vstack([stem, np.zeros((tail_frames, channels))])`). The tail length is your choice.
+- **Automation (parameters changing over time).** Use
+  `fx.process_automated(chain, stem, rate, update, block_seconds=0.02, tail_seconds=…)`
+  (`from tactus import fx`). It calls your `update(t)` with each block's start time in
+  seconds, before processing that block through the same instance. In `update`, set the
+  curve's value for time `t` (`lpf.cutoff_hz = …`, or `fx.set_param(...)`). The curve itself
+  (shape, start, end) is yours; the helper handles block order, `reset` and tail silence, and
+  it shifts out latency a plugin reports. Changes land on block boundaries, not
+  sample-accurately.
+- **VST3 plugins.** Two paths are involved. `tool()` records one file, the binary inside the
+  bundle; `load_plugin` needs the bundle folder:
+
+  ```python
+  binary = tool(str(Path.home() / ".vst3/OB-Xf.vst3/Contents/x86_64-linux/OB-Xf.so"))
+  synth = pedalboard.load_plugin(str(binary.parents[2]))  # the .vst3 folder
+  ```
+
+  - Set every parameter in source; the settings are part of the work. Use
+    `fx.set_param(plugin, name, value, unit=None)`. It snaps a number with a unit (`"ms"`,
+    `"s"`, `"Hz"`, `"kHz"`, `"cents"`, `"dB"`, `"%"`) to the nearest valid label of a
+    discrete parameter, range-checks continuous ones, and suggests names on a typo. Other
+    units work when they match the labels' own unit (`"semitones"`, `"voices"`). It
+    returns the value actually set: record that value, not the one you requested.
+    `plugin.parameters[name]` shows `valid_values`, `min_value`, `max_value` and `units`.
+  - Render an instrument with
+    `fx.render_instrument(synth, messages, duration=seconds, sample_rate=rate)`. Messages are
+    `mido` messages or `(bytes, seconds)` tuples, timed in absolute seconds from the start of
+    the render, and `duration` should include release time. It returns Tactus
+    `(frames, channels)` audio. Changing parameters can make the first render sound before
+    any note, so it runs a silent warm-up render first; calling the plugin directly skips
+    that step and can leave that start transient in your stem.
+- **Silent failure.** A plugin whose samples or presets are missing renders silence without
+  raising. Check that each plugin's output peak is above zero, and raise if it is not.
+- **Not every plugin is deterministic.** Some VST3 instruments (OB-Xf, for one) render
+  slightly different audio from identical input on every run. For works using them, a
+  re-render's hashes will not match, even with unchanged source. Archive the approved audio,
+  and compare re-renders by ear or by level, not by hash.
+- **Not supported.** External sidechain into a VST3 effect. Duck from known hit times instead.
 
 ### Run results
 

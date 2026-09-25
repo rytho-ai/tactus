@@ -87,7 +87,7 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 | 自有 stateful DSP | 有需要時採用 Python／Numba | 保留 Python authoring，以 Faust 演算法作為參考與比對；不要求另一套創作語言。 |
 | Audio file I/O | SoundFile | 採用既有編解碼能力；Tactus 處理必要的資料與工具銜接。 |
 | Loudness 與音訊分析 | pyloudnorm、librosa | 提供現成量測與分析，避免每份作品重做；不因安裝套件而引入強制分析 schema。 |
-| 效果與 VST3 | Pedalboard + 必要的小 helper | 先整合已有 host，補參數、assets、channels 與 scheduling 邊界。External sidechain 是已知缺口，不宣稱普遍 plugin 相容。 |
+| 效果與 VST3 | Pedalboard（base dependency）+ `tactus.fx` | `set_param` 依單位對到最近的合法值，`process_automated` 以分段處理 automation、tail 與延遲，`render_instrument` 以暖機消除起始雜訊並回傳 Tactus layout。曲線與音色由作品決定。盲聽中內建 reverb 勝過自寫。External sidechain 是已知缺口，不宣稱普遍 plugin 相容；部分 VST（如 OB-Xf）不可逐 sample 重現。 |
 | Standard MIDI File 交換 | 有檔案交換需求時用 Mido | Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 universal runtime dependency 或 composition model。 |
 | Time stretch | Rubber Band 作為 baseline | 固定比例 stretching 目前可用作品內函式呼叫 backend，沒有足夠理由先加 core stretch helper。 |
 

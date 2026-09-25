@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 dependencies = [
     "librosa>=0.11",
     "numpy>=1.26",
+    "pedalboard>=0.9.25",
     "pyloudnorm>=0.2",
     "scipy>=1.14",
     "soundfile>=0.13",

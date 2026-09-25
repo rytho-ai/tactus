@@ -98,14 +98,18 @@ it does not change the priorities on this board.
   are named `<name>-<sha8>.wav`. See the
   [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
   [range plan](plans/2026-09-25-range-audition.md).
-- **Effect integration (A6), now evidence-backed** — the full-song dogfood hand-wrote reverb,
-  compression and sidechain in NumPy (the first version was too slow, the first reverb
-  sounded metallic, and the improved one doubled render time). Next build candidate;
-  SFZ-folder material identity rides with it.
-- **Effect integration where the slice needs it** — use Pedalboard + small helpers as the
-  initial effect/VST3 path; keep external sidechain explicitly unsupported until a real
-  production requires and validates a native extension. See
-  [`effect-host boundary`](thoughts/2026-09-23-effect-hosting-boundary.md).
+- **Effects and VST3 via Pedalboard (A6 v1)** — shipped. Pedalboard is a base dependency
+  and the skill has an "Effects and plugins" section. `tactus.fx` provides three helpers:
+  `set_param` (unit-aware nearest valid value), `process_automated` (block automation with
+  reset, tail and latency handled) and `render_instrument` (warm-up that removes an OB-Xf
+  start transient, Tactus layout). A blind reverb test preferred Pedalboard over
+  hand-written DSP. Four probe rounds with eight fresh Agents lowered mean cost from about
+  183k to 137k tokens and removed hand-rolled loops and silent transients. See the
+  [blind A/B](thoughts/2026-09-25-reverb-blind-ab.md) and the
+  [iterations](thoughts/2026-09-25-pedalboard-agent-iterations.md). Still open:
+  - latency compensation on a real latency-reporting VST3 effect;
+  - SFZ/VST bundle (folder) identity;
+  - external sidechain (unsupported).
 
 ## ⏸ Future — evidence-gated
 
