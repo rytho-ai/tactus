@@ -106,6 +106,11 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
     [discovery probe](thoughts/2026-09-25-plugin-discovery-probe.md).
   See the dogfood in `dogfood/2026-09-25-full-song-2/` (ignored).
 
+- **Value and excerpt probes** — pinned materials and receipts beat plain Python + Git when a
+  sample was silently replaced; `tactus excerpt` is not needed for correctness (Agents without it
+  sliced saved WAVs exactly, 9/9) and is kept for convenience and traceability. A1's 43-minute
+  session was environment contention, not Tactus. See the
+  [probe notes](thoughts/2026-09-25-value-and-excerpt-probes.md).
 ## 🚧 In progress
 
 None.
