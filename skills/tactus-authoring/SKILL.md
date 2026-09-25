@@ -32,6 +32,13 @@ allowed, including Track-like groupings; none is required.
    `error.code` and `error.phase` point at (see Reference).
 5. **Listen and compare.** A passing run proves the technical contract only. Judge the music by
    listening and comparing candidates. Discarding a candidate needs no action.
+
+   To hear part of the work, use `--range START:END` (seconds, `END` may be empty for the
+   output's end) and optionally `--outputs a,b` to publish only those outputs. The slice is cut
+   from a full render, after Tactus validates it, so it sounds exactly as it does in the song.
+   Do not window `render` yourself: processing state (reverb and compressor tails), a loop's
+   phase, and whole-mix processing (normalization, master compression) all depend on material
+   before the window, so a self-windowed render differs from the same span of the full song.
 6. **Keep one candidate**: edit its parameter values into `render`'s defaults, run again, and
    commit the source with `git` once the result is the version you chose. Discard edits you do
    not keep with `git checkout`.
@@ -141,9 +148,19 @@ path}`.
 `<name>-<sha256[:8]>.wav`, written directly under `--out` (`wav_path` above is that file's
 absolute path); the full `sha256` in the manifest is what verifies it.
 
+Given `--range`, the manifest also carries `range`: `start_seconds`, `end_seconds`,
+`start_frame`, `end_frame`, `omitted` — the requested seconds and their rounded frames
+(`end_seconds` and `end_frame` are `null` for an open end), and the list of requested output
+names that had no frames in range and so were not published. Each published output's entry also
+gains `source_frames`: that output's full-render length, so a clamped or short slice is visible
+next to its own (now shorter) `frames`.
+
 `receipt.json` (`format_version` 2) attributes the run:
 
 - `entry`, `parameters`: effective values, defaults included.
+- `range`: the same `start_seconds`/`end_seconds`/`start_frame`/`end_frame`/`omitted` fields as
+  the manifest, or `null` without `--range`. `outputs`: the requested output names from
+  `--outputs`, or `null` without it.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory. Scratch scripts
   placed there are recorded as well, even when `render` never imports them.
 - `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.

@@ -10,7 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from .inputs import pool
-from .run import RunError, parse_params, run
+from .run import RunError, parse_outputs, parse_params, parse_range, run
 
 
 class _RunParser(argparse.ArgumentParser):
@@ -38,6 +38,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_command.add_argument("source", type=Path, help="Python file defining render(*, ...)")
     run_command.add_argument("--out", required=True, type=Path, help="New run directory")
     run_command.add_argument("--params", default="{}", help="JSON object of parameter overrides")
+    run_command.add_argument(
+        "--range", help="START:END in seconds to publish; END may be empty for each output's end"
+    )
+    run_command.add_argument("--outputs", help="Comma-separated output names to publish")
     material_command = commands.add_parser("material", help="Manage the shared input material pool")
     material_subcommands = material_command.add_subparsers(dest="material_command", required=True)
     add_command = material_subcommands.add_parser(
@@ -47,7 +51,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
-            result = run(args.source, out=args.out, params=parse_params(args.params))
+            result = run(
+                args.source,
+                out=args.out,
+                params=parse_params(args.params),
+                range=parse_range(args.range) if args.range is not None else None,
+                outputs=parse_outputs(args.outputs) if args.outputs is not None else None,
+            )
             print(json.dumps(result, sort_keys=True))
             return 0
         if args.command == "material" and args.material_command == "add":

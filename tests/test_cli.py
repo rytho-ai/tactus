@@ -123,6 +123,76 @@ def test_functional_cli_argument_errors_are_json(capsys, arguments):
     assert json.loads(capsys.readouterr().out)["error"]["phase"] == "request"
 
 
+def test_functional_cli_range_and_outputs_select_and_slice(tmp_path, capsys):
+    entry = tmp_path / "song.py"
+    entry.write_text("""import numpy as np
+def render():
+    return {"sample_rate": 1000, "outputs": {"a": np.linspace(0, 0.5, 1000), "b": np.zeros(1000)}}
+""")
+    assert (
+        main(
+            [
+                "run",
+                str(entry),
+                "--out",
+                str(tmp_path / "out"),
+                "--range",
+                "0.1:0.2",
+                "--outputs",
+                "a",
+            ]
+        )
+        == 0
+    )
+    report = json.loads(capsys.readouterr().out)
+    manifest = json.loads(Path(report["manifest"]).read_text())
+    assert set(manifest["outputs"]) == {"a"}
+    assert manifest["range"] == {
+        "start_seconds": 0.1,
+        "end_seconds": 0.2,
+        "start_frame": 100,
+        "end_frame": 200,
+        "omitted": [],
+    }
+
+
+def test_functional_cli_range_with_open_end(tmp_path, capsys):
+    entry = tmp_path / "song.py"
+    entry.write_text("""import numpy as np
+def render():
+    return {"sample_rate": 1000, "outputs": {"a": np.zeros(1000)}}
+""")
+    assert main(["run", str(entry), "--out", str(tmp_path / "out"), "--range", "0.9:"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    manifest = json.loads(Path(report["manifest"]).read_text())
+    assert manifest["range"]["end_seconds"] is None
+    assert manifest["range"]["end_frame"] is None
+    assert manifest["outputs"]["a"]["frames"] == 100
+
+
+@pytest.mark.parametrize(
+    "flag,value",
+    [
+        ("--range", "bad"),
+        ("--range", "1:2:3"),
+        ("--range", ":5"),
+        ("--range", "one:2"),
+        ("--outputs", ""),
+        ("--outputs", "a,,b"),
+    ],
+)
+def test_functional_cli_bad_range_or_outputs_syntax_is_a_structured_request_error(
+    tmp_path, capsys, flag, value
+):
+    entry = tmp_path / "song.py"
+    entry.write_text("def render(): pass\n")
+    assert main(["run", str(entry), "--out", str(tmp_path / "out"), flag, value]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+    assert report["error"]["phase"] == "request"
+    assert not (tmp_path / "out").exists()
+
+
 def test_functional_cli_execution_error_reports_phase_and_exit_code(tmp_path, capsys):
     entry = tmp_path / "song.py"
     entry.write_text("def render(): raise RuntimeError('broken instrument')\n")

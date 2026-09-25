@@ -17,6 +17,10 @@ def render(*, gain: float = 0.5):
 """
 
 
+def _missing_keys(document: dict, text: str) -> list[str]:
+    return [key for key in document if f"`{key}`" not in text and f'"{key}"' not in text]
+
+
 def test_skill_names_every_manifest_and_receipt_field(tmp_path, monkeypatch):
     monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
     entry = tmp_path / "work" / "song.py"
@@ -27,14 +31,28 @@ def test_skill_names_every_manifest_and_receipt_field(tmp_path, monkeypatch):
     manifest = json.loads(Path(result["manifest"]).read_text())
     receipt = json.loads(Path(result["receipt"]).read_text())
     missing = [
-        key
-        for document in (manifest, receipt, result)
-        for key in document
-        if f"`{key}`" not in text and f'"{key}"' not in text
+        key for document in (manifest, receipt, result) for key in _missing_keys(document, text)
     ]
     assert not missing, f"SKILL.md does not document: {missing}"
     assert f"`format_version` {manifest['format_version']}" in text
     assert f"`format_version` {receipt['format_version']}" in text
+
+
+def test_skill_names_every_range_run_manifest_and_receipt_field(tmp_path, monkeypatch):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    entry = tmp_path / "work" / "song.py"
+    entry.parent.mkdir()
+    entry.write_text(SOURCE, encoding="utf-8")
+    result = run(entry, out=tmp_path / "out", range=[0.0, 0.0005], outputs=["tone"])
+    text = SKILL.read_text(encoding="utf-8")
+    manifest = json.loads(Path(result["manifest"]).read_text())
+    receipt = json.loads(Path(result["receipt"]).read_text())
+    missing = [key for document in (manifest, receipt) for key in _missing_keys(document, text)]
+    assert not missing, f"SKILL.md does not document: {missing}"
+    # New nested keys a range run adds, beyond the plain-run fields already checked above.
+    missing_range = _missing_keys(manifest["range"], text)
+    assert not missing_range, f"SKILL.md does not document range fields: {missing_range}"
+    assert "`source_frames`" in text
 
 
 def test_skill_names_every_error_phase():

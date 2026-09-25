@@ -90,9 +90,17 @@ it does not change the priorities on this board.
   [accept probe](thoughts/2026-09-24-accept-necessity-probe.md). A five-scenario Git probe found
   Git use sound but approved audio lost with removed worktrees; the skill now fixes run
   locations and archives approved mixes in the pool. See the
-  [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md). Range/stem audition is deferred
-  until a production asks for it; see
-  [`stateful audition`](thoughts/2026-09-21-stateful-audition-first.md).
+  [Git workflow probe](thoughts/2026-09-24-git-workflow-probe.md).
+- **Full-song dogfood and range audition v1** — a fresh Agent produced a 2:35 sectioned song.
+  Its self-made section preview differed from the song (88% at the cold-start bar, 50–100% at
+  loop-phase bars), so `tactus run --range START:END [--outputs]` now slices a full render and
+  is sample-identical to it. Receipts also restore untracked sources (`59ae34a`). Output files
+  are named `<name>-<sha8>.wav`. See the
+  [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
+  [range plan](plans/2026-09-25-range-audition.md).
+- **Effect integration (A6), now evidence-backed** — the full-song dogfood hand-wrote reverb,
+  compression and sidechain in NumPy (the first version was too slow, the first reverb sounded metallic, and the improved one doubled render time).
+  Next build candidate; SFZ-folder material identity rides with it.
 - **Effect integration where the slice needs it** — use Pedalboard + small helpers as the
   initial effect/VST3 path; keep external sidechain explicitly unsupported until a real
   production requires and validates a native extension. See

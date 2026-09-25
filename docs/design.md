@@ -108,7 +108,9 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 - 可還原實際 source 的 `source.patch`；
 - `render` 的執行時間。
 
-接受候選由作者或 Agent 自己完成：把參數值寫回 `render` 預設值、重跑，再用 Git commit。在那之前，先比對候選 receipt 的 `git.commit` 與 `source_files` 是否仍是目前的 source。若 source 已經移動，聽者選中的版本已不存在，必須告知聽者，並在目前的 source 上重跑、取得重新確認。尚未提供 range audition。
+接受候選由作者或 Agent 自己完成：把參數值寫回 `render` 預設值、重跑，再用 Git commit。在那之前，先比對候選 receipt 的 `git.commit` 與 `source_files` 是否仍是目前的 source。若 source 已經移動，聽者選中的版本已不存在，必須告知聽者，並在目前的 source 上重跑、取得重新確認。
+
+區段試聽（range audition v1）：`tactus run ... --range START:END [--outputs a,b]` 以秒指定區段，先完整 render，再從驗證過的輸出剪下該段，因此結果與整首的同一段 sample 完全一致；邊界硬切，不加 fade、pre-roll 或 tail。manifest 與 receipt 會記錄 range 與每個輸出的原始長度。作品自行把 `render` 切成視窗的做法會因處理狀態、loop 相位與整體 mix 處理而與成品不同，完整歌曲 dogfood 已實際觀察到這個問題。只計算部分區段的加速版本延後，要等實測等待時間證明有需要，並能證明輸出一致後再做。
 
 Git 與音檔的分工如下：
 - **Git 只保存 source**：`.py`、`uv.lock` 與 `sha256:` refs。
@@ -120,7 +122,7 @@ Git 與音檔的分工如下：
 
 曾實作 guarded promotion（`tactus accept`：base 檢查、改寫 `render` 預設值、重跑驗證）。A/B probe 顯示，清楚的指引就能讓 fresh Agents 正確處理 source 移動的情況，因此這個功能暫存在 `shelved/tactus-accept` 分支，等出現實際錯誤時再啟用。結構性的修改在 Git branch／worktree 上試，接受時用 Git 合併。
 
-**尚未定案：**正式 audition／promotion API、state isolation 的實作、range／stem 的效率與延遲目標。Real-time transport 由 live input 或人類即時協作的實際需求再評估；cache 不是候選隔離成立的前提。
+**尚未定案：**state isolation 的實作、range／stem 的效率與延遲目標。Real-time transport 由 live input 或人類即時協作的實際需求再評估；cache 不是候選隔離成立的前提。
 
 ## 驗證與觀察：先定義技術契約，再提供判斷材料
 

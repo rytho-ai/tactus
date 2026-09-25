@@ -4,7 +4,9 @@ The public runner owns request validation, process lifetime and failed-run clean
 The private worker calls _execute for source binding, attribution and OutputStore
 publication. Manifests identify saved audio; receipts attribute the bounded execution,
 including resolved input materials, declared tools and imported package versions
-(`tactus.inputs`).
+(`tactus.inputs`). An optional range/outputs request selects and slices the validated,
+full-rendered arrays before publication, so a slice is sample-identical to the same
+frames of a full run; this module is the single owner of that selection and slicing.
 """
 
 from __future__ import annotations
@@ -70,6 +72,68 @@ def _json_copy(value: Any) -> Any:
     raise ValueError("parameters must contain finite JSON values and string object keys")
 
 
+def parse_range(raw: str) -> list[float | None]:
+    """Parse CLI ``--range START:END``; END may be empty to mean "to each output's end"."""
+    if raw.count(":") != 1:
+        raise RunError("invalid_request", "request", f"--range must be START:END: {raw!r}")
+    start_text, end_text = raw.split(":")
+    if not start_text:
+        raise RunError("invalid_request", "request", f"--range start is required: {raw!r}")
+    try:
+        start: float | None = float(start_text)
+        end = float(end_text) if end_text else None
+    except ValueError as exc:
+        raise RunError("invalid_request", "request", f"--range must be numeric: {raw!r}") from exc
+    return [start, end]
+
+
+def parse_outputs(raw: str) -> list[str]:
+    """Parse CLI ``--outputs a,b`` into a nonempty list of output names."""
+    names = raw.split(",")
+    if not raw or any(not name for name in names):
+        raise RunError(
+            "invalid_request",
+            "request",
+            f"--outputs must be a comma-separated list of names: {raw!r}",
+        )
+    return names
+
+
+def _resolve_range(range_: Any) -> list[float | None]:
+    """Request-phase shape/value validation for ``range``; the single owner of this rule."""
+    if not isinstance(range_, (list, tuple)) or len(range_) != 2:
+        raise ValueError("range must be [start_seconds, end_seconds]")
+    start, end = range_
+    for value, label in ((start, "start"), (end, "end")):
+        if value is None:
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            raise ValueError(f"range {label} must be a finite number or null")
+    if start is None:
+        raise ValueError("range start must be a number")
+    if start < 0:
+        raise ValueError("range start must be >= 0")
+    if end is not None and end <= start:
+        raise ValueError("range end must be greater than start")
+    return [float(start), float(end) if end is not None else None]
+
+
+def _resolve_outputs(outputs_: Any) -> list[str]:
+    """Request-phase shape validation for ``outputs``; names are checked after render."""
+    if not isinstance(outputs_, list) or not outputs_:
+        raise ValueError("outputs must be a nonempty list of output names")
+    names = []
+    for name in outputs_:
+        if not isinstance(name, str) or not name:
+            raise ValueError("outputs must be a list of nonempty strings")
+        names.append(name)
+    return names
+
+
 def parse_params(raw: str) -> dict[str, Any]:
     """Parse CLI overrides, rejecting duplicate keys and nonstandard JSON numbers."""
 
@@ -125,12 +189,18 @@ def run(
     *,
     out: str | Path,
     params: dict[str, Any] | None = None,
+    range: list[float | None] | None = None,
+    outputs: list[str] | None = None,
 ) -> dict[str, Any]:
     """Execute source's render(**params), returning paths to a completed new run.
 
     Relative assets/imports resolve from the source directory. Overrides leave
     source unchanged. Child diagnostics go to stderr; this function prints no
     result. Arbitrary author code is trusted, not sandboxed.
+
+    `range` is `[start_seconds, end_seconds]` (end may be `None`, meaning to each
+    output's end); `outputs` is a list of output names to publish. Both slice the
+    validated, fully rendered arrays after render, before publication.
     """
     try:
         source = Path(source).resolve()
@@ -142,6 +212,8 @@ def run(
             raise ValueError(f"source must be an existing Python file: {source}")
         if source.parent == out or source.parent.is_relative_to(out):
             raise ValueError("output cannot be the source directory or an ancestor")
+        range = _resolve_range(range) if range is not None else None
+        outputs = _resolve_outputs(outputs) if outputs is not None else None
     except (ValueError, TypeError, OSError, RecursionError) as exc:
         raise RunError("invalid_request", "request", str(exc)) from exc
 
@@ -158,7 +230,16 @@ def run(
         with tempfile.TemporaryDirectory(prefix="tactus-run-") as temporary:
             request = Path(temporary) / "request.json"
             response = Path(temporary) / "response.json"
-            _write_json(request, {"source": str(source), "out": str(out), "params": params})
+            _write_json(
+                request,
+                {
+                    "source": str(source),
+                    "out": str(out),
+                    "params": params,
+                    "range": range,
+                    "outputs": outputs,
+                },
+            )
             # Load this installed Tactus before adding the author's import directory.
             bootstrap = (
                 f"import sys; sys.path.insert(0, {str(Path(__file__).parent.parent)!r}); "
@@ -326,6 +407,61 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
     return rate, outputs
 
 
+def _select_and_slice(
+    outputs: dict[str, np.ndarray],
+    rate: int,
+    range_spec: list[Any] | None,
+    requested: list[str] | None,
+) -> tuple[dict[str, np.ndarray], dict[str, Any] | None, dict[str, int]]:
+    """Select requested outputs and slice them to a validated range, after full render.
+
+    The single owner of range/outputs selection: `run` and the CLI only parse and
+    forward the request fields. A slice is a plain array slice of the already-validated
+    full render — no padding, fade or re-normalization — so it is sample-identical to
+    the same frames of a full run.
+    """
+    if requested is not None:
+        unknown = [name for name in requested if name not in outputs]
+        if unknown:
+            raise RunError(
+                "invalid_request", "validate", f"unknown output name(s): {', '.join(unknown)}"
+            )
+        selected = {name: outputs[name] for name in requested}
+    else:
+        selected = dict(outputs)
+
+    if range_spec is None:
+        return selected, None, {}
+
+    start_seconds, end_seconds = range_spec
+    start_frame = round(start_seconds * rate)
+    end_frame = round(end_seconds * rate) if end_seconds is not None else None
+    sliced: dict[str, np.ndarray] = {}
+    source_frames: dict[str, int] = {}
+    omitted: list[str] = []
+    for name, audio in selected.items():
+        length = len(audio)
+        output_start = min(start_frame, length)
+        output_end = length if end_frame is None else min(end_frame, length)
+        if output_start >= output_end:
+            omitted.append(name)
+            continue
+        sliced[name] = audio[output_start:output_end]
+        source_frames[name] = length
+    if not sliced:
+        raise RunError(
+            "invalid_request", "validate", "range excludes every requested output's frames"
+        )
+    record = {
+        "start_seconds": start_seconds,
+        "end_seconds": end_seconds,
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "omitted": omitted,
+    }
+    return sliced, record, source_frames
+
+
 def _execute(request: dict[str, Any]) -> dict[str, Any]:
     """Worker-only execution; phase labels keep diagnostics useful to callers."""
     source, out = Path(request["source"]), Path(request["out"])
@@ -347,9 +483,18 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         python_packages = _python_packages()
         phase = "validate"
         rate, outputs = _validate(result)
+        requested_outputs = request.get("outputs")
+        published, range_record, source_frames = _select_and_slice(
+            outputs, rate, request.get("range"), requested_outputs
+        )
         phase = "publish"
         store = OutputStore(out, rate)
-        references = {name: store.add(name, audio).to_dict() for name, audio in outputs.items()}
+        references = {}
+        for name, audio in published.items():
+            reference = store.add(name, audio).to_dict()
+            if name in source_frames:
+                reference["source_frames"] = source_frames[name]
+            references[name] = reference
         if _inventory(source.parent, out) != before:
             raise RunError(
                 "source_changed", phase, "source or nearest uv.lock changed during execution"
@@ -360,6 +505,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "format_version": 2,
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
+            "range": range_record,
+            "outputs": requested_outputs,
             **before,
             "git": git,
             "materials": inputs_used["materials"],
@@ -376,15 +523,15 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "Not traced: undeclared files or executables, network access and randomness.",
         }
         _write_json(out / "receipt.json", receipt)
-        _write_json(
-            out / "manifest.json",
-            {
-                **identity,
-                "format_version": 1,
-                "sample_rate": rate,
-                "outputs": references,
-            },
-        )
+        manifest = {
+            **identity,
+            "format_version": 1,
+            "sample_rate": rate,
+            "outputs": references,
+        }
+        if range_record is not None:
+            manifest["range"] = range_record
+        _write_json(out / "manifest.json", manifest)
         return {
             "status": "ok",
             "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
