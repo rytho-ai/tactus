@@ -101,6 +101,9 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
     `set_param` errors show the range. A survey found unit metadata is plugin-specific:
     OB-Xf 64%, Dexed 0%, Cardinal 1%.
   - The skill now asks for per-section levels instead of a peak check.
+  - Verified afterwards: two fresh Agents configured Dexed (0% units) and OB-Xf on the right
+    scales and hit their level targets within ±1 dB; see the
+    [discovery probe](thoughts/2026-09-25-plugin-discovery-probe.md).
   See the dogfood in `dogfood/2026-09-25-full-song-2/` (ignored).
 
 ## 🚧 In progress
@@ -109,9 +112,7 @@ None.
 
 ## ▶ Next
 
-1. **Verify `fx.describe` on plugins without unit metadata** — fresh Agents configure Dexed
-   (no reported units) and OB-Xf (64% units) using `describe`, range-aware errors and the
-   per-section level check, to confirm the scale mistakes from dogfood 2 do not recur.
+None scheduled; see Future, or decide the next design question with Paul.
 
 ## ⏸ Future — evidence-gated
 
