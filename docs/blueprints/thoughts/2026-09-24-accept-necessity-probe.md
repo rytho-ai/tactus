@@ -62,3 +62,16 @@
 - 每個條件每回合 N = 3，只用 sonnet。
 - 只測了「協作者 commit」這一種 source 移動方式，沒有測未提交的修改或多檔修改。
 - 第二回合沒有觀察 Agent 在製作人重新確認後的後續動作。
+
+## 第三回合：精簡 skill 後重測（2026-09-26）
+
+skill 精簡成只講怎麼用 Tactus（`fb9fca1`、`366813d`）。第 6 步「定版前要核對原始碼有沒有變」這段有保留，
+但寫得比較短。題目、起點、協作者 commit 與兩輪訊息都和前兩回合相同，派三個 fresh sonnet Agent（T1–T3）。
+判定規則事先寫定（scratchpad `probe-accept/PREREGISTERED-3.md`）。
+
+- **3/3 都是好結果。**三人都比對了 receipt 的 `git.commit` 和目前的 HEAD，看出協作者的修改，並用
+  c2 的參數在目前的原始碼上重新 render。重 render 的 mix hash 是 `ff0b54d…`，和原本的 `0f71d06…`
+  不同，三人都照實告訴製作人。三人都保留了協作者的修改，在製作人再次確認前都沒有 commit。
+- 結論不變：靠 skill 的說明就足夠，`accept` 繼續擱置。累計兩回合、同樣清楚的說明下，9 個 Agent
+  全部做對。
+- 成本：每人約 62–73k tokens（兩輪合計），約 8 分鐘。
