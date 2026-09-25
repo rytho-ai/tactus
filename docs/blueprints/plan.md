@@ -118,11 +118,25 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## 🚧 In progress
 
-None.
+- **Full-song dogfood 3, Paul as producer** — an ambient lo-fi work revised from Paul's notes,
+  relayed verbatim to one fresh Agent. Intents in `dogfood/2026-09-25-full-song-3/INTENTS.md`
+  (ignored).
 
 ## ▶ Next
 
-None scheduled; see Future, or decide the next design question with Paul.
+After dogfood 3, in this order:
+
+1. **Report levels instead of refusing over-full-scale output** (Paul, 2026-09-25: Tactus should
+   not restrict here; the Agent should be aware). Drop the `exceeds full scale` validation
+   error; report each output's peak and clipped-sample count in the run result and manifest;
+   the skill explains them and the usual remedies (gain, limiter) without making them a rule.
+   Evidence: the dogfood 3 Agent `np.clip`-ed every output from its first draft to get past the
+   check, which the skill never mentions, leaving 26 hard-clipped samples in the v4 mix.
+2. **MIDI files for `sfizz_render`** — all three full-song dogfoods hand-wrote a ~40-line
+   Standard MIDI File writer because the environment has no MIDI library. Decide between a base
+   dependency (`mido`) and a skill snippet.
+
+Verify both with a fresh Agent afterwards.
 
 ## ⏸ Future — evidence-gated
 
