@@ -134,10 +134,29 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   - A missing entry fails the run with `material_unavailable`; import the file with
     `tactus material add`.
   - Changing a sample means changing its ref in source. That is a reviewable diff.
-- `tool("rubberband")` or `tool("/abs/path/lib.so")` returns the resolved file and records its
+- `tool("sfizz_render")` or `tool("/abs/path/lib.so")` returns the resolved file and records its
   path and SHA-256. A missing tool fails the run with `tool_unavailable`.
-- Imported Python distributions (for example `pyrubberband` or `scipy`) are recorded
+- Imported Python distributions (for example `pytimestretch` or `scipy`) are recorded
   automatically; declare only non-Python executables and libraries.
+
+### Time stretch and pitch shift (pytimestretch)
+
+`pytimestretch` is installed with Tactus. It takes and returns NumPy audio:
+
+```python
+import pytimestretch
+
+stretched = pytimestretch.time_stretch(
+    audio, rate, duration_ratio=target_frames / len(audio), backend="rubberband"
+)
+```
+
+- `duration_ratio` is output length over input length (above 1 is longer). To hit an exact
+  length, use `target_frames / len(audio)`, and check the returned length.
+- Choose `backend` explicitly (`"rubberband"` or `"signalsmith"`). The engines sound
+  different, so the choice belongs to the work. `pytimestretch.pitch_shift` works the same way.
+- Nothing is limited. A stretch can exceed the input's peak (1.145 measured on a full song),
+  so set gain before delivery.
 
 ### Effects and plugins (Pedalboard)
 
@@ -246,7 +265,7 @@ output directory.
 Both examples live in the Tactus repository
 (`https://github.com/rytho-ai/tactus`, or the local checkout that installed the package):
 
-- `examples/real-chop-flip/`: a real sample with a beat grid, bounded reads, a Rubber Band
-  warp declared with `tool`, and a bass-level candidate parameter.
+- `examples/real-chop-flip/`: a real sample with a beat grid, bounded reads, a
+  `pytimestretch` warp to an exact length, and a bass-level candidate parameter.
 - `examples/phonon-ballad/`: a full song with pinned drum samples, a soundfont through a
   declared native library, and palette/drum parameters.

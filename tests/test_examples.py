@@ -64,10 +64,12 @@ PHONON_SYNTHETIC_ONE_SHOTS = {
     "strings": "c56ed6530cbd4b0219d7c00adfd33331ad5d48f64a2a8f9270fb444035615a87",
 }
 CHOP_FLIP_BASE = {
-    "sample": "8a5cb7b798a5835e4500c5c2fe476832a0c489a122b39efa6e14d9fa316cbc0c",
+    # sample and mix changed when the warp moved from pyrubberband + system Rubber Band 3.3.0
+    # to pytimestretch (Rubber Band 4.0 R3); drums and bass are the untouched controls.
+    "sample": "d1e8f9f75918af4229b18bc4425226d250727a129101b069124667569438afdd",
     "drums": "8d67bcbdc913556fc27f71f2f118e812fe41bd049d542d324b83fcaff7503e29",
     "bass": "70a11d25af5f1d774c822772a71bb6de3286e879720dd140c39bcc5d531e326d",
-    "mix": "1d5655182f341b8cf690d0d528a325e7636b960f2bac894c69deb6209e091052",
+    "mix": "75e0933510b2560b86d0754b4680fac95e82f80e22677b78c0db65d050b1846e",
 }
 
 CHOP_FLIP_MATERIALS_PRESENT = pool.has(CHOP_SOURCE_DIGEST) and pool.has(CHOP_GRID_DIGEST)

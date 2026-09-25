@@ -1,21 +1,21 @@
 """Long-phrase chop arrangement, inspired by Music Agent OS lab/chop_flip.py.
 
 Musical selection, filter, delay and tail are ordinary project-owned Python.
-Rubber Band performs pitch-preserving stretch; no Tactus temporal API is needed here.
+pytimestretch's Rubber Band backend performs pitch-preserving stretch; no Tactus temporal
+API is needed here.
 """
 
 import numpy as np
-import pyrubberband as rubberband
+import pytimestretch
 from scipy.signal import butter, sosfilt
-
-from tactus import tool
 
 ORDER = (0, 1, 2, 3, 2, 3, 0, 3)
 
 
 def warp(audio: np.ndarray, rate: int, frames: int) -> np.ndarray:
-    tool("rubberband")
-    stretched = rubberband.time_stretch(audio, rate, len(audio) / frames)
+    stretched = pytimestretch.time_stretch(
+        audio, rate, duration_ratio=frames / len(audio), backend="rubberband"
+    )
     if len(stretched) != frames:
         raise ValueError(f"stretch returned {len(stretched)} frames; expected {frames}")
     stretched = np.asarray(stretched, dtype=np.float32).copy()

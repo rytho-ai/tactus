@@ -71,6 +71,16 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [blind A/B](thoughts/2026-09-25-reverb-blind-ab.md) and the
   [iterations](thoughts/2026-09-25-pedalboard-agent-iterations.md).
 
+- **pytimestretch as the stretch base (B2)** — `pytimestretch` (git revision `ab6871a`,
+  GPL-2.0-or-later, accepted by Paul) is a base dependency and replaces `pyrubberband` plus the
+  system `rubberband` executable, so stretch needs no external tool. The skill documents
+  `duration_ratio`, explicit `backend` choice and headroom; there is no `tactus.stretch`
+  wrapper. real-chop-flip migrated: `drums`/`bass` unchanged, `sample` +1.8 LU and `mix`
+  +0.7 LU (Rubber Band 3.3 → 4.0 R3); Paul re-listened to version A and accepted it. The evidence is a
+  separate session's consumer probe (`thoughts/2026-09-25-pytimestretch-consumer-probe.md`):
+  full-song lengths and beat/pitch control tests passed. An unexplained SFZ bass difference
+  from that probe stays a known issue.
+
 ## 🚧 In progress
 
 None.

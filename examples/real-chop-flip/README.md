@@ -23,13 +23,11 @@ source requires an intentional identity/source edit. No source recording, sideca
 rendered audio is committed with this example. No environment variables or path
 overrides are read; moving this example's directory does not change what it resolves.
 
-The Tactus environment supplies NumPy, SciPy and SoundFile. This production also
-uses `pyrubberband` 0.4.0 and the system `rubberband` executable (tested with 3.3.0,
-declared via `tactus.tool` at point of use), already present in the local probe
-environment. They are project requirements, not newly declared Tactus core
-dependencies. Use `uv run --inexact` to preserve the locally installed experimental
-package. On a new machine, provision these dependencies and import the pinned inputs
-before running this example.
+The Tactus environment supplies NumPy, SciPy, SoundFile and `pytimestretch`, whose Rubber
+Band backend (4.0, R3 engine) does the pitch-preserving warp. No system executable or extra
+package is needed; on a new machine, import the pinned inputs before running this example.
+The warp moved from `pyrubberband` with system Rubber Band 3.3.0 on 2026-09-25, which changed
+the `sample` and `mix` outputs; `drums` and `bass` are unchanged.
 
 ## Produce and audition
 
@@ -56,5 +54,5 @@ Tactus recipes or imposed mix/stem roles. The one-second output tail is authored
 This example tests real production and revision through the CLI. A valid WAV,
 matching hashes or LUFS measurements do not establish musical quality. The local
 listening session and its captures live under
-`dogfood/2026-09-24-functional-production/`. Source identities are explicit here;
-the runtime does not automatically trace the external files or Rubber Band version.
+`dogfood/2026-09-24-functional-production/`. Source identities are explicit here, and
+the receipt records the installed `pytimestretch` version.

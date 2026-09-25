@@ -79,7 +79,7 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 
 ## 套件與工具邊界：直接採用既有能力
 
-Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
+Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard 與 pytimestretch 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.25 在這台機器的 Python 3.13 上會以 illegal instruction 崩潰，3.12 的全新環境則完整通過。等上游修復後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |
@@ -89,13 +89,13 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 | Loudness 與音訊分析 | pyloudnorm、librosa | 提供現成量測與分析，避免每份作品重做；不因安裝套件而引入強制分析 schema。 |
 | 效果與 VST3 | Pedalboard（base dependency）+ `tactus.fx` | `set_param` 依單位對到最近的合法值，`process_automated` 以分段處理 automation、tail 與延遲，`render_instrument` 以暖機消除起始雜訊並回傳 Tactus layout。曲線與音色由作品決定。盲聽中內建 reverb 勝過自寫。External sidechain 是已知缺口，不宣稱普遍 plugin 相容；部分 VST（如 OB-Xf）不可逐 sample 重現。 |
 | Standard MIDI File 交換 | 有檔案交換需求時用 Mido | Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 universal runtime dependency 或 composition model。 |
-| Time stretch | Rubber Band 作為 baseline | 固定比例 stretching 目前可用作品內函式呼叫 backend，沒有足夠理由先加 core stretch helper。 |
+| Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `ab6871a`，GPL-2.0-or-later） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。 |
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 
 自有 DSP 的有限實驗支持 Python／Numba 實作與 native／WASM 輸出的可行性，但尚未形成產品的通用 export pipeline。驗證移植算法時要涵蓋時變參數、state 與 block boundaries；參考輸出本身也可能有錯，不能只因符合單一 golden 就宣稱正確。
 
-**尚未定案：**Rubber Band 的正式 Python binding、部署方式與 R2／R3 預設；marker warp 的產品介面；效果鏈的 latency、tail、automation 與具體 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
+**尚未定案：**marker warp 的產品介面；效果鏈的 latency、tail、automation 與具體 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
 
 ## 試聽：Offline、stateful、候選隔離
 

@@ -4,12 +4,13 @@ version = "0.1.0"
 description = "An experimental code-first music production framework."
 readme = "README.md"
 authors = [{ name = "Paul", email = "bernie40916@gmail.com" }]
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "librosa>=0.11",
     "numpy>=1.26",
     "pedalboard>=0.9.25",
     "pyloudnorm>=0.2",
+    "pytimestretch",
     "scipy>=1.14",
     "soundfile>=0.13",
 ]
@@ -32,3 +33,6 @@ line-length = 100
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+pytimestretch = { git = "https://github.com/openmirlab/pytimestretch", rev = "ab6871ab9cc1c59956f6c9182b59d93cde61f585" }
