@@ -139,6 +139,11 @@ None scheduled; decide the next design question with Paul.
 
 ## ⏸ Future — evidence-gated
 
+- **License before any public release** — pytimestretch main is GPL-2.0-only (libpaulstretch is
+  GPLv2) while pedalboard is GPLv3, and the two cannot be conveyed together; Tactus itself
+  declares no license yet. No issue while the repo is private and internal. Preferred fix when a
+  release is planned: split PaulStretch out of pytimestretch as an optional package so the core
+  returns to GPL-2.0-or-later. Parked by Paul on 2026-09-25. Trigger: planning any public release.
 - **Report samples sitting at full scale** — clipping inside a plugin (Pedalboard's `Limiter`
   hard-clips at 0 dBFS) or a work's own `np.clip` reads as 0 `clipped_samples`; the levels probe
   found 23–775 such samples. Deferred by Paul on 2026-09-25. The corrected Limiter wording in the

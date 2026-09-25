@@ -275,6 +275,11 @@ in a blind test the built-in reverb beat hand-written ones, and it ran about 9 t
       rms = [np.sqrt(np.mean(audio[round(a * rate) : round(b * rate)] ** 2)) for a, b in bounds]
       return [20 * np.log10(max(r, 1e-9)) for r in rms]
   ```
+
+  For a sparse part (one-shot drums, plucked bass) the silence between hits pulls a plain RMS
+  well below how loud the hits are, so gain set from it overshoots and clips. When you set
+  such a part to a target level, measure only its loud blocks, for example the RMS of the
+  loudest 10% of 50 ms blocks.
 - **Not every plugin is deterministic.** Some VST3 instruments (OB-Xf, for one) render
   slightly different audio from identical input on every run. For works using them, a
   re-render's hashes will not match, even with unchanged source. Archive the approved audio,
