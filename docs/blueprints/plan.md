@@ -99,8 +99,9 @@ it does not change the priorities on this board.
   [dogfood](thoughts/2026-09-25-full-song-dogfood.md) and the
   [range plan](plans/2026-09-25-range-audition.md).
 - **Effect integration (A6), now evidence-backed** — the full-song dogfood hand-wrote reverb,
-  compression and sidechain in NumPy (the first version was too slow, the first reverb sounded metallic, and the improved one doubled render time).
-  Next build candidate; SFZ-folder material identity rides with it.
+  compression and sidechain in NumPy (the first version was too slow, the first reverb
+  sounded metallic, and the improved one doubled render time). Next build candidate;
+  SFZ-folder material identity rides with it.
 - **Effect integration where the slice needs it** — use Pedalboard + small helpers as the
   initial effect/VST3 path; keep external sidechain explicitly unsupported until a real
   production requires and validates a native extension. See
