@@ -157,25 +157,15 @@ None scheduled; decide the next design question with Paul.
   found 23–775 such samples. Deferred by Paul on 2026-09-25. The corrected Limiter wording in the
   skill is also untested. Trigger: an Agent ships audible clipping that the report missed. See
   the [levels probe](thoughts/2026-09-25-levels-and-midi-probe.md).
-- **Render speed at scale: stage caching and parallel stems** — Paul raised it on 2026-09-25:
-  render time grows roughly with tracks × effects, and it will matter for works with many
-  tracks and real VSTs. Today a 4-stem 2:35 song takes about 46 s, so this is deferred. Notes
-  for when it returns:
-  - Caching unchanged stages is the most effective lever for many tracks, because a revision
-    usually touches one or two. The functional authoring discipline (named stages with
-    explicit inputs) is what makes caching safe.
-  - Rendering independent stems in parallel is the second lever.
-  - Section-only computation helps least, because every track still needs its own warm-up.
-  - Any faster path must be verified against a full render; range audition v1 is that
-    reference.
-  - **First step when it returns:** measure before building. A synthetic 8/16/32/64-track
-    work with typical effects (no LLM cost) shows where render time crosses about 1 and
-    3 minutes and which part dominates.
-  - Trigger: a real production whose `elapsed_seconds` makes revision loops slow (minutes per
-    render, or dozens of renders per session).
-  Python remains the creative source of truth; a broader graph model is not a required roadmap
-  item. See [`temporal conclusion`](thoughts/2026-09-23-optional-clock-temporal-abstraction.md)
-  and the [range plan](plans/2026-09-25-range-audition.md).
+- **Fast candidate audition (transactional audition's remaining part)** — reusing unchanged
+  stages across parameter candidates. The rest of transactional audition is in place (candidates
+  never touch source, isolated runs, Git keeping with a base check). Measured on 2026-09-26: render
+  waiting was 1–10% of real Agent sessions, and a synthetic 2:30 work takes 14.3 s at 32 tracks
+  and 28.5 s at 64 (reuse would cut a one-parameter candidate to about 1.8 s), so it is not needed
+  yet. Stateful region-only computation (checkpoints) comes after it. Trigger: render waiting at
+  or above 30% of a real session, or a candidate over 60 s. See the
+  [necessity probe](thoughts/2026-09-26-fast-audition-necessity.md) and the
+  [original design](thoughts/2026-09-23-transactional-audition.md).
 - **Latency compensation on a real VST3 effect** — `process_automated` shifts out reported
   latency, but it was verified only with a stub chain. Trigger: a latency-reporting VST3 effect
   is available or a work needs one.
