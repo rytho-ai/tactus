@@ -183,7 +183,8 @@ stretched = pytimestretch.time_stretch(
   rate per output frame (1.0 normal, 0.0 hold), and you shape the curve.
 - `pytimestretch.extreme_stretch(audio, rate, duration_ratio=8.0)` (PaulStretch) is a
   creative effect, not a replacement for `time_stretch`: it smears the input into a blurred
-  texture (below 1 it squeezes it). Mono or stereo only, at least 81,920 input frames.
+  texture (below 1 it squeezes it). It has one engine, so it takes no `backend`. Mono or
+  stereo only, at least 81,920 input frames.
   - Its length is approximate (about 10% off on a 2-second input, 40% when squeezing one), so
     fit the result to the slot it plays in: trim or pad with zeros to the exact frame count,
     then fade both ends.
