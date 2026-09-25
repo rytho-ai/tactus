@@ -157,6 +157,17 @@ stretched = pytimestretch.time_stretch(
   different, so the choice belongs to the work. `pytimestretch.pitch_shift` works the same way.
 - Nothing is limited. A stretch can exceed the input's peak (1.145 measured on a full song),
   so set gain before delivery.
+- For vocals, pass `formants="preserve"` when you shift pitch, especially together with a
+  stretch; the default `"shift"` moves the formants with the pitch.
+- `pytimestretch.time_warp(audio, rate, markers=…)` pins source frames to output frames, for
+  example to put a loop's beats on the grid. Markers are integer `(source, output)` pairs
+  that both strictly increase. The first pair is exactly `(0, 0)`, and the last is
+  `(len(audio), output_length)`. When the first beat is not at frame 0, map frame 0 to
+  output 0 and place each later beat at its target. Beat positions come from analysis, so
+  freeze them (see Functional discipline).
+- These engines preserve pitch. When pitch should follow speed, as in a tape stop, spin-down
+  or record slow-down, use `fx.varispeed(audio, rate, speed)`. `speed` holds one playback
+  rate per output frame (1.0 normal, 0.0 hold), and you shape the curve.
 
 ### Effects and plugins (Pedalboard)
 

@@ -392,3 +392,40 @@ def test_render_instrument_validates_args():
         fx.render_instrument(plugin, [], duration=1.0, sample_rate=1000, warmup_seconds=-1)
     with pytest.raises(ValueError):
         fx.render_instrument(plugin, [], duration=1.0, sample_rate=1000, num_channels=3)
+
+
+# ---------------------------------------------------------------------------
+# varispeed
+
+
+def test_varispeed_unit_speed_is_identity():
+    audio = np.random.default_rng(1).standard_normal((1000, 2)).astype(np.float32)
+    out = fx.varispeed(audio, 44100, np.ones(1000))
+    np.testing.assert_allclose(out, audio, atol=1e-7)
+
+
+def test_varispeed_half_speed_lowers_pitch_an_octave():
+    rate = 8000
+    t = np.arange(rate) / rate
+    tone = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    out = fx.varispeed(tone, rate, np.full(rate, 0.5))
+    spectrum = np.abs(np.fft.rfft(out))
+    peak_hz = np.argmax(spectrum) * rate / len(out)
+    assert abs(peak_hz - 220) < 2
+
+
+def test_varispeed_tape_stop_holds_then_silence_past_the_end():
+    audio = np.linspace(-1, 1, 100, dtype=np.float32)
+    out = fx.varispeed(audio, 1000, np.concatenate([np.ones(50), np.zeros(50)]))
+    assert out.shape == (100,)
+    assert np.all(out[50:] == out[50])  # speed 0 holds the read position
+
+    fast = fx.varispeed(audio, 1000, np.full(100, 2.0))
+    assert np.all(fast[50:] == 0.0)  # read past the end becomes silence
+
+
+def test_varispeed_rejects_bad_speed():
+    audio = np.zeros(10, dtype=np.float32)
+    for bad in (np.array([]), np.array([1.0, -0.1]), np.array([np.nan]), np.ones((2, 2))):
+        with pytest.raises(ValueError):
+            fx.varispeed(audio, 44100, bad)

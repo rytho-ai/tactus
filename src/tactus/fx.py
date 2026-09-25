@@ -15,7 +15,9 @@ silent warm-up render first because a plugin's very first render after parameter
 can carry an audible transient. Four probe-round agents each hand-wrote these pieces
 independently (one got the unit wrong and produced a 10-second attack instead of 10ms;
 two shipped instrument renders with an audible pop before the first note); this module
-gives every future work the same tested implementation.
+gives every future work the same tested implementation. `varispeed` plays audio back at a
+per-frame speed so pitch moves with speed (tape stop, spin-down), which pytimestretch's
+pitch-preserving engines cannot do; two probe Agents hand-wrote it for a tape stop.
 
 Reads: pedalboard
 """
@@ -29,7 +31,7 @@ from typing import Any
 
 import numpy as np
 
-__all__ = ["process_automated", "render_instrument", "set_param"]
+__all__ = ["process_automated", "render_instrument", "set_param", "varispeed"]
 
 # Canonical unit per family: ms (time), Hz (frequency), cents, dB, % (percent).
 _TIME_TO_MS = {"ms": 1.0, "s": 1000.0}
@@ -450,3 +452,38 @@ def render_instrument(
         audio = audio[:target_frames]
 
     return audio.astype(np.float32, copy=False)
+
+
+def varispeed(audio: np.ndarray, sample_rate: int, speed: np.ndarray) -> np.ndarray:
+    """Play `audio` back at a per-output-frame `speed`, so pitch follows speed.
+
+    `speed[i]` is the playback rate at output frame `i`: 1.0 is normal, 0.5 is half
+    speed an octave down, 0.0 holds the current position. The read position advances
+    by the cumulative speed and is linearly interpolated; once it passes the end of
+    `audio`, output is silence. Output has `len(speed)` frames in `audio`'s layout
+    (`(frames,)` or `(frames, channels)`), float32. The curve's shape is the work's
+    choice; this only resamples. Speeds above 1.0 are not band-limited and can alias.
+    """
+    raw = np.asarray(audio)
+    if type(sample_rate) is not int or sample_rate <= 0:
+        raise ValueError("sample_rate must be a positive int")
+    if raw.ndim not in (1, 2) or not len(raw) or not np.isfinite(raw).all():
+        raise ValueError("audio must be finite, nonempty (frames,) or (frames, channels)")
+    rates = np.asarray(speed, dtype=np.float64)
+    if rates.ndim != 1 or not len(rates) or not np.isfinite(rates).all() or (rates < 0).any():
+        raise ValueError("speed must be a nonempty 1-D array of finite values >= 0")
+
+    source = raw.astype(np.float32, copy=False)
+    frames = source.shape[0]
+    position = np.concatenate([[0.0], np.cumsum(rates[:-1])])
+    inside = position <= frames - 1
+    grid = np.arange(frames, dtype=np.float64)
+    if source.ndim == 1:
+        out = np.interp(position, grid, source).astype(np.float32)
+        out[~inside] = 0.0
+        return out
+    out = np.stack(
+        [np.interp(position, grid, source[:, ch]) for ch in range(source.shape[1])], axis=1
+    ).astype(np.float32)
+    out[~inside] = 0.0
+    return out
