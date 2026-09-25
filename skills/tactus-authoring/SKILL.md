@@ -105,8 +105,8 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   values: numbers, strings, booleans, null, lists, or objects.
 - It returns exactly `sample_rate` and `outputs`:
   - `sample_rate` is a positive int shared by all outputs.
-  - `outputs` maps nonempty names to real NumPy arrays of shape `(frames,)` or
-    `(frames, 1|2)`.
+  - `outputs` maps names matching `[A-Za-z0-9][A-Za-z0-9._-]*` (the name becomes part of
+    the saved WAV's filename) to real NumPy arrays of shape `(frames,)` or `(frames, 1|2)`.
   - Every value must be finite and within [-1, 1]. Tactus never normalizes, mixes, or
     resamples, so set the gain yourself.
 - Outputs may differ in length. A mix, stems, and clips can live side by side, and no output
@@ -137,7 +137,9 @@ Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, 
 path}`.
 
 `manifest.json` (`format_version` 1) identifies the saved audio: `kind`, `sample_rate`, and
-`outputs` as `{name: {sha256, frames, channels}}`.
+`outputs` as `{name: {sha256, frames, channels, file}}`. Each `file` is
+`<name>-<sha256[:8]>.wav`, written directly under `--out` (`wav_path` above is that file's
+absolute path); the full `sha256` in the manifest is what verifies it.
 
 `receipt.json` (`format_version` 2) attributes the run:
 

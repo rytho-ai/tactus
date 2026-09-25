@@ -1,7 +1,7 @@
 """Run functional Python productions in fresh processes and publish named PCM outputs.
 
 The public runner owns request validation, process lifetime and failed-run cleanup.
-The private worker calls _execute for source binding, attribution and MaterialStore
+The private worker calls _execute for source binding, attribution and OutputStore
 publication. Manifests identify saved audio; receipts attribute the bounded execution,
 including resolved input materials, declared tools and imported package versions
 (`tactus.inputs`).
@@ -29,7 +29,7 @@ import numpy as np
 
 from . import revision
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
-from .store import MaterialStore
+from .store import OutputStore, validate_name
 
 
 class RunError(Exception):
@@ -310,6 +310,7 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
     for name, audio in outputs.items():
         if not isinstance(name, str) or not name:
             raise ValueError("output labels must be nonempty strings")
+        validate_name(name)
         if not isinstance(audio, np.ndarray) or audio.dtype.kind not in "iuf":
             raise ValueError(f"output {name!r} must be a real numeric NumPy array")
         if (
@@ -347,8 +348,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
-        store = MaterialStore(out / "materials", rate)
-        references = {name: store.add(audio).to_dict() for name, audio in outputs.items()}
+        store = OutputStore(out, rate)
+        references = {name: store.add(name, audio).to_dict() for name, audio in outputs.items()}
         if _inventory(source.parent, out) != before:
             raise RunError(
                 "source_changed", phase, "source or nearest uv.lock changed during execution"
@@ -386,10 +387,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         )
         return {
             "status": "ok",
-            "outputs": {
-                name: str(out / "materials" / "audio" / f"{ref['sha256']}.wav")
-                for name, ref in references.items()
-            },
+            "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
             "manifest": str(out / "manifest.json"),
             "receipt": str(out / "receipt.json"),
         }

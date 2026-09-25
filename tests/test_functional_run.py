@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import py_compile
@@ -14,7 +15,7 @@ import pytest
 import soundfile as sf
 
 from tactus import AudioRef, RunError, run
-from tactus.store import MaterialStore
+from tactus.store import OutputStore
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "functional"
 
@@ -44,8 +45,8 @@ def test_production_candidates_acceptance_and_clip_bank(tmp_path, monkeypatch):
     assert entry.read_bytes() == original
     b, c, a = [read(result["manifest"]) for result in (base, candidate, again)]
     assert b == a
-    assert b["outputs"]["stem:texture"] == c["outputs"]["stem:texture"]
-    for name in ("mix", "stem:bass"):
+    assert b["outputs"]["stem-texture"] == c["outputs"]["stem-texture"]
+    for name in ("mix", "stem-bass"):
         assert b["outputs"][name] != c["outputs"][name]
     assert read(base["receipt"])["parameters"] == {"bass_gain": 0.8}
     assert read(candidate["receipt"])["parameters"] == {"bass_gain": 0.4}
@@ -61,7 +62,7 @@ def test_production_candidates_acceptance_and_clip_bank(tmp_path, monkeypatch):
         np.testing.assert_allclose(actual, expected, atol=2**-23, rtol=0)
     assert not np.allclose(
         direct["outputs"]["mix"],
-        direct["outputs"]["stem:bass"][:, None] + direct["outputs"]["stem:texture"],
+        direct["outputs"]["stem-bass"][:, None] + direct["outputs"]["stem-texture"],
     )
 
     # Accept the candidate via an explicit source edit; no automatic promotion is claimed.
@@ -79,15 +80,20 @@ def test_production_candidates_acceptance_and_clip_bank(tmp_path, monkeypatch):
     moved = tmp_path / "moved"
     shutil.move(tmp_path / "base", moved)
     shutil.rmtree(project)
-    store = MaterialStore(moved / "materials", b["sample_rate"])
-    for ref in b["outputs"].values():
+    store = OutputStore(moved, b["sample_rate"])
+    for name, ref in b["outputs"].items():
         assert len(store.read(AudioRef(**ref))) == ref["frames"]
+        assert ref["file"] == f"{name}-{ref['sha256'][:8]}.wav"
+        assert (moved / ref["file"]).exists()
     ref = AudioRef(**b["outputs"]["mix"])
-    wav = moved / "materials" / "audio" / f"{ref.sha256}.wav"
+    wav = moved / ref.file
     payload = wav.read_bytes()
     wav.write_bytes(payload[:-1] + bytes([payload[-1] ^ 1]))
     with pytest.raises(ValueError, match="hash mismatch"):
         store.read(ref)
+    for forged in ("../mix-" + ref.sha256[:8] + ".wav", "mix-00000000.wav"):
+        with pytest.raises(ValueError, match="does not match its reference"):
+            store.read(AudioRef(ref.sha256, ref.frames, ref.channels, forged))
 
 
 def test_fresh_module_state_relative_assets_and_parameter_snapshot(tmp_path):
@@ -104,7 +110,7 @@ def render(*, options={"levels": [0.1]}, required):
     helper.calls += 1
     options["levels"].append(0.9)
     value = float(Path("asset.txt").read_text()) * helper.calls
-    return {"sample_rate": 8000, "outputs": {"../label:clip": np.full(8, value)}}
+    return {"sample_rate": 8000, "outputs": {"label-clip": np.full(8, value)}}
 """,
     )
     (entry.parent / "helper.py").write_text("calls = 0\n")
@@ -251,16 +257,16 @@ def test_partial_publication_is_cleaned(tmp_path):
     entry = source(
         tmp_path,
         """import numpy as np
-from tactus.store import MaterialStore
-original = MaterialStore.add
+from tactus.store import OutputStore
+original = OutputStore.add
 calls = 0
-def fail_second(self, audio):
+def fail_second(self, name, audio):
     global calls
     calls += 1
     if calls == 2:
         raise OSError("disk failure after first material")
-    return original(self, audio)
-MaterialStore.add = fail_second
+    return original(self, name, audio)
+OutputStore.add = fail_second
 def render():
     return {"sample_rate": 8000, "outputs": {"a": np.zeros(8), "b": np.ones(8) * 0.1}}
 """,
@@ -268,4 +274,38 @@ def render():
     with pytest.raises(RunError) as failure:
         run(entry, out=tmp_path / "out")
     assert failure.value.code == "publication_failed"
+    assert not (tmp_path / "out").exists()
+
+
+def test_output_files_are_named_at_the_run_root(tmp_path):
+    entry = source(
+        tmp_path,
+        """import numpy as np
+def render():
+    return {"sample_rate": 8000, "outputs": {"drums-core": np.zeros(8)}}
+""",
+    )
+    result = run(entry, out=tmp_path / "out")
+    manifest = read(result["manifest"])
+    ref = manifest["outputs"]["drums-core"]
+    expected = tmp_path / "out" / f"drums-core-{ref['sha256'][:8]}.wav"
+    assert expected.is_file()
+    assert result["outputs"]["drums-core"] == str(expected)
+    assert hashlib.sha256(expected.read_bytes()).hexdigest() == ref["sha256"]
+    # No materials/ subdirectory: outputs land directly at the top of --out.
+    assert not (tmp_path / "out" / "materials").exists()
+
+
+@pytest.mark.parametrize("name", ["a/b", "../x", ".hidden", ""])
+def test_unsafe_output_names_are_rejected(tmp_path, name):
+    entry = source(
+        tmp_path,
+        f"""import numpy as np
+def render():
+    return {{"sample_rate": 8000, "outputs": {{{name!r}: np.zeros(8)}}}}
+""",
+    )
+    with pytest.raises(RunError) as failure:
+        run(entry, out=tmp_path / "out")
+    assert failure.value.code == "invalid_output"
     assert not (tmp_path / "out").exists()

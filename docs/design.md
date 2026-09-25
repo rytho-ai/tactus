@@ -58,7 +58,7 @@ Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照�
 
 第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕；可處理的執行失敗會清除該次新建的輸出。
 
-Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 使用現有 content-addressed MaterialStore 儲存。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 2）保存以下內容：
+Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 2）保存以下內容：
 - 實際參數（含預設值）
 - entry 目錄下 Python source 的 hash
 - 從 entry 目錄往上找到的最近一個 `uv.lock` 的路徑與 hash
@@ -71,7 +71,7 @@ Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 h
 
 Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。
 
-已保存的 WAV 可以直接播放，也可透過 MaterialStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
+已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
 先確保完整執行與 replay 正確；selective caching、checkpoint 與更豐富的 graph metadata 等實際 consumer 證明需求後再加入。Graph 可以支援執行與檢查，但目前沒有把它擴張成全曲創作模型的計畫。
 

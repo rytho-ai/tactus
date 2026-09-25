@@ -10,5 +10,5 @@ def render(*, bass_gain=0.8):
     mix = 0.7 * np.tanh(1.4 * (low[:, None] + pad))
     return {
         "sample_rate": RATE,
-        "outputs": {"mix": mix, "stem:bass": low, "stem:texture": pad},
+        "outputs": {"mix": mix, "stem-bass": low, "stem-texture": pad},
     }

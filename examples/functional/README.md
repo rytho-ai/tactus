@@ -10,8 +10,8 @@ Return exactly `{"sample_rate": positive_integer, "outputs": {name: numpy_array}
 Each named output is nonempty mono `(frames,)` or mono/stereo `(frames, channels)`,
 real numeric, finite and within [-1, 1]. All outputs share the rate; lengths can
 differ and no name is mandatory. Tactus stores float32-to-PCM24 WAVs without
-normalization, resampling, limiting or automatic mixing. Labels are metadata,
-not paths; WAV filenames are content hashes.
+normalization, resampling, limiting or automatic mixing. Each name must match
+`[A-Za-z0-9][A-Za-z0-9._-]*`, since it becomes part of the saved WAV's filename.
 
 ## Run and compare
 
@@ -54,11 +54,12 @@ and stateful range audition are not implemented.
 ## Attribution and saved results
 
 `manifest.json` has kind `tactus.functional-run`, format version 1, sample rate and
-named AudioRefs (`sha256`, `frames`, `channels`). WAVs live at
-`materials/audio/<sha256>.wav`; identical outputs share the same file. Saved WAVs
-remain playable without the original source. This format is separate from the
-retired prototype `arrangement.json`. `tactus run` executes the source entry;
-saved WAVs can be played directly without a separate render or inspect command.
+named AudioRefs (`sha256`, `frames`, `channels`, `file`). WAVs live at
+`<out>/<name>-<sha256[:8]>.wav`; identical output bytes under the same name share
+the same file. Saved WAVs remain playable without the original source. This format
+is separate from the retired prototype `arrangement.json`. `tactus run` executes
+the source entry; saved WAVs can be played directly without a separate render or
+inspect command.
 
 `receipt.json` records effective parameters including defaults, Python files beneath
 the entry's parent, a `uv.lock` in that directory if present, and core runtime
