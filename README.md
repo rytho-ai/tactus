@@ -20,8 +20,9 @@ The previous implementation is preserved in
 This product succession does not imply API compatibility or feature parity. The reference
 implementation now installs as `tactus-daw`, imports as `tactus_daw`, and runs as `tactus-daw`.
 
-The default scientific stack includes NumPy, SciPy, SoundFile, pyloudnorm, and librosa.
-Production source can use these packages directly. Tactus does not yet provide a shared
+The default scientific stack includes NumPy, SciPy, SoundFile, pyloudnorm, and librosa;
+Pedalboard, pytimestretch and Mido are installed as well. Production source can use these
+packages directly. Tactus does not yet provide a shared
 analysis API; detected onsets, tempo, and pitch remain observations for the author to evaluate.
 
 ## Current status

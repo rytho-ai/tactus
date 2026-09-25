@@ -71,7 +71,7 @@ Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 h
 
 執行中觀察到 source 或該 lock 改變時會失敗。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性仍不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
 
-Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。
+Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
 
 已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
@@ -81,7 +81,7 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 
 ## 套件與工具邊界：直接採用既有能力
 
-Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard 與 pytimestretch 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
+Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard、pytimestretch 與 Mido 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |
@@ -90,8 +90,8 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 | Audio file I/O | SoundFile | 採用既有編解碼能力；Tactus 處理必要的資料與工具銜接。 |
 | Loudness 與音訊分析 | pyloudnorm、librosa | 提供現成量測與分析，避免每份作品重做；不因安裝套件而引入強制分析 schema。 |
 | 效果與 VST3 | Pedalboard（base dependency）+ `tactus.fx` | `set_param` 依單位對到最近的合法值，`process_automated` 以分段處理 automation、tail 與延遲，`render_instrument` 以暖機消除起始雜訊並回傳 Tactus layout。曲線與音色由作品決定。盲聽中內建 reverb 勝過自寫。External sidechain 是已知缺口，不宣稱普遍 plugin 相容；部分 VST（如 OB-Xf）不可逐 sample 重現。 |
-| Standard MIDI File 交換 | 有檔案交換需求時用 Mido | Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 universal runtime dependency 或 composition model。 |
-| Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `ab6871a`，GPL-2.0-or-later） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。 |
+| Standard MIDI File 交換 | Mido（base dependency） | 例如 `sfizz_render` 需要 `.mid` 檔；三次完整歌曲 dogfood 的 Agent 都因為沒有 MIDI 套件而各自手寫 SMF writer，因此改為預設安裝。Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 composition model。 |
+| Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `e43cc6d`，GPL-2.0-only） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。`extreme_stretch`（PaulStretch）是可選的創作處理：長度只是近似值，每個 process 內依呼叫順序固定亂數。這個 revision 因為 libpaulstretch 而改成 GPL-2.0-only，和 Pedalboard 的 GPLv3 不能一起對外發佈；目前只在內部使用，公開發佈前必須解決（見 plan 的 Future）。 |
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 

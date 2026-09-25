@@ -129,6 +129,13 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   stems (renders 11–17 s). It led to the level-reporting change and `mido`. See the
   [dogfood notes](thoughts/2026-09-25-full-song-dogfood-3.md).
 
+- **Skill scope: using Tactus only** — Paul (2026-09-25): the skill should not teach music-making.
+  It dropped mixing advice and third-party how-to (355 → about 225 lines), keeping library
+  behavior only where it changes Tactus results; the earlier per-section level snippet and the
+  "Effects and plugins" guidance went with it. Recorded in positioning §1. A rerun of the
+  plugin-discovery task on the trimmed skill passed (correct scales, levels on target). See the
+  [discovery probe](thoughts/2026-09-25-plugin-discovery-probe.md).
+
 ## 🚧 In progress
 
 None.
