@@ -79,7 +79,7 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 
 ## 套件與工具邊界：直接採用既有能力
 
-Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard 與 pytimestretch 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.25 在這台機器的 Python 3.13 上會以 illegal instruction 崩潰，3.12 的全新環境則完整通過。等上游修復後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
+Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard 與 pytimestretch 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |

@@ -129,5 +129,11 @@ None.
   is available on this machine; test the actual target plugin when one is available. Dynamic
   latency, complex routing, crash isolation and external sidechain remain open. See
   [`effect-host boundary`](thoughts/2026-09-23-effect-hosting-boundary.md).
+- **Allow Python 3.13** — `requires-python` is `>=3.12,<3.13` because the pedalboard 0.9.24 and
+  0.9.25 cp313 Linux wheels run AVX-512 code unguarded at import (`vinserti64x2`) and crash on
+  CPUs without AVX-512 (this machine's i5-13600K). 0.9.23 cp313 and 0.9.25 cp312 work. The
+  upstream fix (spotify/pedalboard PR #511) merged on 2026-09-23 but is unreleased. Trigger: a
+  pedalboard release containing it; install it on 3.13 here, run `import pedalboard` and the
+  test suite, then relax the pin.
 - **Additional runtimes or languages** — only after Python-first workflows expose a concrete
   limitation that cannot be solved within the existing source model.
