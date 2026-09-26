@@ -14,7 +14,8 @@ what produced them. Any structure you find helpful is allowed; none is required.
 
 0. **Create the work**, once, before writing source. `tactus init DIR` scaffolds `DIR` as its
    own uv project depending on a pinned Tactus (a `pyproject.toml` with `[tool.uv.sources]`
-   and its own `uv.lock`); run it with whatever Tactus you already have, e.g.
+   and its own `uv.lock`, inside a new Git repository unless `DIR` is already in one); run it
+   with whatever Tactus you already have, e.g.
    `uv run --project TACTUS_CHECKOUT tactus init DIR`. From then on, run everything from
    inside `DIR` with `uv run tactus ...` — the work's own environment, not the Tactus
    checkout's. `uv add PACKAGE` adds a package to the work only; the work's Python is

@@ -5,7 +5,7 @@ it could not add a package of its own, its receipt's `dependency_lock` was alway
 its environment moved whenever the Tactus checkout moved. `init` fixes this by writing the
 work a `pyproject.toml` that depends on `tactus` through `[tool.uv.sources]`, pinned to a
 resolved Git source, plus a `.gitignore`, then running `uv lock` so the work has its own
-`uv.lock`. `_tactus_source` resolves that pin: by default the *running* Tactus's own PEP 610
+`uv.lock`, and `git init` when the folder is not already in a repository. `_tactus_source` resolves that pin: by default the *running* Tactus's own PEP 610
 origin (reusing `run._direct_url`, the same parsing `run.py` uses for receipt attribution),
 falling back to an explicit `--tactus-path`/`--tactus` override. An editable checkout is only
 usable as a source when it is clean and its `HEAD` is already pushed (`revision.py`); a dirty
@@ -14,7 +14,7 @@ or unpushed checkout fails with a message telling the caller to push or use `--t
 source is pinned, since that is the interpreter constraint `init` itself was verified against
 (Pedalboard's cp313 crash — see `docs/design.md`).
 
-Reads: run._direct_url/RunError · revision.describe/remote_origin/commit_on_remote
+Reads: run._direct_url/RunError · revision.describe/remote_origin/commit_on_remote/ensure_repository
 """
 
 from __future__ import annotations
@@ -154,7 +154,9 @@ def init(
     `directory` must not exist or must be empty. `tactus_path` pins an editable local
     checkout; `tactus` pins an explicit `URL@REV`; passing both is a request error. With
     neither, the source is the running Tactus's own origin (see `_running_tactus_source`).
-    Does not write `song.py`; the work's content belongs to whoever writes it next.
+    Does not write `song.py`; the work's content belongs to whoever writes it next. Runs
+    `git init` when `directory` is not already inside a Git work tree, so the first receipt
+    records a revision.
     """
     if tactus_path is not None and tactus is not None:
         raise RunError(
@@ -189,4 +191,11 @@ def init(
     except subprocess.CalledProcessError as exc:
         raise RunError("init_failed", "lock", f"uv lock failed: {exc.stderr}") from exc
 
-    return {"status": "ok", "work": str(directory), "tactus": source, "python": requires_python}
+    git_created = revision.ensure_repository(directory)
+    return {
+        "status": "ok",
+        "work": str(directory),
+        "tactus": source,
+        "python": requires_python,
+        "git_init": git_created,
+    }

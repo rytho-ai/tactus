@@ -302,3 +302,16 @@ def test_init_then_uv_sync_then_run_uses_the_works_own_lock(tmp_path):
     receipt = json.loads((work / "runs" / "a" / "receipt.json").read_text())
     assert receipt["dependency_lock"]["path"] == str(work / "uv.lock")
     assert receipt["environment"]["lock"]["path"] == str(work / "uv.lock")
+
+
+def test_init_creates_a_git_repository_for_a_fresh_work(tmp_path, _fake_uv):
+    result = init(tmp_path / "work", tactus_path=TACTUS_ROOT)
+    assert result["git_init"] is True
+    assert (tmp_path / "work" / ".git").is_dir()
+
+
+def test_init_does_not_nest_a_repository_inside_an_existing_one(tmp_path, _fake_uv):
+    init_repo(tmp_path)
+    result = init(tmp_path / "work", tactus_path=TACTUS_ROOT)
+    assert result["git_init"] is False
+    assert not (tmp_path / "work" / ".git").exists()

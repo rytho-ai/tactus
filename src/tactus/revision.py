@@ -123,3 +123,12 @@ def commit_on_remote(directory: Path, commit: str) -> bool:
     """Whether `commit` is reachable from some remote-tracking branch, without fetching."""
     result = _git(["branch", "-r", "--contains", commit], directory)
     return result is not None and result.returncode == 0 and bool(result.stdout.strip())
+
+
+def ensure_repository(directory: Path) -> bool:
+    """`git init` `directory` unless it is already inside a work tree; True when it created one."""
+    inside = _git(["rev-parse", "--is-inside-work-tree"], directory)
+    if inside is not None and inside.returncode == 0 and inside.stdout.strip() == "true":
+        return False
+    created = _git(["init", "-q"], directory)
+    return created is not None and created.returncode == 0
