@@ -8,9 +8,11 @@ never fails because of Git. When the entry directory has tracked changes or untr
 plus each untracked file as a new-file diff, so `git apply` of `patch` on `commit`
 restores the exact executed source. `describe` is the same read-only Git reading for any
 other directory a receipt attributes (an editable install's directory, for
-`package_sources`): just `{commit, dirty}`, no patch.
+`package_sources`): just `{commit, dirty}`, no patch. `remote_origin` and
+`commit_on_remote` support `init.py`'s decision of whether an editable checkout's `HEAD`
+can be pinned as a Git source for a new work (it must be clean and pushed).
 
-Reads: nothing else in tactus; invoked by run.py at inventory time.
+Reads: nothing else in tactus; invoked by run.py at inventory time and init.py at scaffold time.
 """
 
 from __future__ import annotations
@@ -106,3 +108,18 @@ def describe(directory: Path) -> dict[str, Any] | None:
         return None
     dirty = any(line and not line.startswith("??") for line in status.stdout.splitlines())
     return {"commit": head.stdout.strip(), "dirty": dirty}
+
+
+def remote_origin(directory: Path) -> str | None:
+    """The `origin` remote's URL for `directory`'s checkout, or None without one."""
+    result = _git(["remote", "get-url", "origin"], directory)
+    if result is None or result.returncode != 0:
+        return None
+    url = result.stdout.strip()
+    return url or None
+
+
+def commit_on_remote(directory: Path, commit: str) -> bool:
+    """Whether `commit` is reachable from some remote-tracking branch, without fetching."""
+    result = _git(["branch", "-r", "--contains", commit], directory)
+    return result is not None and result.returncode == 0 and bool(result.stdout.strip())

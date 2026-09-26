@@ -21,6 +21,9 @@ versions) and hands them to `stage.py` before calling `render`, so `@stage`-mark
 functions can reuse an unchanged prior call's result; see `stage.py` for the key and
 storage. Without `--reuse`, `@stage` is a transparent call and this costs nothing.
 
+`_direct_url` is the single PEP 610 reader (`_package_sources` uses it for attribution;
+`init.py` reuses it to resolve the running Tactus's own origin when scaffolding a work).
+
 Reads: inputs.MaterialError/ToolError/_record_snapshot/_reset_record · store.OutputStore
 · stage._begin_run/_end_run
 """
@@ -324,6 +327,21 @@ def _environment() -> dict[str, Any]:
     return {"prefix": str(prefix), "lock": lock}
 
 
+def _direct_url(name: str) -> dict[str, Any] | None:
+    """Parsed PEP 610 `direct_url.json` for an installed distribution, or None without one.
+
+    Shared by `_package_sources` (receipt attribution) and `init.py` (resolving the
+    running Tactus's own origin to pin a new work) so the parsing lives in one place.
+    """
+    try:
+        raw = distribution(name).read_text("direct_url.json")
+    except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
+        return None
+    if raw is None:
+        return None
+    return json.loads(raw)
+
+
 def _package_sources(names: list[str]) -> dict[str, Any]:
     """PEP 610 origin of each named distribution not installed from an index.
 
@@ -332,13 +350,9 @@ def _package_sources(names: list[str]) -> dict[str, Any]:
     """
     result: dict[str, Any] = {}
     for name in names:
-        try:
-            raw = distribution(name).read_text("direct_url.json")
-        except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
+        data = _direct_url(name)
+        if data is None:
             continue
-        if raw is None:
-            continue
-        data = json.loads(raw)
         url = data.get("url", "")
         vcs_info = data.get("vcs_info")
         dir_info = data.get("dir_info")

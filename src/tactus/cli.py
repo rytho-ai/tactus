@@ -1,4 +1,4 @@
-"""JSON command adapters for functional productions and environment diagnostics."""
+"""JSON command adapters for functional productions, work scaffolding and diagnostics."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from .excerpt import excerpt, parse_outputs, parse_range
+from .init import init
 from .inputs import pool, tree
 from .run import RunError, parse_params, run
 
@@ -27,7 +28,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     package_version = version("tactus")
     parser_type = (
         _RunParser
-        if arguments[:1] in (["run"], ["material"], ["excerpt"])
+        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"])
         else argparse.ArgumentParser
     )
     parser = parser_type(
@@ -57,6 +58,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="START:END in seconds to publish; END may be empty for each output's end",
     )
     excerpt_command.add_argument("--outputs", help="Comma-separated output names to publish")
+    init_command = commands.add_parser(
+        "init", help="Scaffold a work as its own uv project depending on a pinned Tactus"
+    )
+    init_command.add_argument(
+        "directory", type=Path, help="New work directory (must not exist or be empty)"
+    )
+    init_source = init_command.add_mutually_exclusive_group()
+    init_source.add_argument(
+        "--tactus-path", type=Path, help="Pin an editable local Tactus checkout"
+    )
+    init_source.add_argument("--tactus", help="Pin an explicit Tactus source as URL@REV")
     material_command = commands.add_parser("material", help="Manage the shared input material pool")
     material_subcommands = material_command.add_subparsers(dest="material_command", required=True)
     add_command = material_subcommands.add_parser(
@@ -78,6 +90,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 range=parse_range(args.range),
                 outputs=parse_outputs(args.outputs) if args.outputs is not None else None,
             )
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.command == "init":
+            result = init(args.directory, tactus_path=args.tactus_path, tactus=args.tactus)
             print(json.dumps(result, sort_keys=True))
             return 0
         if args.command == "material" and args.material_command == "add":

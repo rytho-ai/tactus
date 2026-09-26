@@ -12,6 +12,13 @@ what produced them. Any structure you find helpful is allowed; none is required.
 
 ## Steps
 
+0. **Create the work**, once, before writing source. `tactus init DIR` scaffolds `DIR` as its
+   own uv project depending on a pinned Tactus (a `pyproject.toml` with `[tool.uv.sources]`
+   and its own `uv.lock`); run it with whatever Tactus you already have, e.g.
+   `uv run --project TACTUS_CHECKOUT tactus init DIR`. From then on, run everything from
+   inside `DIR` with `uv run tactus ...` — the work's own environment, not the Tactus
+   checkout's. `uv add PACKAGE` adds a package to the work only; the work's Python is
+   pinned to what `init` copied from the running Tactus, not chosen by the work.
 1. **Pin every input.** Import each sample, soundfont, beat grid, or other file the sound
    depends on with `tactus material add FILE...`. Paste each printed `sha256:…` ref into source
    as a named constant, and resolve it with `material(REF)`. Declare each external executable or
@@ -242,12 +249,17 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 A receipt guarantees the saved outputs, not that re-running the source reproduces them. Say an
 old version can be reproduced only after you re-render it and every output hash matches.
 
-**Rebuilding a receipt's run elsewhere:** check out `git.commit` and apply `source.patch` if
-present; for each `package_sources` entry with a `commit`, check out that revision of the
-named distribution (for Tactus itself, `environment.lock` names the `uv.lock` to
-`uv sync --frozen` against — its hash must match); restore each `materials` ref into the pool
-(`tactus material add`); run with the recorded `parameters`. A plugin that renders
+**Rebuilding a receipt's run elsewhere, for a work created with `tactus init`:** check out
+`git.commit` and apply `source.patch` if present, `uv sync --frozen` (the work's own
+`dependency_lock` pins Tactus and every package), restore each `materials` ref into the pool
+(`tactus material add`), and run with the recorded `parameters`. A plugin that renders
 differently each run (see below) will not match by hash even after an exact rebuild.
+
+**An older work without its own `pyproject.toml`** instead ran borrowing Tactus's own
+environment: check out `git.commit` and apply `source.patch` if present; for each
+`package_sources` entry with a `commit`, check out that revision of the named distribution
+(`environment.lock` names the `uv.lock` — for Tactus itself — to `uv sync --frozen` against;
+its hash must match); then restore materials and run as above.
 
 Errors print `{"status": "error", "error": {code, phase, message}}`. `phase` is one of
 `request`, `load`, `bind`, `execute`, `validate`, or `publish`. The exit code is 2 for

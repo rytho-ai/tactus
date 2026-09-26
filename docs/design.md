@@ -81,6 +81,21 @@ Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 h
 
 執行中觀察到 source 或該 lock 改變時會失敗。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性仍不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
 
+**每個作品都是自己的 uv project（`tactus init`）：** 在此之前，作品借用 Tactus 自己的環境
+（`uv run --project <tactus>`）執行——作品不能自行加套件，receipt 的 `dependency_lock` 恆為
+null，且環境會隨 Tactus checkout 移動而改變。`tactus init DIR` 建立一個新資料夾（必須不存在或
+是空的），內含 `pyproject.toml`（`name` 取自資料夾名稱、`requires-python` 複製自*正在執行*的
+Tactus 自己的 metadata、`dependencies = ["tactus"]`、`[tool.uv.sources]` 釘住一個 Tactus 來源）與
+`.gitignore`（`runs/`、`.venv/`、`__pycache__/`），然後執行 `uv lock`。它不寫 `song.py`；作品的
+內容仍是 Agent 的。來源預設是正在執行的 Tactus 自己的來源，讀自它自己的 PEP 610
+`direct_url.json`（與 `package_sources` 共用同一份解析邏輯）：Git 安裝就用同一個 URL 與
+commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`，但只在該 checkout
+乾淨且 `HEAD` 已經在 remote 上時才允許，否則 `init` 會失敗並提示先 push 或改用
+`--tactus-path`。`--tactus-path PATH` 明確釘住一個 editable 本地路徑；`--tactus URL@REV` 明確釘
+住一個來源。之後在作品內以 `uv run tactus run song.py --out DIR` 執行，receipt 的
+`dependency_lock` 就是作品自己的 `uv.lock`（同時鎖住 Tactus 與其他每個套件）；`uv add PACKAGE`
+只替該作品加套件。沒有 `pyproject.toml` 的舊作品維持原本的執行方式，不會被拒絕。
+
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
 Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
