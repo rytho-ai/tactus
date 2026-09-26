@@ -137,6 +137,17 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   plugin-discovery task on the trimmed skill passed (correct scales, levels on target). See the
   [discovery probe](thoughts/2026-09-25-plugin-discovery-probe.md).
 
+- **Stage reuse for parameter candidates** (`4df3d25`) — completes transactional audition:
+  `@stage` plus `tactus run --reuse` reuses a stage whose source, dependencies, runtime and
+  arguments are unchanged, re-checking its tools and replaying its inputs into the receipt
+  (`stages`, `reuse`; receipt `format_version` 3). The value is controlled comparison, not
+  speed: with reuse, 3/3 fresh Agents delivered a bass-only candidate with every other stem
+  byte-identical, versus 0/3 without, where the OB-Xf pad re-rolled; costs were equal. A
+  one-parameter candidate on dogfood 3 took 2.6 s instead of 20.1 s. See the
+  [plan](plans/2026-09-26-stage-reuse.md), the
+  [necessity probe](thoughts/2026-09-26-fast-audition-necessity.md) and the
+  [Agent probe](thoughts/2026-09-26-stage-reuse-probe.md).
+
 ## 🚧 In progress
 
 None.
@@ -157,15 +168,12 @@ None scheduled; decide the next design question with Paul.
   found 23–775 such samples. Deferred by Paul on 2026-09-25. The corrected Limiter wording in the
   skill is also untested. Trigger: an Agent ships audible clipping that the report missed. See
   the [levels probe](thoughts/2026-09-25-levels-and-midi-probe.md).
-- **Fast candidate audition (transactional audition's remaining part)** — reusing unchanged
-  stages across parameter candidates. The rest of transactional audition is in place (candidates
-  never touch source, isolated runs, Git keeping with a base check). Measured on 2026-09-26: render
-  waiting was 1–10% of real Agent sessions, and a synthetic 2:30 work takes 14.3 s at 32 tracks
-  and 28.5 s at 64 (reuse would cut a one-parameter candidate to about 1.8 s), so it is not needed
-  yet. Stateful region-only computation (checkpoints) comes after it. Trigger: render waiting at
-  or above 30% of a real session, or a candidate over 60 s. See the
-  [necessity probe](thoughts/2026-09-26-fast-audition-necessity.md) and the
-  [original design](thoughts/2026-09-23-transactional-audition.md).
+- **Region-only computation (stateful checkpoints)** — after stage reuse, computing only the
+  auditioned region with correct state is the remaining audition speedup. The 2026-09-21 probe
+  proved checkpoints sample-exact but found they lose on a single audition and when every edit
+  invalidates them; render waiting is 1–10% of real sessions. Trigger: a changed stage itself
+  takes over 60 s on a long work. See the
+  [necessity probe](thoughts/2026-09-26-fast-audition-necessity.md).
 - **Latency compensation on a real VST3 effect** — `process_automated` shifts out reported
   latency, but it was verified only with a stub chain. Trigger: a latency-reporting VST3 effect
   is available or a work needs one.
