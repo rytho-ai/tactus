@@ -148,6 +148,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [necessity probe](thoughts/2026-09-26-fast-audition-necessity.md) and the
   [Agent probe](thoughts/2026-09-26-stage-reuse-probe.md).
 
+- **Rebuilding a work elsewhere (A7)** (`16de3c4`) — receipts (`format_version` 4) record the
+  running `environment` (prefix and its project's `uv.lock`) and `package_sources` (VCS commit, or
+  an editable directory's Git commit and dirty state), which were missing for works outside the
+  repo. Acceptance: a fresh Agent rebuilt the approved dogfood 3 work in a new directory from
+  its receipt alone; every deterministic stem matched byte for byte, and the OB-Xf pad was
+  within 0.7 dB. See the [plan](plans/2026-09-26-environment-attribution.md) and the
+  [acceptance](thoughts/2026-09-26-rebuild-elsewhere.md).
+
 ## 🚧 In progress
 
 None.
