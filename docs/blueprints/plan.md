@@ -156,13 +156,24 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   within 0.7 dB. See the [plan](plans/2026-09-26-environment-attribution.md) and the
   [acceptance](thoughts/2026-09-26-rebuild-elsewhere.md).
 
+- **Every work is a uv project** (`efa37e9`, `8953e90`) — `tactus init DIR` scaffolds a work with
+  its own `pyproject.toml` pinning Tactus (running install's origin, `--tactus-path`, or
+  `--tactus URL@REV`), Tactus's `requires-python` (uv did not enforce `<3.13` transitively and
+  built a 3.13 env where Pedalboard crashes), a `.gitignore`, a `uv.lock` and a Git repository.
+  Works then run and `uv add` packages inside their own environment. Two fresh Agents created
+  and rendered a work with an extra package from the skill alone. See the
+  [plan](plans/2026-09-26-work-as-uv-project.md) and the
+  [probe](thoughts/2026-09-26-work-as-uv-project-probe.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-None scheduled; decide the next design question with Paul.
+- **Temporal abstraction (A1)** — step 1 is a necessity probe on timing that is easy to get wrong
+  (tempo ramp, mixed meter with swing, free-time intro), with helpers vs plain Python; nothing
+  ships unless it passes. See the [plan](plans/2026-09-26-temporal-abstraction.md).
 
 ## ⏸ Future — evidence-gated
 
@@ -185,9 +196,6 @@ None scheduled; decide the next design question with Paul.
 - **Latency compensation on a real VST3 effect** — `process_automated` shifts out reported
   latency, but it was verified only with a stub chain. Trigger: a latency-reporting VST3 effect
   is available or a work needs one.
-- **Temporal helpers (A1)** — time maths was repeated in Agent code (four functions in one
-  trial), but no probe or dogfood produced a timing error. Trigger: a work with tempo changes or
-  a real conversion error.
 - **Commercial VST and broader host compatibility** — no confirmed licensed commercial VST
   is available on this machine; test the actual target plugin when one is available. Dynamic
   latency, complex routing, crash isolation and external sidechain remain open. See
