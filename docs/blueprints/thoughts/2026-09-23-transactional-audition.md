@@ -3,6 +3,12 @@
 > 2026-09-23 · Working design decision. The Agent may audition temporary candidates without
 > changing the authoritative production code; only an accepted candidate becomes a source edit.
 > The formal Tactus runtime has not implemented or validated this contract yet.
+>
+> **Status (2026-09-26):** implemented in a different form. Candidates are `--params` runs, and
+> keeping a version is Git plus the skill's base check; the guarded promotion API (`tactus accept`)
+> was built, found unnecessary and deleted. Reuse of unchanged work is `@stage` with `--reuse`.
+> Region-only stateful computation is deferred. See `2026-09-26-stage-reuse-probe.md`,
+> `2026-09-26-fast-audition-necessity.md` and `2026-09-26-delete-tactus-accept.md`.
 
 ## The call
 

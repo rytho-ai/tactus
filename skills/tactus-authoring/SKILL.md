@@ -141,9 +141,9 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
 Mark a main stage — a module-level function `render` calls — with `@stage` from `tactus`.
 Run candidates with `tactus run song.py --out DIR --reuse` (or `run(..., reuse=True)`): a
 stage call whose source, dependencies and arguments all match a prior call returns that
-call's exact result, including a nondeterministic instrument's performance (OB-Xf,
-`extreme_stretch`) — that is the point, so a part already approved does not re-roll while
-you audition a different parameter. Without `--reuse`, `@stage` is a plain call.
+call's exact result, including a performance that would otherwise change between runs
+(OB-Xf) — that is the point, so a part already approved does not re-roll while you audition
+a different parameter. Without `--reuse`, `@stage` is a plain call.
 
 A call is not reusable when any argument, or the return value, is something other than a
 NumPy array, `None`, a bool/int/float/str/bytes, a `Path`, or a list/tuple/dict of these — a
@@ -179,10 +179,11 @@ environment variable keeps its old result when that input changes, so read input
   `(frames, channels)`; only a direct instrument call (`plugin(messages, ...)`) returns
   `(channels, frames)`.
 - **Renders that change between runs.** Some VST3 instruments (OB-Xf, for one) render slightly
-  different audio on every run, and `pytimestretch.extreme_stretch` is random with a
-  per-process seed, so its result changes when calls are added before it or reordered. A
-  re-render's hashes then do not match, even with unchanged source: archive approved audio,
-  and pin a result you want to keep as a material.
+  different audio on every run; a re-render's hashes then do not match, even with unchanged
+  source. `pytimestretch.extreme_stretch` is different: each run repeats the same result
+  while the `extreme_stretch` calls before it stay the same, and changes when one is added,
+  removed or moved. Keep an approved part with `@stage` and `--reuse`, or pin it as a
+  material; archive approved audio.
 - **Clipping the report cannot see.** `clipped_samples` counts only what the work returns
   outside ±1. Audio already clipped inside the work, by `np.clip` or by Pedalboard's `Limiter`
   (a loudness maximizer that hard-clips at 0 dBFS), reports 0.
