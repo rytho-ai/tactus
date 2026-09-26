@@ -7,12 +7,20 @@ publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
 `levels` mirrors the same numbers so the Agent sees them without opening the manifest.
 Nothing about level is refused — over-full-scale audio publishes clipped. Receipts
 attribute the bounded execution, including resolved input materials, declared tools and
-imported package versions (`tactus.inputs`). To hear part of a run, or only some of its
-outputs, slice an already completed run with `tactus.excerpt` instead of re-rendering — a
-work whose render is nondeterministic (e.g. a VST3 instrument) would otherwise produce a
-different performance.
+imported package versions (`tactus.inputs`) (receipt `format_version` 3, adding `stages`
+and `reuse`). To hear part of a run, or only some of its outputs, slice an already
+completed run with `tactus.excerpt` instead of re-rendering — a work whose render is
+nondeterministic (e.g. a VST3 instrument) would otherwise produce a different
+performance.
+
+With `reuse=True` (CLI `--reuse`), `_execute` computes this run's stage key parts once
+from data it already gathers (`source_files`, `dependency_lock`, the Python and Tactus
+versions) and hands them to `stage.py` before calling `render`, so `@stage`-marked
+functions can reuse an unchanged prior call's result; see `stage.py` for the key and
+storage. Without `--reuse`, `@stage` is a transparent call and this costs nothing.
 
 Reads: inputs.MaterialError/ToolError/_record_snapshot/_reset_record · store.OutputStore
+· stage._begin_run/_end_run
 """
 
 from __future__ import annotations
@@ -35,7 +43,7 @@ from typing import Any
 
 import numpy as np
 
-from . import revision
+from . import revision, stage
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .store import OutputStore, validate_name
 
@@ -133,12 +141,16 @@ def run(
     *,
     out: str | Path,
     params: dict[str, Any] | None = None,
+    reuse: bool = False,
 ) -> dict[str, Any]:
     """Execute source's render(**params), returning paths to a completed new run.
 
     Relative assets/imports resolve from the source directory. Overrides leave
     source unchanged. Child diagnostics go to stderr; this function prints no
     result. Arbitrary author code is trusted, not sandboxed.
+
+    `reuse=True` lets `@stage`-marked functions reuse an unchanged prior call's result
+    (see `stage.py`); without it, `@stage` is a transparent call.
     """
     try:
         source = Path(source).resolve()
@@ -172,6 +184,7 @@ def run(
                     "source": str(source),
                     "out": str(out),
                     "params": params,
+                    "reuse": bool(reuse),
                 },
             )
             # Load this installed Tactus before adding the author's import directory.
@@ -347,6 +360,14 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         before = _inventory(source.parent, out)
         git = revision.record(source.parent, out)
         _reset_record()
+        reuse = bool(request.get("reuse", False))
+        stage._begin_run(
+            reuse=reuse,
+            source_files=before["source_files"],
+            dependency_lock=before["dependency_lock"],
+            python_version=sys.version.split()[0],
+            tactus_version=version("tactus"),
+        )
         sys.path.insert(0, str(source.parent))
         namespace = runpy.run_path(str(source), run_name="__tactus__")
         phase = "bind"
@@ -356,6 +377,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
         result = factory(**arguments)
         elapsed_seconds = round(time.perf_counter() - started, 3)
+        stages = stage._end_run()
         inputs_used = _record_snapshot()
         python_packages = _python_packages()
         phase = "validate"
@@ -375,7 +397,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         identity = {"kind": "tactus.functional-run"}
         receipt = {
             **identity,
-            "format_version": 2,
+            "format_version": 3,
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
             **before,
@@ -384,6 +406,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "tools": inputs_used["tools"],
             "python_packages": python_packages,
             "elapsed_seconds": elapsed_seconds,
+            "stages": stages,
+            "reuse": reuse,
             "runtime": {
                 "python": sys.version.split()[0],
                 **{name: version(name) for name in ("tactus", "numpy", "soundfile")},

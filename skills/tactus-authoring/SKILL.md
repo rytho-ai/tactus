@@ -136,6 +136,25 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   `mido` (MIDI files, for example for `sfizz_render --midi`). Their own documentation is the
   reference for using them.
 
+### Reusing unchanged stages
+
+Mark a main stage — a module-level function `render` calls — with `@stage` from `tactus`.
+Run candidates with `tactus run song.py --out DIR --reuse` (or `run(..., reuse=True)`): a
+stage call whose source, dependencies and arguments all match a prior call returns that
+call's exact result, including a nondeterministic instrument's performance (OB-Xf,
+`extreme_stretch`) — that is the point, so a part already approved does not re-roll while
+you audition a different parameter. Without `--reuse`, `@stage` is a plain call.
+
+A call is not reusable when any argument, or the return value, is something other than a
+NumPy array, `None`, a bool/int/float/str/bytes, a `Path`, or a list/tuple/dict of these — a
+random `Generator`, a plugin object, a callable. It then runs normally and the receipt's
+`stages` entry says why. Editing any `.py` file under the entry directory recomputes every
+stage on the next run; only unchanged source lets a changed parameter reuse the stages it
+did not touch. The key sees only `.py` source, arguments, dependencies and the tools a stage
+resolved: a stage that reads any other file directly (not through `material()`) or an
+environment variable keeps its old result when that input changes, so read inputs through
+`material()`.
+
 ### Helpers (`from tactus import fx`)
 
 - `fx.describe(plugin, contains=None)` and `fx.format_table(rows)`: each parameter's current
@@ -190,7 +209,7 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
   manifest).
 - A `source_frames` entry on each output: that output's length in the source run.
 
-`receipt.json` (`format_version` 2) attributes the run:
+`receipt.json` (`format_version` 3) attributes the run:
 
 - `entry`, `parameters`: effective values, defaults included.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory, including scratch
@@ -203,6 +222,10 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256, kind}` for each declared tool; `kind` is `"file"` or `"tree"`.
 - `python_packages`: each imported distribution name and its version.
+- `stages`: one entry per `@stage` call, in call order: `name`, `key`, `reused`, `seconds` and
+  `reason`. `key` is null when the call was not reusable. `reason` is null on an ordinary hit
+  or miss, and otherwise says why a call was not reusable or its result was not cached.
+- `reuse`: whether this run was started with `--reuse`.
 - `runtime`, `reproducibility`, `attribution_scope`.
 
 A receipt guarantees the saved outputs, not that re-running the source reproduces them. Say an

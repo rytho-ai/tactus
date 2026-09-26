@@ -41,6 +41,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_command.add_argument("source", type=Path, help="Python file defining render(*, ...)")
     run_command.add_argument("--out", required=True, type=Path, help="New run directory")
     run_command.add_argument("--params", default="{}", help="JSON object of parameter overrides")
+    run_command.add_argument(
+        "--reuse",
+        action="store_true",
+        help="Reuse unchanged @stage results from prior runs on unchanged source",
+    )
     excerpt_command = commands.add_parser(
         "excerpt", help="Slice an existing run's outputs into a new run directory"
     )
@@ -61,7 +66,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
-            result = run(args.source, out=args.out, params=parse_params(args.params))
+            result = run(
+                args.source, out=args.out, params=parse_params(args.params), reuse=args.reuse
+            )
             print(json.dumps(result, sort_keys=True))
             return 0
         if args.command == "excerpt":

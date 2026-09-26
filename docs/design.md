@@ -60,7 +60,7 @@ Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照�
 
 第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕；可處理的執行失敗會清除該次新建的輸出。
 
-Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 2）保存以下內容：
+Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 3）保存以下內容：
 - 實際參數（含預設值）
 - entry 目錄下 Python source 的 hash
 - 從 entry 目錄往上找到的最近一個 `uv.lock` 的路徑與 hash
@@ -68,16 +68,20 @@ Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 h
 - 宣告的 tools
 - 實際 import 的第三方套件版本
 - Python／Tactus／NumPy／SoundFile 版本
+- `stages`：每次 `@stage` 呼叫一筆，依呼叫順序記錄 `{name, key, reused, seconds, reason}`
+- `reuse`：這次執行是否要求 `--reuse`
 
 執行中觀察到 source 或該 lock 改變時會失敗。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性仍不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
+
+**Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都视為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
 Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
 
 已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
-先確保完整執行與 replay 正確；selective caching、checkpoint 與更豐富的 graph metadata 等實際 consumer 證明需求後再加入。Graph 可以支援執行與檢查，但目前沒有把它擴張成全曲創作模型的計畫。
+選擇性重用（`@stage`／`--reuse`，見上）已針對「一次改一個參數、其餘不重算」這個實測需求交付；checkpoint、region-only 計算與跨機器共用 cache 仍等實際 consumer 證明需求後再加入。Graph 可以支援執行與檢查，但目前沒有把它擴張成全曲創作模型的計畫。
 
-**尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍，以及安全重用計算所需的 dependency tracking。不能從素材 hash 相同推定所有重新執行都可重現。
+**尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
 ## 套件與工具邊界：直接採用既有能力
 

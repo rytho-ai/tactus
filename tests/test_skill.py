@@ -61,6 +61,34 @@ def test_skill_names_every_excerpt_manifest_field(tmp_path, monkeypatch):
     assert "`tactus excerpt" in text
 
 
+STAGE_SOURCE = """\
+import numpy as np
+from tactus import stage
+
+@stage
+def tone(*, gain: float = 0.5):
+    return np.full(8, gain)
+
+def render(*, gain: float = 0.5):
+    return {"sample_rate": 8000, "outputs": {"tone": tone(gain=gain)}}
+"""
+
+
+def test_skill_names_every_stage_field(tmp_path, monkeypatch):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    entry = tmp_path / "work" / "song.py"
+    entry.parent.mkdir()
+    entry.write_text(STAGE_SOURCE, encoding="utf-8")
+    result = run(entry, out=tmp_path / "out", reuse=True)
+    text = SKILL.read_text(encoding="utf-8")
+    receipt = json.loads(Path(result["receipt"]).read_text())
+    [stage_entry] = receipt["stages"]
+    missing_stage = _missing_keys(stage_entry, text)
+    assert not missing_stage, f"SKILL.md does not document stage fields: {missing_stage}"
+    assert "`--reuse`" in text
+    assert "@stage" in text
+
+
 def test_skill_names_every_error_phase():
     text = SKILL.read_text(encoding="utf-8")
     phases = {"request", "load", "bind", "execute", "validate", "publish"}

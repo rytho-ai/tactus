@@ -57,7 +57,7 @@ def render():
     )
     result = run(entry, out=tmp_path / "out")
     receipt = read(result["receipt"])
-    assert receipt["format_version"] == 2
+    assert receipt["format_version"] == 3
     assert receipt["materials"] == [
         {"ref": f"sha256:{first_digest}"},
         {"ref": f"sha256:{second_digest}"},

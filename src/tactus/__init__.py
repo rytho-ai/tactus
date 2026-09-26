@@ -4,6 +4,7 @@ from . import fx
 from .excerpt import excerpt
 from .inputs import MaterialError, ToolError, material, tool
 from .run import RunError, run
+from .stage import stage
 from .store import AudioRef
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "fx",
     "material",
     "run",
+    "stage",
     "tool",
 ]
