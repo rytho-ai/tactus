@@ -60,14 +60,22 @@ Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照�
 
 第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕；可處理的執行失敗會清除該次新建的輸出。
 
-Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 3）保存以下內容：
+Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 4）保存以下內容：
 - 實際參數（含預設值）
 - entry 目錄下 Python source 的 hash
-- 從 entry 目錄往上找到的最近一個 `uv.lock` 的路徑與 hash
+- 從 entry 目錄往上找到的最近一個 `uv.lock` 的路徑與 hash（`dependency_lock`）
 - 解析過的素材 refs
 - 宣告的 tools
 - 實際 import 的第三方套件版本
 - Python／Tactus／NumPy／SoundFile 版本
+- `environment`：實際執行的 interpreter，`{prefix, lock}`——`prefix` 是 `sys.prefix`，`lock` 是該
+  environment 所屬 project（`.venv` prefix 的上一層目錄）裡 `uv.lock` 的 `{path, sha256}`，沒有則為
+  null。作品通常在 Tactus checkout 之外以 `uv run --project <tactus>` 執行，這時 `dependency_lock`
+  是 null，`environment.lock` 才指到實際鎖定 Tactus 本身版本的 lock。
+- `package_sources`：`python_packages` 裡每個非 index 安裝的套件，依其安裝 metadata（PEP 610
+  `direct_url.json`）記錄來源——VCS 安裝為 `{url, vcs, commit}`；目錄安裝（例如 editable 的 Tactus
+  本身）為 `{url, editable}`，若該目錄同時是 Git checkout 再加上 `git: {commit, dirty}`（沿用
+  `revision.py` 讀 Git 的方式）；封存安裝為 `{url, hash}`。Index 安裝（版本已被 lock 釘住）省略。
 - `stages`：每次 `@stage` 呼叫一筆，依呼叫順序記錄 `{name, key, reused, seconds, reason}`
 - `reuse`：這次執行是否要求 `--reuse`
 

@@ -7,8 +7,10 @@ publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
 `levels` mirrors the same numbers so the Agent sees them without opening the manifest.
 Nothing about level is refused — over-full-scale audio publishes clipped. Receipts
 attribute the bounded execution, including resolved input materials, declared tools and
-imported package versions (`tactus.inputs`) (receipt `format_version` 3, adding `stages`
-and `reuse`). To hear part of a run, or only some of its outputs, slice an already
+imported package versions (`tactus.inputs`) (receipt `format_version` 4, adding `stages`,
+`reuse`, `environment` and `package_sources` — the interpreter's project lock and each
+non-index distribution's PEP 610 origin, so a work can be rebuilt in another directory).
+To hear part of a run, or only some of its outputs, slice an already
 completed run with `tactus.excerpt` instead of re-rendering — a work whose render is
 nondeterministic (e.g. a VST3 instrument) would otherwise produce a different
 performance.
@@ -37,9 +39,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from importlib.metadata import PackageNotFoundError, packages_distributions, version
+from importlib.metadata import PackageNotFoundError, distribution, packages_distributions, version
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import numpy as np
 
@@ -298,13 +302,63 @@ def _python_packages() -> dict[str, str]:
         top = name.split(".", 1)[0]
         if top in stdlib:
             continue
-        for distribution in mapping.get(top, ()):
-            if distribution in result:
+        for dist_name in mapping.get(top, ()):
+            if dist_name in result:
                 continue
             try:
-                result[distribution] = version(distribution)
+                result[dist_name] = version(dist_name)
             except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
                 pass
+    return dict(sorted(result.items()))
+
+
+def _environment() -> dict[str, Any]:
+    """The running interpreter's prefix and, when it owns a project, that project's lock."""
+    prefix = Path(sys.prefix)
+    candidate = prefix.parent / "uv.lock"
+    lock = (
+        {"path": str(candidate), "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
+        if candidate.is_file()
+        else None
+    )
+    return {"prefix": str(prefix), "lock": lock}
+
+
+def _package_sources(names: list[str]) -> dict[str, Any]:
+    """PEP 610 origin of each named distribution not installed from an index.
+
+    Reads each distribution's `direct_url.json`; a distribution with none (an index
+    install) is omitted, since the lock already pins it.
+    """
+    result: dict[str, Any] = {}
+    for name in names:
+        try:
+            raw = distribution(name).read_text("direct_url.json")
+        except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
+            continue
+        if raw is None:
+            continue
+        data = json.loads(raw)
+        url = data.get("url", "")
+        vcs_info = data.get("vcs_info")
+        dir_info = data.get("dir_info")
+        archive_info = data.get("archive_info")
+        if vcs_info:
+            result[name] = {
+                "url": url,
+                "vcs": vcs_info.get("vcs"),
+                "commit": vcs_info.get("commit_id"),
+            }
+        elif dir_info:
+            entry: dict[str, Any] = {"url": url, "editable": bool(dir_info.get("editable", False))}
+            parsed = urlparse(url)
+            if parsed.scheme == "file":
+                git = revision.describe(Path(url2pathname(parsed.path)))
+                if git is not None:
+                    entry["git"] = git
+            result[name] = entry
+        elif archive_info and archive_info.get("hash"):
+            result[name] = {"url": url, "hash": archive_info["hash"]}
     return dict(sorted(result.items()))
 
 
@@ -380,6 +434,10 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         stages = stage._end_run()
         inputs_used = _record_snapshot()
         python_packages = _python_packages()
+        environment = _environment()
+        # Tactus itself is always attributed even though `packages_distributions()`
+        # does not map its own editable install back to `tactus.*` modules.
+        package_sources = _package_sources(sorted({*python_packages, "tactus"}))
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
@@ -397,7 +455,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         identity = {"kind": "tactus.functional-run"}
         receipt = {
             **identity,
-            "format_version": 3,
+            "format_version": 4,
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
             **before,
@@ -405,6 +463,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "materials": inputs_used["materials"],
             "tools": inputs_used["tools"],
             "python_packages": python_packages,
+            "environment": environment,
+            "package_sources": package_sources,
             "elapsed_seconds": elapsed_seconds,
             "stages": stages,
             "reuse": reuse,

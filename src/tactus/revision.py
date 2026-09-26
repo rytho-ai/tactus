@@ -6,7 +6,9 @@ repository, a git failure, or a timeout — yields `None` rather than raising, s
 never fails because of Git. When the entry directory has tracked changes or untracked
 `.py` files, one `source.patch` saved alongside the run holds the diff against `HEAD`
 plus each untracked file as a new-file diff, so `git apply` of `patch` on `commit`
-restores the exact executed source.
+restores the exact executed source. `describe` is the same read-only Git reading for any
+other directory a receipt attributes (an editable install's directory, for
+`package_sources`): just `{commit, dirty}`, no patch.
 
 Reads: nothing else in tactus; invoked by run.py at inventory time.
 """
@@ -88,3 +90,19 @@ def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
         (out / "source.patch").write_text("".join(parts), encoding="utf-8")
         result["patch"] = "source.patch"
     return result
+
+
+def describe(directory: Path) -> dict[str, Any] | None:
+    """Read-only `{commit, dirty}` for `directory`'s Git checkout, or None outside one.
+
+    Unlike `record`, this attributes an arbitrary directory (not necessarily the run's
+    entry directory) and never writes a patch file.
+    """
+    head = _git(["rev-parse", "HEAD"], directory)
+    if head is None or head.returncode != 0:
+        return None
+    status = _git(["status", "--porcelain"], directory)
+    if status is None or status.returncode != 0:
+        return None
+    dirty = any(line and not line.startswith("??") for line in status.stdout.splitlines())
+    return {"commit": head.stdout.strip(), "dirty": dirty}

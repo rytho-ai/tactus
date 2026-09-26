@@ -210,7 +210,7 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
   manifest).
 - A `source_frames` entry on each output: that output's length in the source run.
 
-`receipt.json` (`format_version` 3) attributes the run:
+`receipt.json` (`format_version` 4) attributes the run:
 
 - `entry`, `parameters`: effective values, defaults included.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory, including scratch
@@ -223,6 +223,16 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256, kind}` for each declared tool; `kind` is `"file"` or `"tree"`.
 - `python_packages`: each imported distribution name and its version.
+- `environment`: the interpreter that ran this, since a work usually runs with
+  `uv run --project <tactus>` from outside that checkout, so `dependency_lock` above is
+  usually null. `prefix` is the interpreter's `sys.prefix`; `lock` is `{path, sha256}` of the
+  `uv.lock` in the project that owns that environment (a `.venv` prefix's parent directory),
+  or null.
+- `package_sources`: for every `python_packages` distribution not installed from an index
+  (the lock already pins those), what its install metadata says it came from: `{url, vcs,
+  commit}` for a VCS install; `{url, editable}` plus `git: {commit, dirty}` when it is also a
+  local Git checkout, for a directory install (an editable Tactus checkout looks like this);
+  `{url, hash}` for an archive.
 - `stages`: one entry per `@stage` call, in call order: `name`, `key`, `reused`, `seconds` and
   `reason`. `key` is null when the call was not reusable. `reason` is null on an ordinary hit
   or miss, and otherwise says why a call was not reusable or its result was not cached.
@@ -231,6 +241,13 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 
 A receipt guarantees the saved outputs, not that re-running the source reproduces them. Say an
 old version can be reproduced only after you re-render it and every output hash matches.
+
+**Rebuilding a receipt's run elsewhere:** check out `git.commit` and apply `source.patch` if
+present; for each `package_sources` entry with a `commit`, check out that revision of the
+named distribution (for Tactus itself, `environment.lock` names the `uv.lock` to
+`uv sync --frozen` against — its hash must match); restore each `materials` ref into the pool
+(`tactus material add`); run with the recorded `parameters`. A plugin that renders
+differently each run (see below) will not match by hash even after an exact rebuild.
 
 Errors print `{"status": "error", "error": {code, phase, message}}`. `phase` is one of
 `request`, `load`, `bind`, `execute`, `validate`, or `publish`. The exit code is 2 for
