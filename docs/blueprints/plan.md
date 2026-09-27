@@ -190,7 +190,14 @@ None.
 
 ## ▶ Next
 
-None. Candidates awaiting Paul: Pattern helpers (C1) and unified basic audio analysis.
+- **Unified basic audio analysis** — a three-arm probe (2026-09-27) found Agents without tools
+  made 71 errors (all in onset detection; each invented its own detector and believed it)
+  at about 230k tokens, while CLI and function arms made 0 at about 100k. CLI and functions tied,
+  so one implementation with two doors (functions and a `tactus analyze` command), reporting
+  values, not verdicts: onsets, LUFS / true peak / sample peak / RMS, flat-top runs, DC,
+  stereo correlation, digital-silence runs, length. Before integrating, validate onsets on real
+  recordings. Next: a grounded plan. See the [probe](thoughts/2026-09-27-audio-analysis-probe.md).
+- Other candidate awaiting Paul: Pattern helpers (C1).
 
 ## ⏸ Future — evidence-gated
 
