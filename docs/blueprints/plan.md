@@ -190,13 +190,23 @@ None.
 
 ## ▶ Next
 
-- **Unified basic audio analysis** — a three-arm probe (2026-09-27) found Agents without tools
-  made 71 errors (all in onset detection; each invented its own detector and believed it)
-  at about 230k tokens, while CLI and function arms made 0 at about 100k. CLI and functions tied,
-  so one implementation with two doors (functions and a `tactus analyze` command), reporting
-  values, not verdicts: onsets, LUFS / true peak / sample peak / RMS, flat-top runs, DC,
-  stereo correlation, digital-silence runs, length. Before integrating, validate onsets on real
-  recordings. Next: a grounded plan. See the [probe](thoughts/2026-09-27-audio-analysis-probe.md).
+- **Unified basic audio analysis (pending, parked by Paul 2026-09-27)** — a three-arm probe found
+  Agents with only the installed libraries (pyloudnorm, librosa, scipy — all three used them)
+  made 71 errors, all in onset detection, at about 230k tokens; CLI and function arms made 0
+  at about 100k. CLI and functions tied: one implementation, two doors (functions and a
+  `tactus analyze` command), reporting values, not verdicts. Three parts, when resumed:
+  1. Loudness, peaks and file health (LUFS, true peak, sample peak, RMS, flat-top runs, DC,
+     stereo correlation, digital-silence runs, length): ready for a plan. Flat-top counts could
+     also go into `tactus run`'s `levels`, closing the full-scale item in Future.
+  2. Onsets: the only accuracy gap, but the prototype detector was tuned on the two test loops.
+     Validate on unseen material (real recordings plus new loops, hand-annotated) against
+     librosa first; ship only if it still clearly wins.
+  3. Beat tracking (tempo, beats, downbeat, tempo changes): Paul flagged it as essential for a
+     DAW (warp, slicing, aligning loops); not yet tested. Annotate material, compare librosa with
+     dedicated trackers (check licence and install), then a two-arm Agent probe. The output
+     would be a beat grid pinned as a material, per the frozen-analysis rule.
+  Key, chords and structure stay out of scope. See the
+  [probe](thoughts/2026-09-27-audio-analysis-probe.md).
 - Other candidate awaiting Paul: Pattern helpers (C1).
 
 ## ⏸ Future — evidence-gated

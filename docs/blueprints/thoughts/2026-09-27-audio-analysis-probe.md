@@ -70,3 +70,13 @@
 - 檔案健康：平頂削波、DC、左右聲道相關性、數位靜音斷點、長度。
 
 形式是一份實作、兩個門：Python 函式，以及 `tactus analyze FILE|RUN_DIR`。只回報數值，不下判定。另外要考慮讓 `tactus run` 的 `levels` 順便報平頂樣本數，這也能解掉看板 Future 的「回報平貼在滿刻度的樣本」。放在哪個模組、要不要自動附在 run 結果裡，寫 plan 時再決定，並先用真實素材驗證起音偵測。
+
+## 後續討論（同日）
+
+- **沒工具組確實用了現成套件。**三個 Agent 都用 pyloudnorm 量響度、`resample_poly` 量 true peak、librosa 做起音偵測
+  （N2 在 `analyze_onsets.py` 直接呼叫 `librosa.onset`，N1、N3 另外跑、把結果寫死在 `song.py`）。
+  所以這次比較的是「只有 skill 列出的現成套件」對「加上統一分析工具」。
+- **起音偵測的優勢可能被高估。**原型偵測器是對著這兩段測試 loop 調出來的，要先用沒見過的素材驗證。
+- **拍點偵測要納入範圍。**Paul：「但拍點偵測很重要欸對 daw 來說」。它是 warp、切片、對齊 loop 的地基，
+  不同於調性、和弦這類詮釋，但這次沒測，要另外證明。
+- Paul 決定先 pending，記在看板的 Next。
