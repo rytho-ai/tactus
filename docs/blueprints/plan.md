@@ -209,14 +209,22 @@ None.
 
 ## ▶ Next
 
-- **Unified basic audio analysis (part 1 shipped; frequency next)** — a three-arm probe found
+- **Unified basic audio analysis (loudness shipped; frequency proven useful, validating)** — a three-arm probe found
   Agents with only the installed libraries (pyloudnorm, librosa, scipy — all three used them)
   made 71 errors, all in onset detection, at about 230k tokens; CLI and function arms made 0
   at about 100k. CLI and functions tied: one implementation, two doors (functions and a
   `tactus analyze` command), reporting values, not verdicts. Three parts, when resumed:
   1. Loudness and peaks: **shipped** as `tactus.analysis` and `tactus analyze` (see Shipped).
      Paul narrowed analysis to loudness and frequency; DC, correlation and dropout checks are
-     dropped. Frequency measurements come next, after a necessity probe. Flat-top counts could
+     dropped.
+  1b. Frequency (spectrum, STFT, bands, centroid, peaks, fundamental): two probes. With exact
+     definitions in the brief, no difference; asked like a producer with no definitions, a shared
+     CLI gave 0 errors vs 3 (a bass octave error from `librosa.pyin`, a resonance miss) and
+     identical numbers across Agents, while Agents without it agreed with each other but differed
+     from the tool by ~11 dB (band reference) and ~0.5 s (amplitude- vs power-weighted centroid).
+     Next: fix the prototype's `f0_over_time` bug, validate fundamental and peaks on unseen
+     material, then integrate into `tactus.analysis` / `tactus analyze` with documented
+     definitions. See the [probes](thoughts/2026-09-27-frequency-analysis-probes.md). Flat-top counts could
      also go into `tactus run`'s `levels`, closing the full-scale item in Future.
   2. Onsets: **failed validation, not shipped.** On 9 unseen loops built from real one-shots the
      prototype scored F1 0.12 at 2 ms (librosa tuned 0.27, at 10 ms 0.76); it had overfit the two
