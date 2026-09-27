@@ -210,13 +210,21 @@ None.
 
 ## ⏸ Future — evidence-gated
 
-- **Pattern helpers (C1), closed 2026-09-27** — a two-arm probe with a multi-part piece, layered
+- **Pattern helpers (C1), closed 2026-09-27, re-probed the same day** — a two-arm probe with a multi-part piece, layered
   periodic rules and two revision rounds found no gain: 0 errors in both arms, the Pattern arm
   used 5% more tokens and changed about as many lines per revision (74 vs 76); only final source
   was shorter (139 vs 195 lines). Plain Python with `tactus.timing` expresses Euclidean,
   rotation, every-n, cross-bar cycles and seeded probability. Trigger: repeated, divergent
   pattern code in a real production, or a situation the probe did not test (much longer works,
   hand-offs). See the [probe](thoughts/2026-09-27-pattern-helpers-probe.md).
+  A second probe with idioms Agents already know (a NumPy grid and a Tidal/Strudel-style
+  mini-notation, both our own, no packages) and Tidal-worded briefs over five live-coding rounds
+  met the pre-registered bar narrowly: plain Python made 2 errors (one Agent reversed Tidal's
+  rotation direction once), both idiom arms 0; tokens within 10%, revision lines -16% (Tidal)
+  and +9% (NumPy). The value seen is owning conventions (Bjorklund with Tidal rotation, cycles
+  across bars, extension-stable seeded probability), not a pattern system. Awaiting Paul:
+  a minimal `tactus.timing` addition, a mini-notation, or keep closed. See the
+  [idioms probe](thoughts/2026-09-27-pattern-idioms-probe.md).
 - **License before any public release** — pytimestretch main is GPL-2.0-only (libpaulstretch is
   GPLv2) while pedalboard is GPLv3, and the two cannot be conveyed together; Tactus itself
   declares no license yet. No issue while the repo is private and internal. Preferred fix when a
