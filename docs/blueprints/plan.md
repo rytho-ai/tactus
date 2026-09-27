@@ -171,18 +171,18 @@ None.
 
 ## ▶ Next
 
-None scheduled; decide the next design question with Paul.
+- **`tactus.time` from tclock v3 (A1)** — a three-way design probe (2026-09-27) with common musical
+  transforms (sudden and gradual tempo changes, eased ritardando, swing by section, groove) found
+  v3 best: 0 errors over three rounds, against 7 with no helper (0/1-based beat confusion on a
+  groove kick, repeated every round) and 7 with v2 (approximating tempo shapes it lacked), at
+  similar tokens. Proposed: ship v3's API as an optional module with tests, a short skill
+  section (beats are 0-based), dogfood 3 adoption and a fresh-Agent check. Awaiting Paul. See the
+  [comparison](thoughts/2026-09-27-temporal-design-comparison.md) and the earlier
+  [exact-task](thoughts/2026-09-27-temporal-helpers-necessity-probe.md) and
+  [load](thoughts/2026-09-27-temporal-helpers-load-probe.md) probes.
 
 ## ⏸ Future — evidence-gated
 
-- **Temporal helpers (A1)** — two probes (2026-09-27) found no load reduction: on exact
-  timing tasks and inside a full production with mixed revisions, Agents without helpers made no
-  timing errors and spent 1.04–1.09x the tokens. Agents without helpers rebuilt the same shape
-  (tempo segments, bar-start table, one rounding rule), and helpers made time revisions a
-  two-line edit. Paul asked for the best design next: a v2 closing the gaps the code analysis
-  found (absolute-beat time, off-grid offsets, free spans, local views), compared three ways.
-  See the [exact-task probe](thoughts/2026-09-27-temporal-helpers-necessity-probe.md) and the
-  [load probe](thoughts/2026-09-27-temporal-helpers-load-probe.md).
 - **License before any public release** — pytimestretch main is GPL-2.0-only (libpaulstretch is
   GPLv2) while pedalboard is GPLv3, and the two cannot be conveyed together; Tactus itself
   declares no license yet. No issue while the repo is private and internal. Preferred fix when a
