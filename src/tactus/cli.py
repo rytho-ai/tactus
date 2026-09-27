@@ -4,15 +4,64 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
 
-from .excerpt import excerpt, parse_outputs, parse_range
+import soundfile as sf
+
+from . import analysis
+from .excerpt import excerpt, parse_outputs, parse_range, read_published
 from .init import init
 from .inputs import pool, tree
 from .run import RunError, parse_params, run
+
+
+def _json_safe(value: Any) -> Any:
+    """Non-finite floats become `null`, as the manifest reports digital silence."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+def _measure(path: Path, output: str | None, audio: Any, rate: int) -> dict[str, Any]:
+    result = analysis.analyze(audio, rate)
+    header: dict[str, Any] = {"path": str(path)}
+    if output is not None:
+        header["output"] = output
+    header["sample_rate"] = rate
+    return _json_safe({**header, **result})
+
+
+def _analyze_paths(paths: list[Path]) -> list[dict[str, Any]]:
+    """Measure every path: a WAV file directly, or every output of a run/excerpt directory
+    (read and verified by `read_published`). `tactus.analysis` does the measuring."""
+    results = []
+    for path in paths:
+        if path.is_dir():
+            if not (path / "manifest.json").is_file():
+                raise RunError("invalid_request", "request", f"no manifest.json in {path}")
+            _, rate, outputs, files = read_published(path)
+            for name in sorted(outputs):
+                results.append(_measure(path / files[name], name, outputs[name], rate))
+        elif path.is_file():
+            try:
+                audio, rate = sf.read(str(path), dtype="float64")
+            except Exception as exc:
+                raise RunError(
+                    "invalid_request", "request", f"could not read {path}: {exc}"
+                ) from exc
+            results.append(_measure(path, None, audio, rate))
+        else:
+            raise RunError("invalid_request", "request", f"path does not exist: {path}")
+    return results
 
 
 class _RunParser(argparse.ArgumentParser):
@@ -28,7 +77,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     package_version = version("tactus")
     parser_type = (
         _RunParser
-        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"])
+        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"])
         else argparse.ArgumentParser
     )
     parser = parser_type(
@@ -75,6 +124,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "add", help="Import files into the pool, printing their sha256 refs"
     )
     add_command.add_argument("paths", nargs="+", type=Path, help="Files or folders to import")
+    analyze_command = commands.add_parser(
+        "analyze", help="Measure loudness, peaks and clipping of WAVs, or a run/excerpt output"
+    )
+    analyze_command.add_argument(
+        "paths", nargs="+", type=Path, help="WAV file(s), or run/excerpt directory(-ies)"
+    )
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
@@ -113,6 +168,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             except ValueError as exc:
                 raise RunError("invalid_request", "request", str(exc)) from exc
             print(json.dumps({"status": "ok", "materials": materials}, sort_keys=True))
+            return 0
+        if args.command == "analyze":
+            for result in _analyze_paths(args.paths):
+                print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:
         print(json.dumps(exc.to_dict(), sort_keys=True))

@@ -1,6 +1,6 @@
 """Tactus: an experimental code-first music production framework."""
 
-from . import fx, timing
+from . import analysis, fx, timing
 from .excerpt import excerpt
 from .inputs import MaterialError, ToolError, load_audio, material, tool
 from .run import RunError, run
@@ -12,6 +12,7 @@ __all__ = [
     "MaterialError",
     "RunError",
     "ToolError",
+    "analysis",
     "excerpt",
     "fx",
     "load_audio",

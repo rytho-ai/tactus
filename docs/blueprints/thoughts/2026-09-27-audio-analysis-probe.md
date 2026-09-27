@@ -80,3 +80,42 @@
 - **拍點偵測要納入範圍。**Paul：「但拍點偵測很重要欸對 daw 來說」。它是 warp、切片、對齊 loop 的地基，
   不同於調性、和弦這類詮釋，但這次沒測，要另外證明。
 - Paul 決定先 pending，記在看板的 Next。
+
+## 更正：起音偵測在沒見過的素材上失敗（同日）
+
+先前的「誠實交代」已經提醒過起音偵測可能被高估，這次用外部素材驗證（scratchpad `onset-validation/`，判定規則事先寫定）。
+素材是 dogfood crate 裡 16 顆真實錄製的 one-shot 排出的 9 個 loop：85–160 BPM，含重疊尾音、ghost、flam、hat roll、
+reverb 與低音底，其中兩個重新取樣到 44.1 kHz。真值是精確已知的。
+
+| 方法 | F1（2 ms） | F1（10 ms） | 平均時間誤差 |
+|---|---|---|---|
+| 原型 `tanalysis.onsets` | 0.12 | 0.26 | 3.4 ms |
+| librosa 預設 | 0.14 | 0.53 | 4.5 ms |
+| librosa 調參（hop 64、delta 0.03，只在一個 loop 上選定） | 0.27 | 0.76 | 3.9 ms |
+| 上次 N2 Agent 自寫的偵測器 | 0.16 | 0.23 | 1.1 ms |
+
+- **原型大幅過度擬合：**單獨一顆真實鼓聲就誤抓 11–147 個起音。它把共鳴、振鈴和尾巴雜訊都當成新的一擊，
+  因為先前調參用的合成 loop 沒有這些紋理。
+- **這推翻了上面「差距在起音偵測」的正確率結論。**有工具組贏，是因為那個偵測器剛好對兩段測試 loop 調過，
+  不是因為它比較準。起音偵測**不出貨**。四種方法在 2 ms 精度下都遠低於可用門檻，精準起音偵測本身是研究等級的問題。
+- **第 1 塊（響度、峰值、檔案健康）不受影響：**它的價值是省一半 token 與定義一致，
+  而且那些量測有獨立公式可驗證，照 [plan](../plans/2026-09-27-audio-analysis-measurements.md) 整合。
+- **限制：**crate 裡沒有 tom；三段真實鼓軌沒有真值，只能看方法之間的一致性；N1、N3 只留下寫死的 frame，無法重跑。
+
+## 第 1 塊出貨與驗收（同日）
+
+Paul 把範圍縮到「音量、頻率為主」，所以 DC、相位、斷音不做。
+
+**出貨內容**（[plan](../plans/2026-09-27-audio-analysis-measurements.md)）：
+- `tactus.analysis`：`integrated_lufs`、`true_peak_dbtp`、`sample_peak_dbfs`、`rms_dbfs`、`flat_runs`、`analyze`；
+- `tactus analyze PATH...`：可以給 WAV、run 目錄或 excerpt 目錄，只回報數值；靜音照 manifest 慣例回 `null`。
+
+**整合時修正的三點：**
+- 讀 run 目錄的 manifest 與驗證改為與 `tactus excerpt` 共用 `read_published`，不再各寫一份；
+- `flat_runs` 改為 NumPy 向量化，在 300 組隨機資料上與逐樣本版本一致，一首 3 分鐘立體聲全部量完約 2.9 s；
+- 非有限值統一成 `null`。
+
+**驗收：**一個只看 skill 的全新 sonnet Agent，做稽核題目的兩輪（不含已放棄的起音部分）：
+- 兩輪的判斷與數值**全部正確**。LUFS、true peak、平頂削波它用了 `tactus.analysis`；DC、相位、斷音照規格自己寫，也都對。
+- 第一輪報告的 key 寫成 `a` 而不是題目要求的 `a.wav`，被提醒後修正。這是格式失誤，與量測無關。
+- 用量約 93k tokens。

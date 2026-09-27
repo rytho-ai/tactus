@@ -197,23 +197,31 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   64-frame blocks (`buffer_size`, the same idea DawDreamer uses, without its engine); three more
   Agents then scored 0/6. See the [acceptance](thoughts/2026-09-27-midi-acceptance.md).
 
+- **Loudness and peak analysis (`tactus.analysis`, `tactus analyze`)** — integrated LUFS
+  (pyloudnorm), true peak (4× oversampled), sample peak, RMS and flat-top runs, as functions and
+  as a command over WAVs or run/excerpt directories, reporting values only. From the audio-analysis
+  probe (tools halved tokens); a fresh Agent passed both audit rounds from the skill alone. See the
+  [plan](plans/2026-09-27-audio-analysis-measurements.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-- **Unified basic audio analysis (pending, parked by Paul 2026-09-27)** — a three-arm probe found
+- **Unified basic audio analysis (part 1 shipped; frequency next)** — a three-arm probe found
   Agents with only the installed libraries (pyloudnorm, librosa, scipy — all three used them)
   made 71 errors, all in onset detection, at about 230k tokens; CLI and function arms made 0
   at about 100k. CLI and functions tied: one implementation, two doors (functions and a
   `tactus analyze` command), reporting values, not verdicts. Three parts, when resumed:
-  1. Loudness, peaks and file health (LUFS, true peak, sample peak, RMS, flat-top runs, DC,
-     stereo correlation, digital-silence runs, length): ready for a plan. Flat-top counts could
+  1. Loudness and peaks: **shipped** as `tactus.analysis` and `tactus analyze` (see Shipped).
+     Paul narrowed analysis to loudness and frequency; DC, correlation and dropout checks are
+     dropped. Frequency measurements come next, after a necessity probe. Flat-top counts could
      also go into `tactus run`'s `levels`, closing the full-scale item in Future.
-  2. Onsets: the only accuracy gap, but the prototype detector was tuned on the two test loops.
-     Validate on unseen material (real recordings plus new loops, hand-annotated) against
-     librosa first; ship only if it still clearly wins.
+  2. Onsets: **failed validation, not shipped.** On 9 unseen loops built from real one-shots the
+     prototype scored F1 0.12 at 2 ms (librosa tuned 0.27, at 10 ms 0.76); it had overfit the two
+     synthetic test loops, so the probe's accuracy gap was an artifact. Precise onset detection is a
+     research problem; revisit only with a method that passes the same unseen-material test.
   3. Beat tracking (tempo, beats, downbeat, tempo changes): Paul flagged it as essential for a
      DAW (warp, slicing, aligning loops); not yet tested. Annotate material, compare librosa with
      dedicated trackers (check licence and install), then a two-arm Agent probe. The output

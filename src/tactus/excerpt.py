@@ -141,6 +141,47 @@ def _select_and_slice(
     return sliced, record, source_frames
 
 
+def read_published(
+    run_dir: Path,
+) -> tuple[bytes, int, dict[str, np.ndarray], dict[str, str]]:
+    """Read a run or excerpt directory's manifest and every published output, each re-verified
+    against its recorded sha256 and metadata: `(manifest_bytes, sample_rate, {name: audio},
+    {name: file})`. A malformed manifest or a failed verification raises `RunError`
+    (`source_corrupt`)."""
+    manifest_path = run_dir / "manifest.json"
+    manifest_bytes = manifest_path.read_bytes()
+    try:
+        manifest = json.loads(manifest_bytes)
+        if manifest.get("format_version") not in (1, 2):
+            raise ValueError(
+                f"unsupported manifest format_version: {manifest.get('format_version')!r}"
+            )
+        rate = manifest["sample_rate"]
+        refs = manifest["outputs"]
+        if type(rate) is not int or rate <= 0 or not isinstance(refs, dict) or not refs:
+            raise ValueError("manifest sample_rate/outputs are malformed")
+        for name in refs:
+            validate_name(name)
+    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+        raise RunError("source_corrupt", "validate", f"malformed manifest: {exc}") from exc
+
+    source_store = OutputStore(run_dir, rate)
+    full_outputs: dict[str, np.ndarray] = {}
+    files: dict[str, str] = {}
+    for name, ref_dict in refs.items():
+        try:
+            ref = AudioRef(
+                ref_dict["sha256"], ref_dict["frames"], ref_dict["channels"], ref_dict["file"]
+            )
+            full_outputs[name] = source_store.read(ref)
+            files[name] = ref.file
+        except (KeyError, ValueError, TypeError, OSError) as exc:
+            raise RunError(
+                "source_corrupt", "validate", f"output {name!r} failed verification: {exc}"
+            ) from exc
+    return manifest_bytes, rate, full_outputs, files
+
+
 def excerpt(
     run_dir: str | Path,
     *,
@@ -173,34 +214,7 @@ def excerpt(
 
     completed = False
     try:
-        manifest_bytes = manifest_path.read_bytes()
-        try:
-            manifest = json.loads(manifest_bytes)
-            if manifest.get("format_version") not in (1, 2):
-                raise ValueError(
-                    f"unsupported manifest format_version: {manifest.get('format_version')!r}"
-                )
-            rate = manifest["sample_rate"]
-            refs = manifest["outputs"]
-            if type(rate) is not int or rate <= 0 or not isinstance(refs, dict) or not refs:
-                raise ValueError("manifest sample_rate/outputs are malformed")
-            for name in refs:
-                validate_name(name)
-        except (KeyError, ValueError, TypeError, AttributeError) as exc:
-            raise RunError("source_corrupt", "validate", f"malformed manifest: {exc}") from exc
-
-        source_store = OutputStore(run_dir, rate)
-        full_outputs: dict[str, np.ndarray] = {}
-        for name, ref_dict in refs.items():
-            try:
-                ref = AudioRef(
-                    ref_dict["sha256"], ref_dict["frames"], ref_dict["channels"], ref_dict["file"]
-                )
-                full_outputs[name] = source_store.read(ref)
-            except (KeyError, ValueError, TypeError, OSError) as exc:
-                raise RunError(
-                    "source_corrupt", "validate", f"output {name!r} failed verification: {exc}"
-                ) from exc
+        manifest_bytes, rate, full_outputs, _files = read_published(run_dir)
 
         selected, range_record, source_frames = _select_and_slice(
             full_outputs, rate, range, outputs

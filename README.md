@@ -93,9 +93,10 @@ saved audio without rendering again. Accepting a candidate is a source edit comm
 ## Supported surface
 
 The CLI provides `init` (with `--tactus-path`/`--tactus`), `run` (with `--reuse`), `excerpt`,
-`material add`, `doctor`, help and version.
+`analyze`, `material add`, `doctor`, help and version.
 The public Python exports are `run`, `excerpt`, `RunError`, `AudioRef`, `material`, `tool`,
-`load_audio`, `MaterialError`, `ToolError`, `stage`, the `fx` module and the `timing` module.
+`load_audio`, `MaterialError`, `ToolError`, `stage`, the `fx` module, the `timing` module and
+the `analysis` module.
 Agents writing a work should use the [`tactus-authoring` skill](skills/tactus-authoring/SKILL.md)
 (high-level rules; details in its [`reference.md`](skills/tactus-authoring/reference.md)). The
 production function is named `render()`; execute it

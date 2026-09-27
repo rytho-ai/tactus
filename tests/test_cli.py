@@ -300,3 +300,55 @@ def render():
         if process.poll() is None:
             process.kill()
             process.communicate()
+
+
+def test_analyze_measures_a_wav_file(tmp_path, capsys):
+    import numpy as np
+    import soundfile as sf
+
+    wav = tmp_path / "tone.wav"
+    t = np.arange(48000) / 48000
+    tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+    sf.write(wav, np.stack([tone, tone], axis=1), 48000, subtype="PCM_24")
+
+    assert main(["analyze", str(wav)]) == 0
+    report = json.loads(capsys.readouterr().out.strip())
+    assert report["path"] == str(wav)
+    assert report["sample_rate"] == 48000
+    assert report["sample_peak_dbfs"] < 0
+    assert "flat_runs" in report
+    assert "output" not in report
+
+
+def test_analyze_measures_every_output_in_a_run_directory(tmp_path, capsys):
+    entry = tmp_path / "song.py"
+    entry.write_text("""import numpy as np
+def render():
+    t = np.arange(48000) / 48000
+    tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+    return {"sample_rate": 48000, "outputs": {"mix": tone, "silence": np.zeros(48000)}}
+""")
+    assert main(["run", str(entry), "--out", str(tmp_path / "out")]) == 0
+    capsys.readouterr()
+
+    assert main(["analyze", str(tmp_path / "out")]) == 0
+    lines = [json.loads(line) for line in capsys.readouterr().out.strip().splitlines()]
+    names = {report["output"] for report in lines}
+    assert names == {"mix", "silence"}
+    for report in lines:
+        assert report["sample_rate"] == 48000
+        assert report["path"].endswith(".wav")
+
+
+def test_analyze_missing_path_is_a_structured_error(tmp_path, capsys):
+    assert main(["analyze", str(tmp_path / "missing.wav")]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+
+
+def test_analyze_directory_without_manifest_is_a_structured_error(tmp_path, capsys):
+    empty = tmp_path / "not_a_run"
+    empty.mkdir()
+    assert main(["analyze", str(empty)]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
