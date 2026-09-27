@@ -100,7 +100,7 @@ commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
-Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`。測試會檢查它列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
+Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`：它只寫高層準則（步驟與 functional 紀律），細節（契約、欄位、helper API、套件行為）放在同目錄的 `reference.md`，由 SKILL.md 指出何時該讀哪一段。測試會檢查兩者合起來列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
 
 已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
