@@ -14,10 +14,13 @@ from tactus.timing import (
     Bar,
     Clock,
     Groove,
+    add_at,
     envelope_beats,
     envelope_seconds,
     frame_of,
-    place,
+    markers,
+    note_seconds,
+    quantize,
     swing,
 )
 
@@ -313,36 +316,174 @@ def test_envelope_seconds_endpoints_and_midpoint():
 
 
 # ---------------------------------------------------------------------------
-# place: does not mutate its input
+# add_at: in-place mix, head/tail cut, never wraps
 # ---------------------------------------------------------------------------
 
 
-def test_place_does_not_mutate_input():
-    buffer = np.zeros(10, dtype=np.float32)
-    clip = np.ones(4, dtype=np.float32)
-    out = place(buffer, clip, frame=3)
-    assert np.all(buffer == 0.0)  # unchanged
-    assert out is not buffer
-    expected = np.zeros(10, dtype=np.float32)
-    expected[3:7] = 1.0
-    np.testing.assert_allclose(out, expected)
+def test_add_at_normal():
+    buf = np.zeros(10)
+    clip = np.array([1.0, 2.0, 3.0])
+    add_at(buf, clip, 4)
+    assert np.allclose(buf[4:7], [1, 2, 3])
+    assert np.allclose(buf[:4], 0)
+    assert np.allclose(buf[7:], 0)
 
 
-def test_place_clips_to_buffer_bounds():
-    buffer = np.zeros(5, dtype=np.float32)
-    clip = np.ones(4, dtype=np.float32)
-    out = place(buffer, clip, frame=3, gain=2.0)
-    assert len(out) == 5
-    assert out[3] == pytest.approx(2.0)
-    assert out[4] == pytest.approx(2.0)
+def test_add_at_negative_frame_loses_head():
+    buf = np.zeros(5)
+    clip = np.array([1.0, 2.0, 3.0, 4.0])
+    add_at(buf, clip, -2)
+    # clip[2:] = [3, 4] should land at buf[0:2]
+    assert np.allclose(buf[:2], [3, 4])
+    assert np.allclose(buf[2:], 0)
 
 
-def test_place_frame_beyond_buffer_returns_copy_unchanged():
-    buffer = np.ones(5, dtype=np.float32)
-    clip = np.ones(4, dtype=np.float32)
-    out = place(buffer, clip, frame=10)
-    np.testing.assert_allclose(out, buffer)
-    assert out is not buffer
+def test_add_at_past_end_loses_tail():
+    buf = np.zeros(5)
+    clip = np.array([1.0, 2.0, 3.0, 4.0])
+    add_at(buf, clip, 3)
+    assert np.allclose(buf[3:5], [1, 2])
+
+
+def test_add_at_gain():
+    buf = np.zeros(3)
+    clip = np.array([1.0, 1.0, 1.0])
+    add_at(buf, clip, 0, gain=0.5)
+    assert np.allclose(buf, [0.5, 0.5, 0.5])
+
+
+def test_add_at_returns_same_buffer_object():
+    buf = np.zeros(3)
+    out = add_at(buf, np.array([1.0]), 0)
+    assert out is buf
+
+
+def test_add_at_entirely_before_start_no_op():
+    buf = np.zeros(5)
+    clip = np.array([1.0, 2.0])
+    add_at(buf, clip, -5)
+    assert np.allclose(buf, 0)
+
+
+def test_add_at_entirely_past_end_no_op():
+    buf = np.zeros(5)
+    clip = np.array([1.0, 2.0])
+    add_at(buf, clip, 10)
+    assert np.allclose(buf, 0)
+
+
+def test_add_at_never_wraps():
+    buf = np.ones(5) * 9.0
+    clip = np.array([1.0, 2.0, 3.0])
+    add_at(buf, clip, 4)  # only clip[0] fits at index 4; rest should NOT wrap to index 0/1
+    assert buf[0] == 9.0 and buf[1] == 9.0
+
+
+def test_add_at_stereo_buffer_accepts_mono_clip():
+    buf = np.zeros((5, 2))
+    clip = np.array([1.0, 2.0])
+    add_at(buf, clip, 1)
+    np.testing.assert_allclose(buf[1:3], [[1.0, 1.0], [2.0, 2.0]])
+
+
+# ---------------------------------------------------------------------------
+# markers: one impulse per distinct in-range frame
+# ---------------------------------------------------------------------------
+
+
+def test_markers_basic():
+    m = markers([0, 5, 9], 10)
+    assert m.shape == (10,)
+    assert m[0] == 0.5 and m[5] == 0.5 and m[9] == 0.5
+    assert np.sum(m != 0) == 3
+
+
+def test_markers_out_of_range_dropped():
+    m = markers([-1, 3, 100], 10)
+    assert m[3] == 0.5
+    assert np.sum(m != 0) == 1
+
+
+def test_markers_coincident_collapse_to_one():
+    m = markers([2, 2, 2], 10)
+    assert m[2] == 0.5
+    assert np.sum(m != 0) == 1
+
+
+def test_markers_custom_value():
+    m = markers([1], 5, value=1.0)
+    assert m[1] == 1.0
+
+
+def test_markers_multi_channel_shape():
+    m = markers([1, 3], 5, channels=2)
+    assert m.shape == (5, 2)
+    assert np.all(m[1] == 0.5) and np.all(m[3] == 0.5)
+
+
+def test_markers_refuse_fractional_frames():
+    assert markers([np.int64(2), 3.0], 5)[3] == 0.5
+    with pytest.raises(ValueError, match="frame_of"):
+        markers([2.6], 5)
+
+
+# ---------------------------------------------------------------------------
+# quantize: exact ties go later
+# ---------------------------------------------------------------------------
+
+
+def test_quantize_full_strength_snaps_exactly():
+    assert quantize(0.26, grid=0.25, strength=1.0) == pytest.approx(0.25)
+
+
+def test_quantize_zero_strength_no_move():
+    assert quantize(0.26, grid=0.25, strength=0.0) == pytest.approx(0.26)
+
+
+def test_quantize_partial_strength():
+    v = quantize(0.0, grid=0.25, strength=0.5)
+    assert v == pytest.approx(0.0)  # nearest grid to 0.0 is 0.0 itself
+    v2 = quantize(0.1, grid=0.25, strength=0.5)
+    assert v2 == pytest.approx(0.1 + 0.5 * (0.0 - 0.1))
+
+
+def test_quantize_exact_tie_goes_later():
+    # 0.125 is exactly halfway between 0.0 and 0.25 -> later = 0.25
+    assert quantize(0.125, grid=0.25, strength=1.0) == pytest.approx(0.25)
+
+
+def test_quantize_exact_tie_negative_side():
+    # halfway between 0.75 and 1.0 is 0.875 -> later = 1.0
+    assert quantize(0.875, grid=0.25, strength=1.0) == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# note_seconds: value (beats) as seconds at the tempo sounding at `beat`
+# ---------------------------------------------------------------------------
+
+
+def test_note_seconds_quarter_at_120bpm():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120.0)])
+    assert note_seconds(clock, 0.0, 1.0) == pytest.approx(0.5)
+
+
+def test_note_seconds_dotted_eighth():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120.0)])
+    assert note_seconds(clock, 0.0, 0.75) == pytest.approx(0.375)
+
+
+def test_note_seconds_triplet():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120.0)])
+    assert note_seconds(clock, 0.0, 2 / 3) == pytest.approx((2 / 3) * 0.5)
+
+
+def test_note_seconds_uses_tempo_at_that_beat():
+    # a ramp from 90 -> 126 bpm across bars 1..5 (beats 0..16); note_seconds at beat 8
+    # (the ramp's midpoint) should use the tempo halfway between, not the tempo at 0.
+    clock = Clock(sample_rate=SR, tempo=[(1, 90.0), (5, 126.0, "ramp")])
+    beat = 8.0
+    expected = 1.0 * 60.0 / clock.bpm_at(beat)
+    assert note_seconds(clock, beat, 1.0) == pytest.approx(expected)
 
 
 # ---------------------------------------------------------------------------

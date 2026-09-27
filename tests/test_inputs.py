@@ -1,15 +1,20 @@
-"""Exercise the pool store and the material()/tool() resolvers with a scratch TACTUS_POOL."""
+"""Exercise the pool store and the material()/tool()/load_audio() resolvers with a scratch
+TACTUS_POOL."""
 
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import stat
 from pathlib import Path
 
+import numpy as np
 import pytest
+import soundfile as sf
 
-from tactus.inputs import MaterialError, ToolError, material, pool, tool
+from tactus import run
+from tactus.inputs import MaterialError, ToolError, load_audio, material, pool, tool
 
 
 @pytest.fixture(autouse=True)
@@ -181,3 +186,112 @@ def test_material_rejects_a_malformed_tree_ref(scratch_pool):
     with pytest.raises(MaterialError) as failure:
         material("tree:sha256:not-hex")
     assert failure.value.reason == "invalid_ref"
+
+
+# ---------------------------------------------------------------------------
+# load_audio
+# ---------------------------------------------------------------------------
+
+
+def test_load_audio_mono_to_stereo_duplicates(tmp_path, scratch_pool):
+    x = np.array([[0.5], [-0.5], [0.25]], dtype=np.float32)
+    source = tmp_path / "m.wav"
+    sf.write(source, x, 48000, subtype="PCM_16")
+    ref = f"sha256:{pool.put(source)}"
+    y = load_audio(ref, 48000, channels=2)
+    assert y.shape == (3, 2)
+    assert np.allclose(y[:, 0], y[:, 1], atol=1e-3)
+
+
+def test_load_audio_stereo_to_mono_is_mean(tmp_path, scratch_pool):
+    x = np.array([[1.0, 0.0], [0.5, -0.5]], dtype=np.float32)
+    source = tmp_path / "s.wav"
+    sf.write(source, x, 48000, subtype="PCM_16")
+    ref = f"sha256:{pool.put(source)}"
+    y = load_audio(ref, 48000, channels=1)
+    assert y.shape == (2, 1)
+    assert abs(y[0, 0] - 0.5) < 1e-3
+    assert abs(y[1, 0] - 0.0) < 1e-3
+
+
+def test_load_audio_bad_channel_combo_raises(tmp_path, scratch_pool):
+    x = np.zeros((10, 2), dtype=np.float32)
+    source = tmp_path / "s2.wav"
+    sf.write(source, x, 48000, subtype="PCM_16")
+    ref = f"sha256:{pool.put(source)}"
+    with pytest.raises(ValueError):
+        load_audio(ref, 48000, channels=3)
+
+
+def test_load_audio_exact_resample_preserves_pitch_and_length(tmp_path, scratch_pool):
+    sr0 = 44100
+    n = int(sr0 * 0.1)
+    t = np.arange(n) / sr0
+    tone = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    source = tmp_path / "tone.wav"
+    sf.write(source, tone[:, None], sr0, subtype="PCM_16")
+    ref = f"sha256:{pool.put(source)}"
+    y = load_audio(ref, 48000, channels=1)
+    expected_n = round(n * 48000 / sr0)
+    assert abs(y.shape[0] - expected_n) <= 1
+    z = y[:, 0]
+    crossings = np.sum(np.diff(np.sign(z[np.abs(z) > 1e-6])) != 0)
+    expected_crossings = 2 * 440 * (y.shape[0] / 48000)
+    assert abs(crossings - expected_crossings) / expected_crossings < 0.15
+
+
+def test_load_audio_trim_db_drops_leading_silence(tmp_path, scratch_pool):
+    silence = np.zeros(100, dtype=np.float32)
+    body = np.ones(50, dtype=np.float32)
+    x = np.concatenate([silence, body])[:, None]
+    source = tmp_path / "trim.wav"
+    sf.write(source, x, 48000, subtype="FLOAT")
+    ref = f"sha256:{pool.put(source)}"
+    y = load_audio(ref, 48000, channels=1, trim_db=-40.0)
+    assert y.shape[0] == 50
+    assert abs(y[0, 0] - 1.0) < 1e-3
+
+
+def test_load_audio_no_trim_when_trim_db_none(tmp_path, scratch_pool):
+    x = np.concatenate([np.zeros(20, dtype=np.float32), np.ones(5, dtype=np.float32)])[:, None]
+    source = tmp_path / "notrim.wav"
+    sf.write(source, x, 48000, subtype="FLOAT")
+    ref = f"sha256:{pool.put(source)}"
+    y = load_audio(ref, 48000, channels=1)
+    assert y.shape[0] == 25
+
+
+def test_load_audio_accepts_a_path_material_already_returned(tmp_path, scratch_pool):
+    x = np.ones((10, 2), dtype=np.float32) * 0.5
+    source = tmp_path / "s.wav"
+    sf.write(source, x, 48000, subtype="PCM_16")
+    ref = f"sha256:{pool.put(source)}"
+    path = material(ref)
+    y = load_audio(path, 48000, channels=2)
+    assert y.shape == (10, 2)
+    assert np.allclose(y, 0.5, atol=1e-3)
+
+
+def test_load_audio_ref_is_recorded_in_a_run_receipt(tmp_path, scratch_pool):
+    sample = tmp_path / "kick.wav"
+    sf.write(sample, np.ones((10, 2), dtype=np.float32) * 0.5, 48000, subtype="PCM_16")
+    digest = pool.put(sample)
+
+    entry = tmp_path / "work" / "song.py"
+    entry.parent.mkdir()
+    entry.write_text(
+        f"""\
+from tactus import load_audio
+
+KICK = "sha256:{digest}"
+
+
+def render(*, gain: float = 1.0):
+    kick = load_audio(KICK, 48000, channels=2) * gain
+    return {{"sample_rate": 48000, "outputs": {{"kick": kick}}}}
+""",
+        encoding="utf-8",
+    )
+    result = run(entry, out=tmp_path / "out")
+    receipt = json.loads(Path(result["receipt"]).read_text())
+    assert {"ref": f"sha256:{digest}"} in receipt["materials"]

@@ -19,15 +19,27 @@ stored stage hit's recorded entries back through the same dedupe path, and `_too
 re-hashes a recorded tool the way `tool()` did, for a stage's re-verification on lookup.
 `stage.py` owns none of this encoding; it only calls these functions.
 
-Reads: tactus/inputs/pool.py · tactus/inputs/tree.py
+`load_audio` reads a material into Tactus's `(frames, channels)` float32 layout: mono is
+duplicated to stereo, stereo is mixed to mono by mean, any other combination raises, and
+resampling is exact rational resampling (`scipy.signal.resample_poly`) so pitch and length
+stay correct. It accepts either a `"sha256:<hex>"` ref (resolved through `material()` so the
+receipt still records it) or a `Path` `material()` already returned. `frame_of` in
+`tactus.timing` is the one rounding rule; this module owns none of its own.
+
+Reads: tactus/inputs/pool.py · tactus/inputs/tree.py · numpy · soundfile · scipy.signal
 """
 
 from __future__ import annotations
 
 import os
 import shutil
+from math import gcd
 from pathlib import Path
 from typing import Any
+
+import numpy as np
+import soundfile as sf
+from scipy.signal import resample_poly
 
 from . import pool, tree
 
@@ -228,4 +240,56 @@ def tool(name_or_path: str) -> Path:
     return resolved
 
 
-__all__ = ["MaterialError", "ToolError", "material", "tool"]
+def load_audio(
+    ref_or_path: str | Path,
+    sample_rate: int,
+    channels: int = 2,
+    trim_db: float | None = None,
+) -> np.ndarray:
+    """Read a material and return float32 `(frames, channels)` at `sample_rate`.
+
+    `ref_or_path` is a `"sha256:<hex>"` material ref (resolved through `material()`, so the
+    resolution is recorded the same as any other material) or a `Path` `material()` already
+    returned — pass the latter when the caller resolved it itself, to avoid recording twice.
+
+    Channel conversion: a mono source with `channels=2` is duplicated to both channels; a
+    multi-channel source collapsed to `channels=1` is averaged across channels (mean, not
+    sum); any other combination raises `ValueError`. Resampling is exact rational resampling
+    (`scipy.signal.resample_poly`, its up/down ratio reduced by their gcd) — this keeps pitch
+    and length correct, unlike a naive relabelling of the sample rate.
+
+    If `trim_db` is given (e.g. `-40.0`), leading silence is trimmed: everything before the
+    first sample (any channel) whose absolute value reaches `peak * 10**(trim_db/20)` is
+    dropped, where `peak` is this clip's own peak absolute sample value. Trim runs on the
+    resampled data, so the returned array's frame 0 is the attack; the exact trim point can
+    therefore differ by under 1 ms depending on the resampler's ringing.
+    """
+    path = material(ref_or_path) if isinstance(ref_or_path, str) else ref_or_path
+    x, sr = sf.read(str(path), dtype="float32", always_2d=True)  # (frames, src_channels)
+    src_channels = x.shape[1]
+    if src_channels == channels:
+        pass
+    elif src_channels == 1 and channels == 2:
+        x = np.repeat(x, 2, axis=1)
+    elif src_channels >= 2 and channels == 1:
+        x = np.mean(x, axis=1, keepdims=True)
+    else:
+        raise ValueError(f"cannot convert {src_channels}-channel audio to {channels} channels")
+
+    if sr != sample_rate:
+        g = gcd(int(sample_rate), int(sr))
+        up, down = sample_rate // g, sr // g
+        x = resample_poly(x, up, down, axis=0).astype(np.float32)
+
+    if trim_db is not None:
+        peak = float(np.max(np.abs(x))) if x.size else 0.0
+        if peak > 0:
+            threshold = peak * 10 ** (trim_db / 20.0)
+            hit = np.flatnonzero(np.max(np.abs(x), axis=1) >= threshold)
+            if hit.size:
+                x = x[hit[0] :]
+
+    return x.astype(np.float32)
+
+
+__all__ = ["MaterialError", "ToolError", "load_audio", "material", "tool"]

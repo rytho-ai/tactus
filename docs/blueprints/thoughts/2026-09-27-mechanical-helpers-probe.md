@@ -74,3 +74,10 @@
 
 照 Paul 的指示進入整合：寫一份接地的 plan，決定這些 helper 放在哪裡（`tactus.timing` 或新模組），
 修 `fit_rms` 的平頂問題，skill 只在 reference 的索引加一行，細節放在模組 docstring。
+
+## 整合後的驗收（同日）
+
+- **參考解重跑：**probe 的參考解改用出貨的名稱與 `fit_rms(audio, sample_rate, …)`，兩輪評分全部 True。
+  `drums` 在 −1.0 dBFS 附近 0.01 dB 內的樣本只有 61 個（第一輪）與 410 個（第二輪），都是零散的單點峰值，沒有平頂。
+- **全新 Agent：**一個只看 skill 與 reference、沒有 `thelp.py` 的全新 sonnet Agent，做第一輪題目全部正確（約 92k tokens、3.3 分鐘），
+  六個 helper 全部自己找到並用上，`song.py` 128 行。

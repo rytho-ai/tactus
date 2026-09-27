@@ -2,7 +2,7 @@
 
 from . import fx, timing
 from .excerpt import excerpt
-from .inputs import MaterialError, ToolError, material, tool
+from .inputs import MaterialError, ToolError, load_audio, material, tool
 from .run import RunError, run
 from .stage import stage
 from .store import AudioRef
@@ -14,6 +14,7 @@ __all__ = [
     "ToolError",
     "excerpt",
     "fx",
+    "load_audio",
     "material",
     "run",
     "stage",

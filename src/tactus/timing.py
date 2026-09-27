@@ -1,13 +1,13 @@
 """tactus.timing: musical time <-> seconds <-> frames for a Tactus work (optional).
 
-Nothing here quantizes or decides feel: tempo, meter, swing and groove amounts are yours.
-Beats are 0-based quarter notes counted from the start of a bar (a musician's "beat 2" is
-`beat=1.0`). Every conversion is computed absolutely from the start of the piece (never by
+Nothing here decides feel: tempo, meter, swing, groove and quantize-strength amounts are
+yours. Beats are 0-based quarter notes counted from the start of a bar (a musician's "beat 2"
+is `beat=1.0`). Every conversion is computed absolutely from the start of the piece (never by
 accumulating bar lengths), and rounded once: `frame = floor(seconds * sample_rate + 0.5)` —
 that rule has one owner, the module-level `frame_of`. Nothing in `run`/`render` requires this
 module; a work may keep its own time maths, or mix it with this one.
 
-    from tactus.timing import Clock, swing, Groove
+    from tactus.timing import Clock, swing, Groove, quantize, note_seconds, add_at, markers
 
     clock = Clock(sample_rate=48000,
                   tempo=[(1, 92),                      # 92 BPM from bar 1
@@ -25,6 +25,10 @@ module; a work may keep its own time maths, or mix it with this one.
     for bar in clock.bars(1, 12): ...     # .number .start_beat .beats .start_frame .end_frame
     clock.span(17, 25)                    # frame range of bars 17..24
     frame_of(3.3, 48000)                  # free time: plain seconds, no clock needed
+    quantize(1.61, grid=0.25, strength=0.75)         # a performed beat moved toward its 16th
+    note_seconds(clock, 0.0, 0.75)                   # a dotted eighth's seconds at that tempo
+    add_at(buffer, clip, clock.frame(9, 1.5))        # in-place mix; head/tail cut, never wraps
+    markers([clock.frame(b) for b in range(1, 9)], length)  # one impulse per in-range frame
 
 Tempo points: `(bar, bpm)` is a step (the tempo becomes `bpm` at that bar). `(bar, bpm, shape)`
 is a gradual change that starts at the previous point and arrives at `bpm` at this bar; shape
@@ -268,6 +272,21 @@ def frame_of(seconds: float, sample_rate: int) -> int:
     return math.floor(seconds * sample_rate + 0.5)
 
 
+def quantize(beat: float, grid: float = 0.25, strength: float = 1.0) -> float:
+    """Move `beat` toward the nearest multiple of `grid` by `strength` (0 = no move, 1 = snap
+    exactly onto the grid). An exact tie (`beat` exactly halfway between two grid points)
+    resolves to the LATER grid point, guarded against float noise near the tie."""
+    steps = math.floor(beat / grid + 0.5 + 1e-9)
+    nearest = steps * grid
+    return beat + strength * (nearest - beat)
+
+
+def note_seconds(clock: Clock, beat: float, value: float) -> float:
+    """Seconds equivalent of a note `value` in beats (e.g. 0.75 dotted eighth, 2/3 quarter
+    triplet) at the tempo sounding at `beat` (`clock.bpm_at(beat)`)."""
+    return value * 60.0 / clock.bpm_at(beat)
+
+
 def swing(beat: float, amount: float, unit: float = 0.5) -> float:
     """Swing a beat position: within each `unit` (0.5 = an eighth note, so sixteenths swing),
     the midpoint moves to `amount` of the unit (0.5 = straight, 0.58 = 58%, 2/3 = triplet).
@@ -316,14 +335,47 @@ class Groove:
         return clock.frame(bar, beat, ms=ms + self.ms(beat))
 
 
-def place(buffer: np.ndarray, clip: np.ndarray, frame: int, gain: float = 1.0) -> np.ndarray:
-    """A copy of `buffer` with `clip * gain` added from `frame` (clipped to the buffer)."""
-    out = np.array(buffer, copy=True)
-    if frame >= len(out):
-        return out
-    start = max(frame, 0)
-    part = clip[start - frame : start - frame + len(out) - start]
-    out[start : start + len(part)] += part * gain
+def add_at(buffer: np.ndarray, clip: np.ndarray, frame: int, gain: float = 1.0) -> np.ndarray:
+    """Add `clip * gain` into `buffer` starting at `frame`, in place. Returns `buffer`.
+
+    A clip starting before frame 0 has its head (the part before 0) dropped; a clip running
+    past the end of `buffer` has its tail dropped. Never wraps around either end.
+    """
+    n = len(buffer)
+    dst_start = frame
+    src_start = 0
+    if dst_start < 0:
+        src_start = -dst_start
+        dst_start = 0
+    if dst_start >= n or src_start >= len(clip):
+        return buffer
+    src_end = min(src_start + (n - dst_start), len(clip))
+    length = src_end - src_start
+    if length <= 0:
+        return buffer
+    part = clip[src_start:src_end]
+    if buffer.ndim == 2 and part.ndim == 1:
+        part = part[:, None]
+    buffer[dst_start : dst_start + length] += part * gain
+    return buffer
+
+
+def markers(
+    frames: Sequence[float], length: int, value: float = 0.5, channels: int = 1
+) -> np.ndarray:
+    """A mono (or multi-channel) impulse track: one impulse of `value` per distinct in-range
+    frame in `frames`. Frames outside [0, length) are dropped; coincident frames collapse to a
+    single impulse (not summed). Frames must be whole numbers (round with `frame_of`)."""
+    shape = (length,) if channels == 1 else (length, channels)
+    out = np.zeros(shape, dtype=np.float32)
+    seen: set[int] = set()
+    for f in frames:
+        fi = int(f)
+        if fi != f:
+            raise ValueError(f"markers needs whole frames, got {f!r}; round with frame_of")
+        if 0 <= fi < length and fi not in seen:
+            seen.add(fi)
+            out[fi] = value
     return out
 
 
@@ -350,9 +402,12 @@ __all__ = [
     "Bar",
     "Clock",
     "Groove",
+    "add_at",
     "envelope_beats",
     "envelope_seconds",
     "frame_of",
-    "place",
+    "markers",
+    "note_seconds",
+    "quantize",
     "swing",
 ]

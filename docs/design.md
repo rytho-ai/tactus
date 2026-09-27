@@ -30,9 +30,11 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 | 局部段落錨定在絕對秒數 | 全曲 tempo 改變時，段落起點保持固定。 |
 | 事件直接使用絕對時間 | 不隨全曲或局部 BPM 改變。 |
 
-作者仍決定 automation 的數值、邊界、插值方式與用途；helper 只負責正確展開。`place`、`repeat`、`scale_time`、`section_envelope` 等名稱目前用來描述候選能力。
+作者仍決定 automation 的數值、邊界、插值方式與用途；helper 只負責正確展開。`repeat`、`scale_time`、`section_envelope` 等名稱目前用來描述候選能力。
 
-三輪 probe 比較了「不用 helper」「v2 設計」「v3 設計」三種寫法在共同音樂變換任務下的正確率：v3 零錯誤，另外兩者各錯 7 處（同樣的 token 量級），錯誤集中在 0/1-based beat 誤算與 tempo 曲線的近似寫法。基於這個證據，`tactus.timing`（來自 v3）已交付為選用模組：`Clock`（tempo/meter → seconds/frames，含 step／ramp／ramp-time／smooth 四種 tempo 變化）、`swing`、`Groove`、`place`、`envelope_beats`／`envelope_seconds`，以及唯一的 rounding 規則 `frame_of`。它是 `import tactus.timing` 才會用到的選用能力：`render`／`run` 不要求它，作品仍可保留自己的時間算法，或與它混用；beats 一律是 0-based quarter note（音樂人數的「第 2 拍」是 `beat=1.0`）。
+三輪 probe 比較了「不用 helper」「v2 設計」「v3 設計」三種寫法在共同音樂變換任務下的正確率：v3 零錯誤，另外兩者各錯 7 處（同樣的 token 量級），錯誤集中在 0/1-based beat 誤算與 tempo 曲線的近似寫法。基於這個證據，`tactus.timing`（來自 v3）已交付為選用模組：`Clock`（tempo/meter → seconds/frames，含 step／ramp／ramp-time／smooth 四種 tempo 變化）、`swing`、`Groove`、`envelope_beats`／`envelope_seconds`，以及唯一的 rounding 規則 `frame_of`。它是 `import tactus.timing` 才會用到的選用能力：`render`／`run` 不要求它，作品仍可保留自己的時間算法，或與它混用；beats 一律是 0-based quarter note（音樂人數的「第 2 拍」是 `beat=1.0`）。
+
+機械性 helper 的兩組對照 probe（擺放 clip、marker、quantize、音符值換秒、RMS 貼齊）顯示：有 helper 的 Agent 少寫約三分之一程式碼、少用 21% token，錯誤沒有增加。已交付：`timing.add_at`（就地疊加，頭尾超出就切掉、不會繞回；取代會整份複製 buffer 的 `place`）、`timing.markers`、`timing.quantize`、`timing.note_seconds`、`fx.fit_rms`（平滑的 look-ahead 增益，貼齊目標 RMS 且不超過 ceiling，不像 `pedalboard.Limiter` 會削出平頂）與 `tactus.load_audio`（讀檔、聲道轉換、精確 resample、可選的起音前靜音裁切）。`db_to_gain`／`gain_to_db` 在 probe 中沒有 Agent 使用，未交付。
 
 **尚未定案：**seconds／samples placement 與總長度的正式介面，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用超出 `tactus.timing` 現有範圍。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證；MIDI 檔案讀入 tempo、groove 從音訊萃取，以及「全曲需要一個 clock」的要求，明確不在範圍內。
 

@@ -175,20 +175,22 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [comparison](thoughts/2026-09-27-temporal-design-comparison.md) and the
   [gaps probe](thoughts/2026-09-27-timing-gaps-and-repetition.md).
 
+- **Mechanical helpers** — `tactus.load_audio` (read, channel conversion, exact resample,
+  leading-silence trim), `timing.add_at` (in-place mix, head/tail cut, never wraps; replaces
+  `place`), `timing.markers`, `timing.quantize` (ties go later), `timing.note_seconds` and
+  `fx.fit_rms` (a smooth look-ahead gain envelope instead of a clipping limiter). A two-arm probe
+  found both arms error-free but the helper arm used 21% fewer tokens and a third less code; a
+  fresh Agent then found and used all six from the reference alone, all items correct. See the
+  [plan](plans/2026-09-27-mechanical-helpers.md) and the
+  [probe](thoughts/2026-09-27-mechanical-helpers-probe.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-- **Mechanical helpers (load, place, markers, quantize, note values, RMS fit)** — a two-arm
-  probe (2026-09-27) found both arms error-free but the helper arm used 21% fewer tokens and
-  about a third less code, and handled level targets consistently where the other arm invented
-  three approaches (two hard-clipping over 20,000 samples). By the pre-registered rule six
-  helpers integrate (`db_to_gain`/`gain_to_db` unused, dropped); `fit_rms` must first stop
-  flat-topping. Next: a grounded plan, then integration. See the
-  [probe](thoughts/2026-09-27-mechanical-helpers-probe.md).
-- Other candidates awaiting Paul: Pattern helpers (C1) and unified basic audio analysis.
+None. Candidates awaiting Paul: Pattern helpers (C1) and unified basic audio analysis.
 
 ## ⏸ Future — evidence-gated
 

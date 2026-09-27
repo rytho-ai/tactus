@@ -83,6 +83,11 @@ removing the worktree deletes everything inside it.
   path and SHA-256. `tool("/abs/path/Some.vst3")` on a folder (a plugin bundle) hashes the whole
   tree in place and returns that folder as a `Path`; `load_plugin` needs a string:
   `pedalboard.load_plugin(str(tool(...)))`. A missing tool fails the run with `tool_unavailable`.
+- `tactus.load_audio(ref_or_path, sample_rate, channels=2, trim_db=None)` reads a material into
+  `(frames, channels)` float32: mono duplicates to stereo, stereo mixes to mono by mean, other
+  combinations raise; resampling is exact (`resample_poly`); `trim_db` drops leading silence
+  before the first sample reaching `peak * 10**(trim_db/20)`. Takes a `"sha256:…"` ref (recorded
+  the same as any other material) or a `Path` `material()` already returned.
 - Imported Python distributions are recorded automatically; declare only non-Python
   executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile, pyloudnorm,
   librosa, Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch) and
@@ -125,6 +130,9 @@ environment variable keeps its old result when that input changes, so read input
   parameters over time; it handles reset, tail silence and reported latency.
 - `fx.varispeed(audio, rate, speed)` plays audio at a per-output-frame speed (pitch follows
   speed; `0.0` holds, negative is not supported).
+- `fx.fit_rms(audio, rate, target_dbfs, ceiling_dbfs=-1.0)` returns audio at a target
+  whole-signal RMS with no sample above the ceiling, measured on what it returns; it limits
+  with a smooth gain envelope instead of clipping, and raises if the target is unreachable.
 
 ## Musical time (optional)
 
@@ -133,6 +141,12 @@ frames under a tempo map; `frame_of(seconds, sample_rate)` is the one rounding r
 (`floor(seconds * sample_rate + 0.5)`) for free-time work that needs no clock at all. It is
 optional: nothing in `render`/`run` requires it, and a work may keep its own time maths.
 Beats are 0-based quarter notes from the start of a bar — a musician's "beat 2" is `beat=1.0`.
+`timing.quantize(beat, grid=0.25, strength=1.0)` moves a performed beat toward a grid (exact
+ties go to the later grid point); `timing.note_seconds(clock, beat, value)` is a note `value`
+in beats (e.g. `0.75` dotted eighth) as seconds at the tempo sounding at `beat`;
+`timing.add_at(buffer, clip, frame, gain=1.0)` mixes a clip into a buffer in place, cutting a
+head before frame 0 or a tail past the end, never wrapping; `timing.markers(frames, length,
+value=0.5, channels=1)` makes one impulse per distinct in-range frame.
 
 ```python
 clock = Clock(sample_rate=rate, tempo=[(1, 92), (9, 92), (13, 108, "ramp"), (17, 80)],

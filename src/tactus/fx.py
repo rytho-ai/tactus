@@ -25,9 +25,12 @@ it silently because 1.0 was in range. A survey of installed plugins found unit m
 isn't general (OB-Xf reports units on most params, Dexed and the Cardinal/DrumCraker
 plugins mostly don't), but name/range/valid-values/current-value are always there, so
 discovery generalizes where units don't. `format_table` renders `describe`'s rows as
-fixed-width text for a quick `print`.
+fixed-width text for a quick `print`. `fit_rms` brings audio to a target whole-signal RMS
+without letting any sample cross a ceiling, using a smooth look-ahead gain envelope rather than
+a hard-clipping limiter (`pedalboard.Limiter` left probe mixes with thousands of samples flat
+at the ceiling).
 
-Reads: pedalboard
+Reads: pedalboard · scipy.ndimage
 """
 
 from __future__ import annotations
@@ -39,15 +42,19 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+from scipy.ndimage import minimum_filter1d, uniform_filter1d
 
 __all__ = [
     "describe",
+    "fit_rms",
     "format_table",
     "process_automated",
     "render_instrument",
     "set_param",
     "varispeed",
 ]
+
+_FIT_RMS_WINDOW_MS = 5.0
 
 # Canonical unit per family: ms (time), Hz (frequency), cents, dB, % (percent).
 _TIME_TO_MS = {"ms": 1.0, "s": 1000.0}
@@ -636,3 +643,84 @@ def varispeed(audio: np.ndarray, sample_rate: int, speed: np.ndarray) -> np.ndar
     ).astype(np.float32)
     out[~inside] = 0.0
     return out
+
+
+def _rms_dbfs(x: np.ndarray) -> float:
+    mean_square = float(np.mean(np.square(x, dtype=np.float64))) if x.size else 0.0
+    return 10.0 * math.log10(mean_square) if mean_square > 0 else -math.inf
+
+
+def _limiter_gain(x: np.ndarray, ceiling_lin: float, sample_rate: int) -> np.ndarray:
+    """A per-sample gain envelope that never exceeds what that sample needs to reach the
+    ceiling, smoothed so it changes gradually instead of snapping on and off. `needed` is the
+    instantaneous `min(1, ceiling / peak-across-channels)`; a centered running minimum over a
+    window of about 2W looks ahead and behind so the dip starts before an oncoming peak and
+    holds through it, then a box average over W (W ~ 5 ms) smooths the transitions."""
+    peak = np.max(np.abs(x), axis=-1) if x.ndim == 2 else np.abs(x)
+    needed = np.minimum(1.0, ceiling_lin / np.maximum(peak, 1e-9))
+    w = max(1, round(_FIT_RMS_WINDOW_MS / 1000.0 * sample_rate))
+    ducked = minimum_filter1d(needed, size=2 * w + 1, mode="nearest")
+    return uniform_filter1d(ducked, size=w, mode="nearest")
+
+
+def _apply_gain(x: np.ndarray, gain: np.ndarray) -> np.ndarray:
+    return x * gain[:, None] if x.ndim == 2 else x * gain
+
+
+def fit_rms(
+    audio: np.ndarray, sample_rate: int, target_dbfs: float, ceiling_dbfs: float = -1.0
+) -> np.ndarray:
+    """Return audio whose whole-signal RMS (all channels flattened together) is within 0.05 dB
+    of `target_dbfs`, with every sample at or below `ceiling_dbfs`, measured on this
+    function's returned array (matching how a checker would measure the delivered file).
+
+    Limiting is a NumPy look-ahead gain envelope (`_limiter_gain`), not
+    `pedalboard.Limiter`: a hard-clipping limiter can leave hundreds of samples flat at the
+    ceiling on peaky material, which this avoids by ducking gain smoothly ahead of a peak
+    rather than clipping into it. A trailing `np.clip` is a safety guard for the rare case the
+    smoothing itself lets a sample edge a hair over the ceiling; it should never trigger
+    meaningfully.
+
+    Applying the envelope changes the RMS relative to a plain gain, so this bisects the
+    pre-gain (up to 30 steps) between a bound quiet enough to barely limit and one loud enough
+    to limit heavily -- the achieved RMS rises monotonically with pre-gain over that range --
+    stopping early once within 0.05 dB of the target. If still more than 0.5 dB away after 30
+    steps, raises `ValueError` naming the achieved RMS: heavy targets on peaky material mean
+    heavy limiting, which can make the target unreachable at that ceiling (a target RMS can
+    never exceed the ceiling itself). Silence (all-zero input) passes through unchanged.
+    """
+    x = np.asarray(audio, dtype=np.float32)
+    if x.size == 0 or not np.any(x):
+        return x
+    ceiling_lin = 10.0 ** (ceiling_dbfs / 20.0)
+
+    def measure(pre_gain_db: float) -> tuple[np.ndarray, float]:
+        pre = x * (10.0 ** (pre_gain_db / 20.0))
+        gain = _limiter_gain(pre, ceiling_lin, sample_rate)
+        limited = _apply_gain(pre, gain)
+        return limited, _rms_dbfs(limited)
+
+    naive_db = target_dbfs - _rms_dbfs(x)
+    lo, hi = naive_db - 60.0, naive_db + 60.0
+    y, cur_db = measure(hi)
+    for _ in range(30):
+        mid = (lo + hi) / 2.0
+        y, cur_db = measure(mid)
+        if abs(cur_db - target_dbfs) <= 0.05:
+            break
+        if cur_db < target_dbfs:
+            lo = mid
+        else:
+            hi = mid
+
+    if abs(cur_db - target_dbfs) > 0.5:
+        raise ValueError(
+            f"fit_rms could not reach {target_dbfs} dBFS within 0.5 dB in 30 iterations "
+            f"(achieved {cur_db:.2f} dBFS); the ceiling of {ceiling_dbfs} dBFS may be too "
+            "tight for this material's crest factor."
+        )
+
+    peak = float(np.max(np.abs(y))) if y.size else 0.0
+    if peak > ceiling_lin:
+        y = np.clip(y, -ceiling_lin, ceiling_lin)
+    return y.astype(np.float32)

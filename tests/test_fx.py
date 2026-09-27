@@ -545,3 +545,87 @@ def test_varispeed_rejects_bad_speed():
     for bad in (np.array([]), np.array([1.0, -0.1]), np.array([np.nan]), np.ones((2, 2))):
         with pytest.raises(ValueError):
             fx.varispeed(audio, 44100, bad)
+
+
+# ---------------------------------------------------------------------------
+# fit_rms
+
+
+def _rms_dbfs(x: np.ndarray) -> float:
+    ms = float(np.mean(np.square(x.astype(np.float64))))
+    return 20 * np.log10(np.sqrt(ms)) if ms > 0 else -np.inf
+
+
+def _peaky_drum_hits(rng, n_frames: int, sample_rate: int = 48000, hits_per_sec: float = 6.0):
+    """Synthetic drum-sum-like material without needing a fixture file: a continuous low-level
+    bed (like combined hats/room, always present) plus frequent near-unity decaying bursts
+    (like kick/snare transients) -- high crest factor, like a real drum sum. Stereo, so the
+    ceiling/RMS-across-channels behavior is exercised too."""
+    out = (rng.standard_normal((n_frames, 2)) * 0.12).astype(np.float64)
+    burst_len = int(sample_rate * 0.025)
+    decay = np.exp(-np.arange(burst_len) / (sample_rate * 0.008))
+    n_hits = int(n_frames / sample_rate * hits_per_sec)
+    positions = np.linspace(0, n_frames - burst_len - 1, n_hits).astype(int)
+    for i, pos in enumerate(positions):
+        peak = 0.85 + 0.15 * (i % 3 == 0)  # every third hit near-full-scale (kick-like)
+        noise = rng.standard_normal(burst_len)
+        burst = peak * decay * noise / np.max(np.abs(noise))
+        out[pos : pos + burst_len, 0] += burst
+        out[pos : pos + burst_len, 1] += burst * 0.9
+    return out.astype(np.float32)
+
+
+def test_fit_rms_hits_target_and_ceiling():
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal(48000 * 2).astype(np.float32) * 0.01
+    y = fx.fit_rms(x, 48000, target_dbfs=-14.0, ceiling_dbfs=-1.0)
+    assert abs(_rms_dbfs(y) - (-14.0)) <= 0.05
+    assert float(np.max(np.abs(y))) <= 10 ** (-1.0 / 20) + 1e-6
+
+
+def test_fit_rms_loud_input_gets_limited_not_just_scaled():
+    rng = np.random.default_rng(1)
+    x = rng.standard_normal(48000).astype(np.float32) * 0.9  # already very loud/peaky
+    y = fx.fit_rms(x, 48000, target_dbfs=-12.0, ceiling_dbfs=-1.0)
+    assert abs(_rms_dbfs(y) - (-12.0)) <= 0.05
+    assert float(np.max(np.abs(y))) <= 10 ** (-1.0 / 20) + 1e-6
+
+
+def test_fit_rms_silence_passthrough():
+    x = np.zeros(1000, dtype=np.float32)
+    y = fx.fit_rms(x, 48000, target_dbfs=-14.0)
+    assert np.allclose(y, 0)
+
+
+def test_fit_rms_stereo_measures_all_channels_together():
+    rng = np.random.default_rng(2)
+    x = rng.standard_normal((48000, 2)).astype(np.float32) * 0.05
+    y = fx.fit_rms(x, 48000, target_dbfs=-14.0, ceiling_dbfs=-1.0)
+    assert abs(_rms_dbfs(y) - (-14.0)) <= 0.05
+    assert float(np.max(np.abs(y))) <= 10 ** (-1.0 / 20) + 1e-6
+
+
+def test_fit_rms_unreachable_target_raises():
+    rng = np.random.default_rng(3)
+    x = rng.standard_normal(4800).astype(np.float32) * 0.1
+    # RMS can never exceed peak, and peak can never exceed the ceiling -- asking for a target
+    # louder than the ceiling itself is unreachable at any pre-gain.
+    with pytest.raises(ValueError, match="could not reach"):
+        fx.fit_rms(x, 48000, target_dbfs=-2.0, ceiling_dbfs=-6.0)
+
+
+def test_fit_rms_no_flat_top_on_peaky_drum_material():
+    """The plan's no-flat-top criterion: unlike pedalboard.Limiter (which left 675-2641
+    samples flat at the ceiling on peaky material in the probe), fewer than 0.01% of samples
+    should land within 0.01 dB of the ceiling."""
+    rng = np.random.default_rng(4)
+    x = _peaky_drum_hits(rng, n_frames=48000 * 8)
+    ceiling_dbfs = -1.0
+    y = fx.fit_rms(x, 48000, target_dbfs=-14.0, ceiling_dbfs=ceiling_dbfs)
+
+    ceiling_lin = 10 ** (ceiling_dbfs / 20.0)
+    near_ceiling_lin = 10 ** ((ceiling_dbfs - 0.01) / 20.0)
+    flat_top = int(np.sum(np.abs(y) >= near_ceiling_lin))
+    assert flat_top / y.size < 0.0001, f"{flat_top} of {y.size} samples within 0.01 dB of ceiling"
+    assert float(np.max(np.abs(y))) <= ceiling_lin + 1e-6
+    assert abs(_rms_dbfs(y) - (-14.0)) <= 0.05
