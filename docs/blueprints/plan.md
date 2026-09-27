@@ -175,13 +175,14 @@ None scheduled; decide the next design question with Paul.
 
 ## ⏸ Future — evidence-gated
 
-- **Temporal helpers (A1)** — a necessity probe (2026-09-27) found no need: on a tempo ramp, 7/8
-  with swing and a free-time intro, then a revision of all three, 3/3 Agents without helpers
-  were sample-exact in both rounds, like 3/3 with a prototype clock, at 1.09x the tokens (under
-  the 1.3x bar). Helpers cut code by about 35%. Trigger: a real work with a timing error, such as
-  something not following a tempo change, or a revision that misses a time-dependent part. See
-  the [probe](thoughts/2026-09-27-temporal-helpers-necessity-probe.md) and the
-  [plan](plans/2026-09-26-temporal-abstraction.md).
+- **Temporal helpers (A1)** — two probes (2026-09-27) found no load reduction: on exact
+  timing tasks and inside a full production with mixed revisions, Agents without helpers made no
+  timing errors and spent 1.04–1.09x the tokens. Agents without helpers rebuilt the same shape
+  (tempo segments, bar-start table, one rounding rule), and helpers made time revisions a
+  two-line edit. Paul asked for the best design next: a v2 closing the gaps the code analysis
+  found (absolute-beat time, off-grid offsets, free spans, local views), compared three ways.
+  See the [exact-task probe](thoughts/2026-09-27-temporal-helpers-necessity-probe.md) and the
+  [load probe](thoughts/2026-09-27-temporal-helpers-load-probe.md).
 - **License before any public release** — pytimestretch main is GPL-2.0-only (libpaulstretch is
   GPLv2) while pedalboard is GPLv3, and the two cannot be conveyed together; Tactus itself
   declares no license yet. No issue while the repo is private and internal. Preferred fix when a
