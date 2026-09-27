@@ -6,8 +6,8 @@
 > [mixed clocks](../thoughts/2026-09-23-mixed-clocks-vs-python-probe.md),
 > [independent Agent MIDI](../thoughts/2026-09-23-independent-agent-midi-authoring-probes.md),
 > the tactus-daw Setloom tempo-ramp note, and a survey of 64 distinct Agent-written works on this
-> machine (dogfoods, examples, probes). Status: plan; step 1 is a necessity probe, and nothing ships
-> unless it passes.
+> machine (dogfoods, examples, probes). Status: step 1 ran on 2026-09-27 and did **not** justify helpers
+> ([result](../thoughts/2026-09-27-temporal-helpers-necessity-probe.md)); step 2 is not scheduled.
 
 ## Evidence so far
 
@@ -38,6 +38,20 @@
 So repetition is proven; value is not. Paul requires proof before building. The evidence points to
 where helpers could matter: cases that are easy to get subtly wrong, not simple 4/4 placement.
 
+## What the earlier probes already answer (read again 2026-09-26)
+
+- **First writes of simple timing are not where helpers help.** In the mixed-clocks probe, plain
+  Python got a global tempo change, an independent local BPM and absolute events sample-exact;
+  its verdict gave "no evidence that Tactus must own tempo-map or local-clock creative logic".
+  The helper probes found equal first-pass correctness.
+- **That probe named the next test itself:** compare Python-owned clock functions with a
+  framework clock "on a real revision", and measure "whether B actually reduces Agent mistakes or
+  source-maintenance effort". Hand-written time maths breaks when a work is revised (tempo,
+  inserted bars, meter), because literal seconds and frames do not move.
+- **The false-BPM defect it found no longer exists:** `render()` requires no BPM.
+
+So step 1's primary outcome is the revision round, not the first write.
+
 ## Step 1 — necessity probe (before any product code)
 
 - **Prototype.** A small prototype module in scratch, not in the product: a clock from a tempo map
@@ -57,12 +71,17 @@ where helpers could matter: cases that are easy to get subtly wrong, not simple 
   - P: plain Python, the current skill.
 
   3 fresh sonnet Agents per arm, the same prompts, the current Tactus.
+- **Revision round (primary).** The same Agent then revises its own work. It moves the ramp to bars
+  7–12, inserts one 4/4 bar before bar 1 of task 1, changes task 2's first section to 5/8, and
+  shortens task 3's intro to 10.0 s. Every dependent event and curve must move correctly and
+  nothing else may move.
 - **Metrics** (from the rendered stems and source, not self-reports):
   - T1: every event onset within ±1 frame of the ground truth, and exact output length;
   - T2: the automation curve's breakpoints within ±1 frame, following the tempo map in task 1;
   - T3: tokens, time and repair attempts.
 - **Verdict,** written into the probe folder before dispatch:
-  - helpers justified if P fails T1 or T2 in at least 2 of the 9 task-runs and H fails at most 1,
+  - helpers justified if, in the revision round, P fails T1 or T2 in at least 2 of the 9 task-runs
+    and H fails at most 1,
     or P needs at least 1.3× H's tokens at equal correctness;
   - not justified if P matches H.
 
