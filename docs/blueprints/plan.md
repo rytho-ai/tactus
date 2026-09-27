@@ -184,6 +184,12 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [plan](plans/2026-09-27-mechanical-helpers.md) and the
   [probe](thoughts/2026-09-27-mechanical-helpers-probe.md).
 
+- **`timing.euclid` and `timing.cycle`** — Bjorklund hit steps with Tidal's left rotation, and a
+  figure's hit steps run continuously across bar lines, both as step-index tuples. The only
+  conventions two Pattern probes found worth owning; a fresh Agent passed all five rounds of the
+  idioms brief using them and wrote no Bjorklund of its own. See the
+  [plan](plans/2026-09-27-euclid-and-cycle.md).
+
 ## 🚧 In progress
 
 None.
@@ -222,9 +228,9 @@ None.
   met the pre-registered bar narrowly: plain Python made 2 errors (one Agent reversed Tidal's
   rotation direction once), both idiom arms 0; tokens within 10%, revision lines -16% (Tidal)
   and +9% (NumPy). The value seen is owning conventions (Bjorklund with Tidal rotation, cycles
-  across bars, extension-stable seeded probability), not a pattern system. Awaiting Paul:
-  a minimal `tactus.timing` addition, a mini-notation, or keep closed. See the
-  [idioms probe](thoughts/2026-09-27-pattern-idioms-probe.md).
+  across bars, extension-stable seeded probability), not a pattern system. Paul chose the
+  minimal addition: `timing.euclid` and `timing.cycle` shipped (see Shipped); the pattern system
+  stays closed. See the [idioms probe](thoughts/2026-09-27-pattern-idioms-probe.md).
 - **License before any public release** — pytimestretch main is GPL-2.0-only (libpaulstretch is
   GPLv2) while pedalboard is GPLv3, and the two cannot be conveyed together; Tactus itself
   declares no license yet. No issue while the repo is private and internal. Preferred fix when a

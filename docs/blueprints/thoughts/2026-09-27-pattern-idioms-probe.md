@@ -63,3 +63,11 @@
 2. **Tidal 風格的 mini-notation：**程式碼最短、修改最少，但要維護一個小語言，而且 `every` 的 Strudel 語意
    （從第一小節算）跟音樂人說的「每 n 小節」不同，本身就是一個陷阱。
 3. **不整合：**以「一次失誤」作為證據太薄，維持 C1 關閉。
+
+## 決定與驗收（同日）
+
+Paul 採用選項 1（「照你建議」）：只在 `tactus.timing` 加 `euclid(k, n, rotate=0)` 與 `cycle(figure, count, start=0)`，
+兩者都回傳 step 編號，不加 pattern 型別、seeded 機率或 mini-notation
+（[plan](../plans/2026-09-27-euclid-and-cycle.md)）。驗收用一個全新 sonnet Agent，只看 skill 與 reference、沒有原型模組，
+跑完整五輪題目：五輪都零錯誤，包括第五輪 Tidal 旋轉方向；它直接用了 `euclid` 與 `cycle`，沒有自己寫 Bjorklund；
+`song.py` 140 行，約 114k tokens。

@@ -8,6 +8,7 @@ that rule has one owner, the module-level `frame_of`. Nothing in `run`/`render` 
 module; a work may keep its own time maths, or mix it with this one.
 
     from tactus.timing import Clock, swing, Groove, quantize, note_seconds, add_at, markers
+    from tactus.timing import euclid, cycle
 
     clock = Clock(sample_rate=48000,
                   tempo=[(1, 92),                      # 92 BPM from bar 1
@@ -29,6 +30,9 @@ module; a work may keep its own time maths, or mix it with this one.
     note_seconds(clock, 0.0, 0.75)                   # a dotted eighth's seconds at that tempo
     add_at(buffer, clip, clock.frame(9, 1.5))        # in-place mix; head/tail cut, never wraps
     markers([clock.frame(b) for b in range(1, 9)], length)  # one impulse per in-range frame
+    euclid(4, 7)                          # Bjorklund hit steps: (0, 2, 4, 6)
+    euclid(2, 5, rotate=1)                # Tidal-style left rotation: (1, 4)
+    cycle("x..x.", 16)                    # a 5-step figure run continuously over 16 steps
 
 Tempo points: `(bar, bpm)` is a step (the tempo becomes `bpm` at that bar). `(bar, bpm, shape)`
 is a gradual change that starts at the previous point and arrives at `bpm` at this bar; shape
@@ -398,13 +402,95 @@ def envelope_seconds(clock: Clock, points: Sequence[tuple], length: int) -> np.n
     return np.interp(t, xs, vs).astype(np.float32)
 
 
+def _bjorklund(k: int, n: int) -> list[int]:
+    """The classic recursive Bjorklund construction: n 0/1 ints with k evenly-spread 1s (NOT
+    the "floor(i*k/n) != floor((i-1)*k/n)" shortcut formula, which differs from Tidal/Strudel
+    for some (k, n)). Caller guarantees 0 < k < n."""
+    pattern: list[int] = []
+    counts: list[int] = []
+    remainders = [k]
+    divisor = n - k
+    level = 0
+    while remainders[level] > 1:
+        counts.append(divisor // remainders[level])
+        remainders.append(divisor % remainders[level])
+        divisor = remainders[level]
+        level += 1
+    counts.append(divisor)
+
+    def build(lvl: int) -> None:
+        if lvl == -1:
+            pattern.append(0)
+        elif lvl == -2:
+            pattern.append(1)
+        else:
+            for _ in range(counts[lvl]):
+                build(lvl - 1)
+            if remainders[lvl] != 0:
+                build(lvl - 2)
+
+    build(level)
+    i = pattern.index(1)
+    return pattern[i:] + pattern[:i]
+
+
+def euclid(k: int, n: int, rotate: int = 0) -> tuple[int, ...]:
+    """The hit step indices (0-based, ascending) of a Euclidean rhythm of k hits over n steps
+    (Bjorklund's algorithm), as TidalCycles/Strudel produce them. `rotate` follows Tidal's
+    `(k, n, r)`: it rotates the pattern LEFT, so a hit originally at step s ends up at
+    `(s - rotate) % n`; a negative `rotate` moves hits later instead. E.g. `euclid(4, 7)` ->
+    `(0, 2, 4, 6)`; `euclid(2, 5, rotate=1)` -> `(1, 4)`."""
+    if n <= 0:
+        raise ValueError(f"n must be positive, got {n}")
+    if not 0 <= k <= n:
+        raise ValueError(f"k must be within 0..{n}, got {k}")
+    if k == 0:
+        base_hits: tuple[int, ...] = ()
+    elif k == n:
+        base_hits = tuple(range(n))
+    else:
+        base_hits = tuple(i for i, v in enumerate(_bjorklund(k, n)) if v)
+    r = rotate % n
+    if r == 0 or not base_hits:
+        return base_hits
+    return tuple(sorted((s - r) % n for s in base_hits))
+
+
+def cycle(figure: str | Sequence[bool], count: int, start: int = 0) -> tuple[int, ...]:
+    """The steps in `[start, start + count)` where `figure` hits, as it repeats continuously
+    from step 0 (it never restarts at bar lines; callers map steps to bars and beats
+    themselves). `figure` is a string of `x`/`X` for hits and `.`/`~` for rests (whitespace
+    ignored), or a sequence of bools. E.g. `cycle("x..x.", 16)` ->
+    `(0, 3, 5, 8, 10, 13, 15)`."""
+    if isinstance(figure, str):
+        chars = [c for c in figure if not c.isspace()]
+        hits: list[bool] = []
+        for c in chars:
+            if c in ("x", "X"):
+                hits.append(True)
+            elif c in (".", "~"):
+                hits.append(False)
+            else:
+                raise ValueError(f"unknown figure character {c!r} in {figure!r}; use x, X, . or ~")
+    else:
+        hits = [bool(v) for v in figure]
+    m = len(hits)
+    if m == 0:
+        raise ValueError("figure must not be empty")
+    if count < 0:
+        raise ValueError(f"count must not be negative, got {count}")
+    return tuple(s for s in range(start, start + count) if hits[s % m])
+
+
 __all__ = [
     "Bar",
     "Clock",
     "Groove",
     "add_at",
+    "cycle",
     "envelope_beats",
     "envelope_seconds",
+    "euclid",
     "frame_of",
     "markers",
     "note_seconds",

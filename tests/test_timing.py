@@ -15,8 +15,10 @@ from tactus.timing import (
     Clock,
     Groove,
     add_at,
+    cycle,
     envelope_beats,
     envelope_seconds,
+    euclid,
     frame_of,
     markers,
     note_seconds,
@@ -580,3 +582,82 @@ def test_timing_importable_as_submodule():
 
     assert t2 is timing
     assert hasattr(timing, "Clock")
+
+
+# ---------------------------------------------------------------------------
+# euclid: Bjorklund tables, rotation, edges, validation
+# ---------------------------------------------------------------------------
+
+
+def test_euclid_tidal_tables():
+    assert euclid(3, 8) == (0, 3, 6)
+    assert euclid(5, 8) == (0, 2, 3, 5, 6)
+    assert euclid(7, 16) == (0, 2, 4, 7, 9, 11, 14)
+    assert euclid(2, 5) == (0, 2)
+    assert euclid(4, 7) == (0, 2, 4, 6)
+
+
+def test_euclid_rotation_left():
+    # a hit at step s moves to (s - rotate) mod n
+    assert euclid(3, 8, rotate=2) == (1, 4, 6)
+    assert euclid(5, 8, rotate=2) == (0, 1, 3, 4, 6)
+
+
+def test_euclid_negative_rotation_moves_hits_later():
+    base = euclid(3, 8)
+    later = euclid(3, 8, rotate=-1)
+    assert later == tuple(sorted((s + 1) % 8 for s in base))
+
+
+def test_euclid_edge_k_zero_and_k_equals_n():
+    assert euclid(0, 8) == ()
+    assert euclid(8, 8) == tuple(range(8))
+
+
+def test_euclid_validation_errors():
+    with pytest.raises(ValueError):
+        euclid(3, 0)
+    with pytest.raises(ValueError):
+        euclid(3, -8)
+    with pytest.raises(ValueError):
+        euclid(-1, 8)
+    with pytest.raises(ValueError):
+        euclid(9, 8)
+
+
+# ---------------------------------------------------------------------------
+# cycle: continuity across bar lines, string and bool forms, start offset
+# ---------------------------------------------------------------------------
+
+
+def test_cycle_continuous_across_bar_lines():
+    assert cycle("x..x.", 16) == (0, 3, 5, 8, 10, 13, 15)
+
+
+def test_cycle_start_offset_matches_continuity():
+    full = cycle("x..x.", 16)
+    tail = cycle("x..x.", 10, start=6)
+    assert tail == tuple(s for s in full if s >= 6)
+
+
+def test_cycle_accepts_x_dot_forms_and_whitespace():
+    assert cycle("x . x", 3) == cycle("x.x", 3)
+    assert cycle("x ~ x x ~", 5) == cycle("x~xx~", 5)
+
+
+def test_cycle_accepts_bool_sequence():
+    assert cycle([True, False, True], 6) == (0, 2, 3, 5)
+
+
+def test_cycle_empty_result():
+    assert cycle("...", 6) == ()
+
+
+def test_cycle_unknown_character_raises():
+    with pytest.raises(ValueError):
+        cycle("x?x", 4)
+
+
+def test_cycle_empty_figure_raises():
+    with pytest.raises(ValueError):
+        cycle("", 4)

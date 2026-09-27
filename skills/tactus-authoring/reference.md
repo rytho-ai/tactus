@@ -146,7 +146,9 @@ ties go to the later grid point); `timing.note_seconds(clock, beat, value)` is a
 in beats (e.g. `0.75` dotted eighth) as seconds at the tempo sounding at `beat`;
 `timing.add_at(buffer, clip, frame, gain=1.0)` mixes a clip into a buffer in place, cutting a
 head before frame 0 or a tail past the end, never wrapping; `timing.markers(frames, length,
-value=0.5, channels=1)` makes one impulse per distinct in-range frame.
+value=0.5, channels=1)` makes one impulse per distinct in-range frame;
+`timing.euclid(k, n, rotate=0)` and `timing.cycle(figure, count, start=0)` return the hit step
+indices of a Euclidean rhythm and of a repeating figure run continuously across bar lines.
 
 ```python
 clock = Clock(sample_rate=rate, tempo=[(1, 92), (9, 92), (13, 108, "ramp"), (17, 80)],
