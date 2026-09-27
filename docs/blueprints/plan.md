@@ -165,21 +165,25 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   [plan](plans/2026-09-26-work-as-uv-project.md) and the
   [probe](thoughts/2026-09-26-work-as-uv-project-probe.md).
 
+- **Optional musical time, `tactus.timing` (A1)** (`943c9b2`) — tempo maps with steps and three
+  gradual shapes (`ramp`, `ramp-time`, `smooth`), meters, `swing`, `Groove`, `place` and envelopes;
+  beats are 0-based quarter notes. A three-way design probe found tclock v3 best (0 errors, against
+  7 with no helper and 7 with v2). Two fresh Agents then used the shipped module from the skill
+  alone with no time errors, and three more did quantize strength, note-value delays, seeded
+  humanize and live-coding patterns with it plus plain Python, so no further time helpers were
+  added. See the [plan](plans/2026-09-27-tactus-timing.md), the
+  [comparison](thoughts/2026-09-27-temporal-design-comparison.md) and the
+  [gaps probe](thoughts/2026-09-27-timing-gaps-and-repetition.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-- **`tactus.time` from tclock v3 (A1)** — a three-way design probe (2026-09-27) with common musical
-  transforms (sudden and gradual tempo changes, eased ritardando, swing by section, groove) found
-  v3 best: 0 errors over three rounds, against 7 with no helper (0/1-based beat confusion on a
-  groove kick, repeated every round) and 7 with v2 (approximating tempo shapes it lacked), at
-  similar tokens. Proposed: ship v3's API as an optional module with tests, a short skill
-  section (beats are 0-based), dogfood 3 adoption and a fresh-Agent check. Awaiting Paul. See the
-  [comparison](thoughts/2026-09-27-temporal-design-comparison.md) and the earlier
-  [exact-task](thoughts/2026-09-27-temporal-helpers-necessity-probe.md) and
-  [load](thoughts/2026-09-27-temporal-helpers-load-probe.md) probes.
+None. Candidates awaiting Paul: mechanical helpers where Agents repeat divergent code (see the
+[gaps and repetition](thoughts/2026-09-27-timing-gaps-and-repetition.md) note), Pattern helpers
+(C1), and unified basic audio analysis.
 
 ## ⏸ Future — evidence-gated
 
