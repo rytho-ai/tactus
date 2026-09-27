@@ -44,7 +44,7 @@ Pattern functions 用於可命名、組合與重用的規律，例如 cycle、ph
 
 目前方向是將局部 Pattern 展開成普通事件，再與手寫 Python 或其他 generator 產生的事件使用同樣的時間與 placement 能力。下游不必因事件來源不同而採用不同編排模型。這能保留規律的意義，並減少作品反覆手寫 cycle／phase 計算。
 
-2026-09-27 的兩組對照 probe（多聲部、層層疊加的週期規則、兩輪修改）顯示 Pattern 模組沒有減少錯誤、token 或修改量，只讓原始碼變短，因此目前不提供 Pattern 模組；這些規律以原生 Python 加 `tactus.timing` 表達。以下是重新開啟時要決定的事。
+2026-09-27 的兩組對照 probe（多聲部、層層疊加的週期規則、兩輪修改）顯示 Pattern 模組沒有減少錯誤、token 或修改量，只讓原始碼變短，因此目前不提供 Pattern 模組；這些規律以原生 Python 加 `tactus.timing` 表達。同日第二次 probe 改用 Agent 熟悉的寫法（NumPy 格子、Tidal/Strudel 風格的 mini-notation，均為自製、不用套件），也只看到「慣例」的價值：Agent 各自重寫 Bjorklund，其中一個把 Tidal 的旋轉方向做反。因此只交付 `timing.euclid`（照 Tidal 的左旋）與 `timing.cycle`（跨小節連續循環），兩者回傳 step 編號，不引入 pattern 型別。以下是重新開啟時要決定的事。
 
 **尚未定案：**事件資料型別、Pattern 的正式函式集合與共用範圍。`realize(...) -> tuple[Event, ...]` 是已測過的候選邊界；它不要求整首作品使用 Event schema。Lazy／infinite Pattern、probability、seed 與 incremental realization 尚未收斂，也沒有採用 string mini-notation 的需求。
 
