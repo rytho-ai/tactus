@@ -121,7 +121,7 @@ normalize。Bounded read 可直接復用 SoundFile；是否新增共用 adapter 
 
 - [ ] 選定 inline digest 或 tracked lock 的固定引用方式，定義原始檔與衍生音訊的身分。
 - [ ] 提供取得素材 ID、依 ID 解析內容與完整性驗證的最小流程。
-- [ ] 將非音訊 sidecar 與明確宣告的 instrument／plugin assets 納入同一輸入身分機制。
+- [x] 將非音訊 sidecar 與明確宣告的 instrument／plugin assets 納入同一輸入身分機制。（2026-09-27 補記：`material()` 可釘任何檔案、`tree:` ref 釘資料夾、`tool()` 釘外部執行檔與插件；real-chop-flip 以此釘住 beat grid。）
 - [ ] 接上既有作品的素材讀取，明訂 rate、channels、區段與 headroom 處理。
 - [ ] 驗收同內容換路徑、內容遭替換、素材遺失／損壞及另一目錄重建。
 - [ ] 驗收更換素材會留下 tracked identity 的 Git diff。

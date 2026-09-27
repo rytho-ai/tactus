@@ -213,9 +213,24 @@ None.
      would be a beat grid pinned as a material, per the frozen-analysis rule.
   Key, chords and structure stay out of scope. See the
   [probe](thoughts/2026-09-27-audio-analysis-probe.md).
+- **MIDI performance acceptance (B1), candidate** — the adopted Mido path (phonon-ballad) was
+  checked only for length and signal control; the inventory's acceptance list is still open:
+  notes, velocity, CC and pedal, bend, same-tick ordering and preservation of untouched events.
+  It is a path already in use without those guarantees. See the
+  [inventory](thoughts/2026-09-24-implementation-evidence-inventory.md) §B1.
 
 ## ⏸ Future — evidence-gated
 
+- **Marker warp (B2 remainder)** — fixed-ratio stretch shipped; stretching between markers (warp
+  like a DAW) has no chosen binding, map format or length-error policy (design.md lists it as
+  undecided). It pairs with beat tracking in the parked analysis item, whose output would be the
+  markers. Trigger: a work needs audio aligned to a beat grid or markers.
+- **Comparison and delivery report (C3 remainder)** — beyond measurements: candidate IDs, regions,
+  mapping playback position to source audio, playback-only level matching (design.md
+  "驗證與觀察"). Trigger: a real revision flow where comparing candidates is the friction.
+- **Own DSP productization (C2)** — Faust/Numba ports and AOT/WASM parity exist as probes;
+  portable state/buffer conventions and a native export toolchain are undecided. Trigger: a work
+  needs a processor no library provides.
 - **Pattern helpers (C1), closed 2026-09-27, re-probed the same day** — a two-arm probe with a multi-part piece, layered
   periodic rules and two revision rounds found no gain: 0 errors in both arms, the Pattern arm
   used 5% more tokens and changed about as many lines per revision (74 vs 76); only final source
