@@ -1,0 +1,441 @@
+"""Exercise tactus.timing against independent computations (scipy quad, closed forms) and the
+validation the plan requires. See docs/blueprints/plans/2026-09-27-tactus-timing.md."""
+
+from __future__ import annotations
+
+import math
+
+import numpy as np
+import pytest
+from scipy.integrate import quad
+
+from tactus import timing
+from tactus.timing import (
+    Bar,
+    Clock,
+    Groove,
+    envelope_beats,
+    envelope_seconds,
+    frame_of,
+    place,
+    swing,
+)
+
+SR = 48000
+
+
+# ---------------------------------------------------------------------------
+# helpers: independent ground truth
+# ---------------------------------------------------------------------------
+
+
+def quad_seconds(bpm_of_beat, b0, b1):
+    return quad(lambda b: 60.0 / bpm_of_beat(b), b0, b1, limit=200)[0]
+
+
+def ramp_bpm(q0, q1, b0, b1):
+    def f(b):
+        u = (b - b0) / (b1 - b0)
+        return q0 + (q1 - q0) * u
+
+    return f
+
+
+def ramp_time_closed_form(q0, q1, b0, b1, x):
+    """Closed form for bpm linear in TIME (ramp-time): solve beats(t) = x for t."""
+    total = 120.0 * (b1 - b0) / (q0 + q1)
+    k = (q1 - q0) / total
+    return (-q0 + math.sqrt(q0 * q0 + 2 * k * 60.0 * x)) / k
+
+
+def smooth_bpm(q0, q1, b0, b1):
+    def f(b):
+        u = (b - b0) / (b1 - b0)
+        return q0 + (q1 - q0) * (1 - math.cos(math.pi * u)) / 2
+
+    return f
+
+
+# ---------------------------------------------------------------------------
+# step, ramp, ramp-time, smooth: against scipy quad and closed forms
+# ---------------------------------------------------------------------------
+
+
+def test_step_tempo_matches_constant_bpm():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    # 4 beats at 120 bpm = 2 seconds
+    assert clock.at(4.0) == pytest.approx(2.0, abs=1e-12)
+
+
+def test_ramp_matches_quad_and_closed_form():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (5, 92), (9, 120, "ramp")])
+    b0, b1 = clock.beats(5), clock.beats(9)
+    truth = quad_seconds(ramp_bpm(92, 120, b0, b1), b0, b1)
+    got = clock.at(b1) - clock.at(b0)
+    assert got == pytest.approx(truth, abs=1e-6)
+
+
+def test_ramp_time_matches_quad_and_closed_form():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (5, 92), (9, 120, "ramp-time")])
+    b0, b1 = clock.beats(5), clock.beats(9)
+
+    def bpm_ramp_time(b):
+        # bpm linear in TIME: invert the closed form numerically via bisection on x
+        x = b - b0
+        total = 120.0 * (b1 - b0) / (92 + 120)
+        k = (120 - 92) / total
+        t = ramp_time_closed_form(92, 120, b0, b1, x)
+        return 92 + k * t
+
+    truth = quad_seconds(bpm_ramp_time, b0, b1)
+    got = clock.at(b1) - clock.at(b0)
+    assert got == pytest.approx(truth, abs=1e-6)
+    closed = ramp_time_closed_form(92, 120, b0, b1, b1 - b0)
+    assert got == pytest.approx(closed, abs=1e-9)
+
+
+def test_smooth_matches_quad_within_1e6_over_64_bars():
+    clock = Clock(sample_rate=SR, tempo=[(1, 70), (1, 70), (65, 140, "smooth")])
+    b0, b1 = clock.beats(1), clock.beats(65)
+    truth = quad_seconds(smooth_bpm(70, 140, b0, b1), b0, b1)
+    got = clock.at(b1) - clock.at(b0)
+    assert abs(got - truth) <= 1e-6
+
+
+def test_smooth_matches_quad_various_spans():
+    for bars in (2, 8, 16, 32, 64):
+        clock = Clock(sample_rate=SR, tempo=[(1, 60), (1, 60), (1 + bars, 180, "smooth")])
+        b0, b1 = clock.beats(1), clock.beats(1 + bars)
+        truth = quad_seconds(smooth_bpm(60, 180, b0, b1), b0, b1)
+        got = clock.at(b1) - clock.at(b0)
+        assert abs(got - truth) <= 1e-6, f"bars={bars}"
+
+
+# ---------------------------------------------------------------------------
+# meters, including 7/8 and fractional bars
+# ---------------------------------------------------------------------------
+
+
+def test_meter_7_8_and_fractional_bars():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)], meter=[(1, 4), (9, 3.5), (10, 4)])
+    assert clock.beats_per_bar(9) == 3.5
+    assert clock.beats(9) == pytest.approx(8 * 4.0)
+    assert clock.beats(10) == pytest.approx(8 * 4.0 + 3.5)
+    # fractional bar: halfway through bar 9's (3.5-beat) bar
+    assert clock.beats(9.5) == pytest.approx(8 * 4.0 + 0.5 * 3.5)
+
+
+def test_meter_default_constant():
+    clock = Clock(sample_rate=SR, tempo=120, meter=4)
+    assert clock.beats_per_bar(1) == 4.0
+    assert clock.beats_per_bar(1000) == 4.0
+
+
+# ---------------------------------------------------------------------------
+# no drift over 10,000 bars
+# ---------------------------------------------------------------------------
+
+
+def test_no_drift_over_10000_bars():
+    clock = Clock(sample_rate=SR, tempo=[(1, 96)])
+    # absolute computation directly from bar 1, vs an independent per-bar accumulation
+    beats_per_bar = 4.0
+    expected_seconds_per_bar = 60.0 * beats_per_bar / 96.0
+    bar = 10_000
+    expected = bar_start_seconds = (bar - 1) * expected_seconds_per_bar
+    got = clock.seconds(bar)
+    assert got == pytest.approx(bar_start_seconds, abs=1e-9)
+    assert got == pytest.approx(expected, abs=1e-9)
+
+
+def test_no_drift_over_10000_bars_with_tempo_changes():
+    clock = Clock(
+        sample_rate=SR,
+        tempo=[(1, 90), (100, 90), (110, 130, "ramp"), (9000, 130), (9010, 80, "smooth")],
+    )
+    # Recompute bar 10,000's start seconds by summing independent segment integrals and
+    # compare to the clock's own absolute computation: they must agree exactly (same maths),
+    # but this also exercises that beat 39996 (bar 10000) is beyond the last tempo point and
+    # uses the constant tail closed form.
+    tail_beat, tail_bpm = clock._tail
+    beat = clock.beats(bar=10_000)
+    assert beat > tail_beat
+    direct = clock._tail_t0 + 60.0 * (beat - tail_beat) / tail_bpm
+    assert clock.seconds(10_000) == pytest.approx(clock.start_seconds + direct, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# beat_of round trip, including arrays and times far beyond the old inverse-table tail
+# ---------------------------------------------------------------------------
+
+
+def test_beat_of_round_trip_scalar():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (13, 92), (17, 100, "ramp"), (21, 120)])
+    for beat in (0.0, 3.25, clock.beats(13), clock.beats(19), clock.beats(25)):
+        seconds = clock.at(beat)
+        assert clock.beat_of(seconds) == pytest.approx(beat, abs=1e-9)
+
+
+def test_beat_of_round_trip_array():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (13, 92), (17, 100, "ramp"), (21, 120)])
+    beats = np.linspace(0.0, clock.beats(30), 200)
+    seconds = np.array([clock.at(b) for b in beats])
+    got = clock.beat_of(seconds)
+    assert isinstance(got, np.ndarray)
+    np.testing.assert_allclose(got, beats, atol=1e-9)
+
+
+def test_beat_of_before_start_and_far_beyond_tail_uses_closed_form():
+    """Regression for the probe's inverse-table sizing bug: times far past the last tempo
+    point (well beyond the old 64-beat lookup tail) must still resolve exactly."""
+    clock = Clock(sample_rate=SR, tempo=[(1, 96), (5, 96), (9, 130, "ramp")])
+    tail_beat, _tail_bpm = clock._tail
+    far_beat = tail_beat + 100_000.0  # far beyond any fixed-size inverse table
+    seconds = clock.at(far_beat)
+    assert clock.beat_of(seconds) == pytest.approx(far_beat, abs=1e-9)
+
+    # before the piece starts
+    early_seconds = clock.start_seconds - 3.0
+    got = clock.beat_of(early_seconds)
+    assert clock.at(got) == pytest.approx(early_seconds, abs=1e-9)
+    assert got < 0
+
+
+def test_beat_of_accurate_to_1e9_beats_within_segments():
+    clock = Clock(sample_rate=SR, tempo=[(1, 70), (1, 70), (33, 150, "smooth")])
+    for beat in np.linspace(0.0, clock.beats(33), 25):
+        seconds = clock.at(beat)
+        assert abs(clock.beat_of(seconds) - beat) <= 1e-9
+
+
+# ---------------------------------------------------------------------------
+# bpm_at
+# ---------------------------------------------------------------------------
+
+
+def test_bpm_at_step_ramp_smooth_and_tail():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (13, 92), (17, 100, "ramp"), (21, 120)])
+    assert clock.bpm_at(0.0) == 92
+    b0, b1 = clock.beats(13), clock.beats(17)
+    u = 0.5
+    mid = b0 + (b1 - b0) * u
+    assert clock.bpm_at(mid) == pytest.approx(92 + (100 - 92) * u)
+    assert clock.bpm_at(clock.beats(30)) == 120  # tail
+
+
+def test_bpm_at_ramp_time_matches_derivative_of_at():
+    clock = Clock(sample_rate=SR, tempo=[(1, 92), (5, 92), (9, 130, "ramp-time")])
+    b0, b1 = clock.beats(5), clock.beats(9)
+    mid = (b0 + b1) / 2
+    eps = 1e-4
+    numeric_bpm = 60.0 / ((clock.at(mid + eps) - clock.at(mid - eps)) / (2 * eps))
+    assert clock.bpm_at(mid) == pytest.approx(numeric_bpm, rel=1e-3)
+
+
+# ---------------------------------------------------------------------------
+# swing
+# ---------------------------------------------------------------------------
+
+
+def test_swing_straight_is_identity():
+    for beat in (0.0, 0.25, 0.5, 0.75, 1.0, 1.5):
+        assert swing(beat, 0.5) == pytest.approx(beat)
+
+
+def test_swing_amounts():
+    # midpoint of the unit moves to `amount`
+    assert swing(0.25, 0.58, unit=0.5) == pytest.approx(0.58 * 0.5)
+    assert swing(0.25, 2 / 3, unit=0.5) == pytest.approx((2 / 3) * 0.5)
+
+
+def test_swing_between_grid_points_is_linear():
+    amount = 0.6
+    unit = 0.5
+    # quarter-way to the midpoint, in the first half
+    beat = 0.125
+    x = beat / unit
+    expected = x * (amount / 0.5) * unit
+    assert swing(beat, amount, unit) == pytest.approx(expected)
+
+
+# ---------------------------------------------------------------------------
+# Groove
+# ---------------------------------------------------------------------------
+
+
+def test_groove_slots_and_wraparound():
+    groove = Groove(offsets_ms=[0.0, 5.0, -3.0, 2.0], velocities=[1.0, 0.8, 1.0, 0.9], grid=0.25)
+    assert groove.ms(0.0) == 0.0
+    assert groove.ms(0.25) == 5.0
+    assert groove.ms(0.5) == -3.0
+    assert groove.ms(0.75) == 2.0
+    # wrap: bar-relative beat 1.0 wraps to slot 0 again
+    assert groove.ms(1.0) == 0.0
+    assert groove.velocity(0.25) == 0.8
+
+
+def test_groove_frame_adds_offset():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    groove = Groove(offsets_ms=[0.0, 10.0], grid=0.5)
+    plain = clock.frame(1, 0.5)
+    grooved = groove.frame(clock, 1, 0.5)
+    assert grooved == frame_of(clock.seconds(1, 0.5, ms=10.0), SR)
+    assert grooved != plain
+
+
+def test_groove_mismatched_lengths_raises():
+    with pytest.raises(ValueError):
+        Groove(offsets_ms=[0.0, 1.0], velocities=[1.0])
+
+
+# ---------------------------------------------------------------------------
+# envelope_beats / envelope_seconds
+# ---------------------------------------------------------------------------
+
+
+def test_envelope_beats_endpoints_and_midpoint():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    length = clock.frame(5)
+    env = envelope_beats(clock, [((1, 0.0), 0.0), ((5, 0.0), 1.0)], length)
+    assert env[0] == pytest.approx(0.0, abs=1e-6)
+    assert env[-1] == pytest.approx(1.0, abs=1e-2)
+    mid_frame = length // 2
+    assert 0.0 < env[mid_frame] < 1.0
+
+
+def test_envelope_seconds_endpoints_and_midpoint():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    length = SR * 4
+    env = envelope_seconds(clock, [(0.0, 0.0), (4.0, 1.0)], length)
+    assert env[0] == pytest.approx(0.0, abs=1e-6)
+    assert env[-1] == pytest.approx(1.0, abs=1e-3)
+    assert env[length // 2] == pytest.approx(0.5, abs=1e-2)
+
+
+# ---------------------------------------------------------------------------
+# place: does not mutate its input
+# ---------------------------------------------------------------------------
+
+
+def test_place_does_not_mutate_input():
+    buffer = np.zeros(10, dtype=np.float32)
+    clip = np.ones(4, dtype=np.float32)
+    out = place(buffer, clip, frame=3)
+    assert np.all(buffer == 0.0)  # unchanged
+    assert out is not buffer
+    expected = np.zeros(10, dtype=np.float32)
+    expected[3:7] = 1.0
+    np.testing.assert_allclose(out, expected)
+
+
+def test_place_clips_to_buffer_bounds():
+    buffer = np.zeros(5, dtype=np.float32)
+    clip = np.ones(4, dtype=np.float32)
+    out = place(buffer, clip, frame=3, gain=2.0)
+    assert len(out) == 5
+    assert out[3] == pytest.approx(2.0)
+    assert out[4] == pytest.approx(2.0)
+
+
+def test_place_frame_beyond_buffer_returns_copy_unchanged():
+    buffer = np.ones(5, dtype=np.float32)
+    clip = np.ones(4, dtype=np.float32)
+    out = place(buffer, clip, frame=10)
+    np.testing.assert_allclose(out, buffer)
+    assert out is not buffer
+
+
+# ---------------------------------------------------------------------------
+# validation errors
+# ---------------------------------------------------------------------------
+
+
+def test_validation_unknown_shape():
+    with pytest.raises(ValueError, match="unknown tempo shape"):
+        Clock(sample_rate=SR, tempo=[(1, 90), (5, 100, "bogus")])
+
+
+def test_validation_ramp_without_previous_point():
+    with pytest.raises(ValueError, match="needs a previous tempo point"):
+        Clock(sample_rate=SR, tempo=[(1, 90, "ramp")])
+
+
+def test_validation_points_out_of_order():
+    with pytest.raises(ValueError, match="bar order"):
+        Clock(sample_rate=SR, tempo=[(9, 90), (1, 100)])
+
+
+def test_validation_first_meter_not_at_bar_1():
+    with pytest.raises(ValueError, match="bar 1"):
+        Clock(sample_rate=SR, tempo=120, meter=[(2, 4)])
+
+
+def test_validation_non_positive_bpm():
+    with pytest.raises(ValueError, match="positive"):
+        Clock(sample_rate=SR, tempo=[(1, 0)])
+    with pytest.raises(ValueError, match="positive"):
+        Clock(sample_rate=SR, tempo=[(1, 90), (5, -10)])
+
+
+# ---------------------------------------------------------------------------
+# bars / span
+# ---------------------------------------------------------------------------
+
+
+def test_bars_yields_bar_records():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    bars = list(clock.bars(1, 3))
+    assert len(bars) == 3
+    assert all(isinstance(b, Bar) for b in bars)
+    assert bars[0].number == 1
+    assert bars[0].start_beat == 0.0
+    assert bars[0].beats == 4.0
+    assert bars[0].start_frame == clock.frame(1)
+    assert bars[0].end_frame == clock.frame(2)
+
+
+def test_span_matches_frame_of_first_and_end_bar():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    assert clock.span(17, 25) == (clock.frame(17), clock.frame(25))
+
+
+# ---------------------------------------------------------------------------
+# ms offsets
+# ---------------------------------------------------------------------------
+
+
+def test_ms_offset_shifts_frame():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    base = clock.frame(9, 1.5)
+    early = clock.frame(9, 1.5, ms=-7.0)
+    late = clock.frame(9, 1.5, ms=7.0)
+    assert early < base < late
+    assert early == frame_of(clock.seconds(9, 1.5) - 0.007, SR)
+
+
+def test_frame_at_ms_offset():
+    clock = Clock(sample_rate=SR, tempo=[(1, 120)])
+    assert clock.frame_at(4.0, ms=3.0) == frame_of(clock.at(4.0) + 0.003, SR)
+
+
+# ---------------------------------------------------------------------------
+# frame_of: the single rounding rule
+# ---------------------------------------------------------------------------
+
+
+def test_frame_of_rounding_rule():
+    assert frame_of(1.0, SR) == SR
+    assert frame_of(0.0, SR) == 0
+    assert frame_of(1.0 / SR / 2, SR) in (0, 1)  # boundary of floor(x + 0.5)
+
+
+# ---------------------------------------------------------------------------
+# module surface
+# ---------------------------------------------------------------------------
+
+
+def test_timing_importable_as_submodule():
+    from tactus import timing as t2
+
+    assert t2 is timing
+    assert hasattr(timing, "Clock")

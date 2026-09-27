@@ -32,7 +32,9 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 作者仍決定 automation 的數值、邊界、插值方式與用途；helper 只負責正確展開。`place`、`repeat`、`scale_time`、`section_envelope` 等名稱目前用來描述候選能力。
 
-**尚未定案：**seconds／samples placement 與總長度的正式介面、rounding 規則，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證。新版執行入口不要求 BPM／bars；尚未建立完整 clock class 系統。
+三輪 probe 比較了「不用 helper」「v2 設計」「v3 設計」三種寫法在共同音樂變換任務下的正確率：v3 零錯誤，另外兩者各錯 7 處（同樣的 token 量級），錯誤集中在 0/1-based beat 誤算與 tempo 曲線的近似寫法。基於這個證據，`tactus.timing`（來自 v3）已交付為選用模組：`Clock`（tempo/meter → seconds/frames，含 step／ramp／ramp-time／smooth 四種 tempo 變化）、`swing`、`Groove`、`place`、`envelope_beats`／`envelope_seconds`，以及唯一的 rounding 規則 `frame_of`。它是 `import tactus.timing` 才會用到的選用能力：`render`／`run` 不要求它，作品仍可保留自己的時間算法，或與它混用；beats 一律是 0-based quarter note（音樂人數的「第 2 拍」是 `beat=1.0`）。
+
+**尚未定案：**seconds／samples placement 與總長度的正式介面，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用超出 `tactus.timing` 現有範圍。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證；MIDI 檔案讀入 tempo、groove 從音訊萃取，以及「全曲需要一個 clock」的要求，明確不在範圍內。
 
 ## Pattern：選用的局部規律工具
 

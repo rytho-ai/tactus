@@ -181,6 +181,32 @@ environment variable keeps its old result when that input changes, so read input
 - `fx.varispeed(audio, rate, speed)` plays audio at a per-output-frame speed (pitch follows
   speed; `0.0` holds, negative is not supported).
 
+### Musical time (optional)
+
+`from tactus.timing import Clock, swing, Groove` resolves musical position to seconds and
+frames under a tempo map; `frame_of(seconds, sample_rate)` is the one rounding rule
+(`floor(seconds * sample_rate + 0.5)`) for free-time work that needs no clock at all. It is
+optional: nothing in `render`/`run` requires it, and a work may keep its own time maths.
+Beats are 0-based quarter notes from the start of a bar — a musician's "beat 2" is `beat=1.0`.
+
+```python
+clock = Clock(sample_rate=rate, tempo=[(1, 92), (9, 92), (13, 108, "ramp"), (17, 80)],
+              meter=[(1, 4), (5, 3.5), (6, 4)])  # bar 5 is 7/8
+clock.frame(9, 1.5)            # bar 9, beat 1.5; (9, 92) marks where the ramp starts
+clock.frame(13, 0.0)           # the ramp arrives at 108 bpm here
+clock.frame(17, 0.0)           # (17, 80) is a step: 80 bpm from bar 17
+ritard = Clock(sample_rate=rate, tempo=[(1, 130), (17, 130), (21, 70, "smooth")])
+ritard.frame(21, 0.0)                             # eased ritardando lands here
+clock.frame(9, swing(1.75, 0.58))                 # swung sixteenth
+groove = Groove(offsets_ms=[0.0, 8.0, -4.0, 6.0], grid=0.25)
+groove.frame(clock, 9, 1.75)                      # a groove template's offset applied
+```
+
+Tempo points are `(bar, bpm)` (a step) or `(bar, bpm, shape)`, a gradual change from the
+previous point: `"ramp"` (linear in beats), `"ramp-time"` (linear in time) or `"smooth"` (a
+cosine ease). The module docstring (`python -c "import tactus.timing; help(tactus.timing)"`)
+has the full API and precision notes.
+
 ### Library behavior that affects Tactus results
 
 - **Array layout.** Pedalboard effects and `fx.render_instrument` use Tactus's
