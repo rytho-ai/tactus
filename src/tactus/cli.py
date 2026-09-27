@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import math
 import sys
+import types as _types
+import typing
 from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
@@ -31,26 +34,109 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
-def _measure(path: Path, output: str | None, audio: Any, rate: int) -> dict[str, Any]:
-    result = analysis.analyze(audio, rate)
+def _analysis_params(fn: Any) -> tuple[list[str], bool]:
+    """An analysis function's CLI-facing parameter names (every keyword parameter except
+    `audio`/`sample_rate`/`out`) and whether it accepts `out` (large-result file delivery)."""
+    names = []
+    accepts_out = False
+    for name in inspect.signature(fn).parameters:
+        if name in ("audio", "sample_rate"):
+            continue
+        if name == "out":
+            accepts_out = True
+            continue
+        names.append(name)
+    return names, accepts_out
+
+
+def _help_text(text: str) -> str:
+    """Escape `%` for `argparse`, which always `%`-expands `help=` strings (e.g. for
+    `%(default)s`) — a docstring's own `%` (as in "50% overlap") would otherwise crash
+    `--help` with a cryptic `TypeError`."""
+    return text.replace("%", "%%")
+
+
+def _flag_type(annotation: Any) -> Any:
+    """An `argparse` `type=` callable for a parameter's type hint: `int`/`float`/`str` map
+    directly, `X | None` unwraps to `X`'s type, and anything else (e.g. `band_levels`' tuple of
+    bands) falls back to `json.loads`, so a new analysis needs no hand-written CLI code."""
+    if annotation is inspect.Parameter.empty:
+        return str
+    origin = typing.get_origin(annotation)
+    if origin in (typing.Union, _types.UnionType):
+        args = [a for a in typing.get_args(annotation) if a is not type(None)]
+        if len(args) == 1:
+            return _flag_type(args[0])
+        return json.loads
+    if annotation in (int, float, str):
+        return annotation
+    return json.loads
+
+
+def _measure(
+    path: Path,
+    output: str | None,
+    audio: Any,
+    rate: int,
+    category: str,
+    name: str,
+    fn: Any,
+    params: dict[str, Any],
+    accepts_out: bool,
+    out_dir: Path | None,
+) -> dict[str, Any]:
+    call_kwargs = dict(params)
+    if accepts_out:
+        call_kwargs["out"] = None
+        if out_dir is not None:
+            identifier = output if output is not None else path.stem
+            out_dir.mkdir(parents=True, exist_ok=True)
+            call_kwargs["out"] = str(out_dir / f"{identifier}.{category}.{name}.npz")
+    result = fn(audio, rate, **call_kwargs)
     header: dict[str, Any] = {"path": str(path)}
     if output is not None:
         header["output"] = output
     header["sample_rate"] = rate
-    return _json_safe({**header, **result})
+    header["analysis"] = f"{category}.{name}"
+    header["revision"] = fn.revision
+    header["params"] = params
+    header["result"] = result
+    return _json_safe(header)
 
 
-def _analyze_paths(paths: list[Path]) -> list[dict[str, Any]]:
+def _analyze_paths(
+    paths: list[Path],
+    category: str,
+    name: str,
+    fn: Any,
+    params: dict[str, Any],
+    accepts_out: bool,
+    out_dir: Path | None,
+) -> list[dict[str, Any]]:
     """Measure every path: a WAV file directly, or every output of a run/excerpt directory
-    (read and verified by `read_published`). `tactus.analysis` does the measuring."""
+    (read and verified by `read_published`). The chosen `tactus.analysis` function does the
+    measuring."""
     results = []
     for path in paths:
         if path.is_dir():
             if not (path / "manifest.json").is_file():
                 raise RunError("invalid_request", "request", f"no manifest.json in {path}")
             _, rate, outputs, files = read_published(path)
-            for name in sorted(outputs):
-                results.append(_measure(path / files[name], name, outputs[name], rate))
+            for out_name in sorted(outputs):
+                results.append(
+                    _measure(
+                        path / files[out_name],
+                        out_name,
+                        outputs[out_name],
+                        rate,
+                        category,
+                        name,
+                        fn,
+                        params,
+                        accepts_out,
+                        out_dir,
+                    )
+                )
         elif path.is_file():
             try:
                 audio, rate = sf.read(str(path), dtype="float64")
@@ -58,7 +144,9 @@ def _analyze_paths(paths: list[Path]) -> list[dict[str, Any]]:
                 raise RunError(
                     "invalid_request", "request", f"could not read {path}: {exc}"
                 ) from exc
-            results.append(_measure(path, None, audio, rate))
+            results.append(
+                _measure(path, None, audio, rate, category, name, fn, params, accepts_out, out_dir)
+            )
         else:
             raise RunError("invalid_request", "request", f"path does not exist: {path}")
     return results
@@ -125,11 +213,45 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     add_command.add_argument("paths", nargs="+", type=Path, help="Files or folders to import")
     analyze_command = commands.add_parser(
-        "analyze", help="Measure loudness, peaks and clipping of WAVs, or a run/excerpt output"
+        "analyze",
+        help="Measure audio (level, spectral, ...); see `tactus analyze CATEGORY --help`",
     )
-    analyze_command.add_argument(
-        "paths", nargs="+", type=Path, help="WAV file(s), or run/excerpt directory(-ies)"
-    )
+    category_commands = analyze_command.add_subparsers(dest="category", required=True)
+    for category_name, category_module in analysis.CATEGORIES.items():
+        category_summary = (category_module.__doc__ or category_name).strip().splitlines()[0]
+        category_parser = category_commands.add_parser(
+            category_name,
+            help=_help_text(category_summary),
+            description=category_module.__doc__,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        name_commands = category_parser.add_subparsers(dest="name", required=True)
+        for fn in category_module.ANALYSES:
+            fn_summary = (fn.__doc__ or fn.__name__).strip().splitlines()[0]
+            name_parser = name_commands.add_parser(
+                fn.__name__,
+                help=_help_text(fn_summary),
+                description=fn.__doc__,
+                formatter_class=argparse.RawDescriptionHelpFormatter,
+            )
+            name_parser.add_argument(
+                "paths", nargs="+", type=Path, help="WAV file(s), or run/excerpt directory(-ies)"
+            )
+            param_names, accepts_out = _analysis_params(fn)
+            if accepts_out:
+                name_parser.add_argument(
+                    "--out", type=Path, help="Directory to write large results (e.g. STFT .npz)"
+                )
+            sig = inspect.signature(fn)
+            for param_name in param_names:
+                param = sig.parameters[param_name]
+                name_parser.add_argument(
+                    "--" + param_name.replace("_", "-"),
+                    dest=param_name,
+                    type=_flag_type(param.annotation),
+                    default=param.default,
+                    help=_help_text(f"default: {param.default!r}"),
+                )
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
@@ -170,7 +292,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps({"status": "ok", "materials": materials}, sort_keys=True))
             return 0
         if args.command == "analyze":
-            for result in _analyze_paths(args.paths):
+            fn = next(
+                f for f in analysis.CATEGORIES[args.category].ANALYSES if f.__name__ == args.name
+            )
+            param_names, accepts_out = _analysis_params(fn)
+            params = {name: getattr(args, name) for name in param_names}
+            out_dir = getattr(args, "out", None) if accepts_out else None
+            for result in _analyze_paths(
+                args.paths, args.category, args.name, fn, params, accepts_out, out_dir
+            ):
                 print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:

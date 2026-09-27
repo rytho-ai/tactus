@@ -311,12 +311,14 @@ def test_analyze_measures_a_wav_file(tmp_path, capsys):
     tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
     sf.write(wav, np.stack([tone, tone], axis=1), 48000, subtype="PCM_24")
 
-    assert main(["analyze", str(wav)]) == 0
+    assert main(["analyze", "level", "sample_peak", str(wav)]) == 0
     report = json.loads(capsys.readouterr().out.strip())
     assert report["path"] == str(wav)
     assert report["sample_rate"] == 48000
-    assert report["sample_peak_dbfs"] < 0
-    assert "flat_runs" in report
+    assert report["analysis"] == "level.sample_peak"
+    assert report["revision"] == 1
+    assert report["params"] == {}
+    assert report["result"]["sample_peak_dbfs"] < 0
     assert "output" not in report
 
 
@@ -331,17 +333,18 @@ def render():
     assert main(["run", str(entry), "--out", str(tmp_path / "out")]) == 0
     capsys.readouterr()
 
-    assert main(["analyze", str(tmp_path / "out")]) == 0
+    assert main(["analyze", "level", "rms", str(tmp_path / "out")]) == 0
     lines = [json.loads(line) for line in capsys.readouterr().out.strip().splitlines()]
     names = {report["output"] for report in lines}
     assert names == {"mix", "silence"}
     for report in lines:
         assert report["sample_rate"] == 48000
         assert report["path"].endswith(".wav")
+        assert report["analysis"] == "level.rms"
 
 
 def test_analyze_missing_path_is_a_structured_error(tmp_path, capsys):
-    assert main(["analyze", str(tmp_path / "missing.wav")]) == 2
+    assert main(["analyze", "level", "rms", str(tmp_path / "missing.wav")]) == 2
     report = json.loads(capsys.readouterr().out)
     assert report["error"]["code"] == "invalid_request"
 
@@ -349,6 +352,86 @@ def test_analyze_missing_path_is_a_structured_error(tmp_path, capsys):
 def test_analyze_directory_without_manifest_is_a_structured_error(tmp_path, capsys):
     empty = tmp_path / "not_a_run"
     empty.mkdir()
-    assert main(["analyze", str(empty)]) == 2
+    assert main(["analyze", "level", "rms", str(empty)]) == 2
     report = json.loads(capsys.readouterr().out)
     assert report["error"]["code"] == "invalid_request"
+
+
+def test_analyze_path_without_category_or_name_is_a_structured_request_error(tmp_path, capsys):
+    assert main(["analyze", str(tmp_path / "tone.wav")]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+    assert report["error"]["phase"] == "request"
+
+
+def test_analyze_unknown_category_is_a_structured_request_error(capsys, tmp_path):
+    assert main(["analyze", "nope", "rms", str(tmp_path / "tone.wav")]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+
+
+def test_analyze_unknown_analysis_is_a_structured_request_error(capsys, tmp_path):
+    assert main(["analyze", "level", "nope", str(tmp_path / "tone.wav")]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+
+
+def test_analyze_unknown_flag_is_a_structured_request_error(tmp_path, capsys):
+    assert main(["analyze", "level", "rms", str(tmp_path / "tone.wav"), "--nope", "1"]) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report["error"]["code"] == "invalid_request"
+
+
+def test_analyze_help_renders_at_all_three_levels(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["analyze", "--help"])
+    assert exc.value.code == 0
+    top = capsys.readouterr().out
+    assert "level" in top and "spectral" in top
+
+    with pytest.raises(SystemExit) as exc:
+        main(["analyze", "level", "--help"])
+    assert exc.value.code == 0
+    category = capsys.readouterr().out
+    assert "loudness" in category and "clipping" in category
+
+    with pytest.raises(SystemExit) as exc:
+        main(["analyze", "level", "loudness", "--help"])
+    assert exc.value.code == 0
+    detail = capsys.readouterr().out
+    assert "integrated_lufs" in detail and "LUFS" in detail
+
+
+def test_analyze_spectral_passes_a_custom_flag_through_to_params(tmp_path, capsys):
+    import numpy as np
+    import soundfile as sf
+
+    wav = tmp_path / "tone.wav"
+    t = np.arange(48000) / 48000
+    tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+    sf.write(wav, np.stack([tone, tone], axis=1), 48000, subtype="PCM_24")
+
+    assert main(["analyze", "spectral", "peaks", str(wav), "--n", "2"]) == 0
+    report = json.loads(capsys.readouterr().out.strip())
+    assert report["params"]["n"] == 2
+    assert len(report["result"]["peaks"]) <= 2
+
+
+def test_analyze_stft_without_out_is_a_summary_and_with_out_writes_npz(tmp_path, capsys):
+    import numpy as np
+    import soundfile as sf
+
+    wav = tmp_path / "tone.wav"
+    t = np.arange(48000) / 48000
+    tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+    sf.write(wav, np.stack([tone, tone], axis=1), 48000, subtype="PCM_24")
+
+    assert main(["analyze", "spectral", "stft", str(wav)]) == 0
+    summary = json.loads(capsys.readouterr().out.strip())
+    assert "file" not in summary["result"]
+    assert "note" in summary["result"]
+
+    out_dir = tmp_path / "out"
+    assert main(["analyze", "spectral", "stft", str(wav), "--out", str(out_dir)]) == 0
+    written = json.loads(capsys.readouterr().out.strip())
+    assert Path(written["result"]["file"]).is_file()

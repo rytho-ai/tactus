@@ -93,7 +93,9 @@ saved audio without rendering again. Accepting a candidate is a source edit comm
 ## Supported surface
 
 The CLI provides `init` (with `--tactus-path`/`--tactus`), `run` (with `--reuse`), `excerpt`,
-`analyze`, `material add`, `doctor`, help and version.
+`analyze CATEGORY NAME` (categories `level` and `spectral`; `tactus analyze --help` lists
+categories, `tactus analyze CATEGORY --help` lists analyses, `tactus analyze CATEGORY NAME
+--help` gives parameters and definitions), `material add`, `doctor`, help and version.
 The public Python exports are `run`, `excerpt`, `RunError`, `AudioRef`, `material`, `tool`,
 `load_audio`, `MaterialError`, `ToolError`, `stage`, the `fx` module, the `timing` module and
 the `analysis` module.

@@ -67,3 +67,31 @@
 - **`f0_over_time` 有 bug：**對 bass.wav 輸出一條固定 33.75 Hz 的線，三個 CLI Agent 都發現並棄用。
 - **沒見過的素材驗證：**依第一次 probe 的規則，整合前要用沒見過的素材再驗基頻與峰值偵測，最好是真實樂器錄音。
 - **寫清楚定義：**功率加權的頻譜重心、頻段 dB 的參考基準、基頻演算法。統一的價值就在於這些定義只有一份。
+
+## 沒見過素材的驗證與整合（同日）
+
+**驗證**（scratchpad `freq-validation/`，判定規則事先寫定）：
+- 修正了 `f0_over_time` 的平線 bug。成因有兩個：短時間窗的頻率格子太粗，而且時間窗太短，洩漏讓錯誤候選勝出。
+- 素材是 39 個 sfizz 渲染的真實 SFZ 貝斯音（E1–E5），加上 24 個新類型合成聲音。
+- **`peaks` 通過**：30/30 在 ±0.2% 內。
+- **`fundamental` 未通過**：±50 cents 內只有 47.5%。每類素材都不輸 pyin、yin 或自相關，但有兩套 SFZ 音色帶有比基頻更響的低八度層，所有方法都錯。
+- **`f0_over_time` 未通過**：62%；FM 音色只有 7%，輸給 pyin 和 yin。
+- 因此**不提供 `pitch` 分類**。
+
+**整合**（[plan](../plans/2026-09-27-analysis-contracts-and-frequency.md)）：
+- Paul 要 phonon 式、可以統一查詢的結構。我們沒有照搬 phonon 的合約與註冊表，改採較簡單的做法：一個分析就是一個函式，CLI 子命令由函式自動產生。
+- 依 Paul 的要求分成兩類，並採用漸進式揭露：
+  1. `tactus analyze --help` 列出分類；
+  2. `tactus analyze CATEGORY --help` 列出該類的分析；
+  3. `tactus analyze CATEGORY NAME --help` 顯示參數、欄位、單位與定義。
+- 函式本身就是 library：`from tactus.analysis import spectral`。
+- 分類內容：
+  - `level`：loudness、true_peak、sample_peak、rms、clipping；
+  - `spectral`：spectrum、band_levels、centroid（功率加權）、peaks、stft（以 `.npz` 交付）。
+- 每個結果都附上 `analysis`、`revision` 與實際參數。一致性由測試保證：每個分析都要有 revision、每個欄位都標了單位、參數都有型別與預設值。
+
+**驗收**：
+- 一個只看 skill 的全新 sonnet Agent，照不給定義的題目第一輪作答，**0 錯**，全程只用 `tactus analyze`，靠 `--help` 一層層找到工具。
+- 掃頻時間 5.10 s，與工具相同；頻段 dB 與先前 CLI 組相差 0.04 dB，因為它的低頻帶從 20 Hz 起算。
+- 沒有 pitch 分類，它用 `peaks` 的等距諧波推出貝斯基頻 41.2 Hz。它的報告聲稱 reference 提醒過諧波陷阱，但 skill 與原始碼都沒有這段，是報告內容與實際不符，答案本身正確。
+- 約 104k tokens。

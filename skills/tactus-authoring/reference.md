@@ -137,21 +137,14 @@ environment variable keeps its old result when that input changes, so read input
 
 ## Measuring audio
 
-`tactus analyze PATH... [PATH...]` prints one JSON object per file: `PATH` is a WAV file, or a
-run/excerpt directory, in which case every output named in its `manifest.json` is measured.
-From Python, `from tactus import analysis; analysis.analyze(audio, rate)` runs the same
-measurements on an array in Tactus's `(frames,)`/`(frames, channels)` layout and returns one
-dict. Every function reports a value, never a verdict — apply your own thresholds:
-
-- `analysis.integrated_lufs(audio, rate)`: ITU-R BS.1770 integrated loudness (LUFS); `None`
-  for digital silence or audio too short to gate.
-- `analysis.true_peak_dbtp(audio, rate)`: BS.1770-4 true peak (dBTP, 4x-oversampled), which
-  catches inter-sample overshoot a plain sample peak misses.
-- `analysis.sample_peak_dbfs(audio)`: peak absolute sample value (dBFS).
-- `analysis.rms_dbfs(audio)`: plain whole-signal RMS (dBFS); not a loudness measurement — see
-  `integrated_lufs`'s docstring for why it can read louder or quieter than LUFS.
-- `analysis.flat_runs(audio, min_length=4, above=0.5)`: `{count, longest, first_positions}`
-  for runs of identical-|value| samples above `above` (a clipped/flat top).
+Start at `tactus analyze --help` to list categories (`level`, `spectral`), then
+`tactus analyze CATEGORY --help` to list that category's analyses, then
+`tactus analyze CATEGORY NAME --help` for its parameters, result fields, units and
+definitions — read definitions there, not here. Run with
+`tactus analyze CATEGORY NAME PATH... [--flags] [--out DIR]`; `PATH` is a WAV file or a
+run/excerpt directory (every named output measured). The library mirrors the CLI:
+`from tactus.analysis import spectral; spectral.centroid(audio, rate, threshold_hz=2000.0)`.
+Every analysis reports values, never a verdict — apply your own thresholds.
 
 Values are measured on whatever array you pass, or on the saved WAV for a resolved run/excerpt
 output — not on some other stage of your signal chain.

@@ -197,6 +197,13 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   64-frame blocks (`buffer_size`, the same idea DawDreamer uses, without its engine); three more
   Agents then scored 0/6. See the [acceptance](thoughts/2026-09-27-midi-acceptance.md).
 
+- **Categorized analysis (`tactus analyze CATEGORY NAME`)** — one function per analysis, CLI
+  subcommands generated from them, three-level `--help` (categories → analyses → definitions),
+  results carrying `analysis`, `revision` and params. `level`: loudness, true peak, sample peak,
+  RMS, clipping. `spectral`: spectrum, band levels, power-weighted centroid, interpolated peaks,
+  STFT (`.npz`). From two frequency probes (with no definitions given, the shared CLI gave 0
+  errors vs 3 and one set of numbers); a fresh Agent passed from the skill alone. See the
+  [plan](plans/2026-09-27-analysis-contracts-and-frequency.md).
 - **Loudness and peak analysis (`tactus.analysis`, `tactus analyze`)** — integrated LUFS
   (pyloudnorm), true peak (4× oversampled), sample peak, RMS and flat-top runs, as functions and
   as a command over WAVs or run/excerpt directories, reporting values only. From the audio-analysis
@@ -209,7 +216,7 @@ None.
 
 ## ▶ Next
 
-- **Unified basic audio analysis (loudness shipped; frequency proven useful, validating)** — a three-arm probe found
+- **Unified basic audio analysis (level and spectral shipped; onsets, pitch, beats open)** — a three-arm probe found
   Agents with only the installed libraries (pyloudnorm, librosa, scipy — all three used them)
   made 71 errors, all in onset detection, at about 230k tokens; CLI and function arms made 0
   at about 100k. CLI and functions tied: one implementation, two doors (functions and a
@@ -217,14 +224,10 @@ None.
   1. Loudness and peaks: **shipped** as `tactus.analysis` and `tactus analyze` (see Shipped).
      Paul narrowed analysis to loudness and frequency; DC, correlation and dropout checks are
      dropped.
-  1b. Frequency (spectrum, STFT, bands, centroid, peaks, fundamental): two probes. With exact
-     definitions in the brief, no difference; asked like a producer with no definitions, a shared
-     CLI gave 0 errors vs 3 (a bass octave error from `librosa.pyin`, a resonance miss) and
-     identical numbers across Agents, while Agents without it agreed with each other but differed
-     from the tool by ~11 dB (band reference) and ~0.5 s (amplitude- vs power-weighted centroid).
-     Next: fix the prototype's `f0_over_time` bug, validate fundamental and peaks on unseen
-     material, then integrate into `tactus.analysis` / `tactus analyze` with documented
-     definitions. See the [probes](thoughts/2026-09-27-frequency-analysis-probes.md). Flat-top counts could
+  1b. Frequency: **shipped** as the `spectral` category (see Shipped). Pitch (`fundamental`,
+     f0 over time) failed unseen-material validation (47.5% within ±50 cents; sub-octave SFZ
+     layers defeat every method) and is not shipped. See the
+     [probes](thoughts/2026-09-27-frequency-analysis-probes.md). Flat-top counts could
      also go into `tactus run`'s `levels`, closing the full-scale item in Future.
   2. Onsets: **failed validation, not shipped.** On 9 unseen loops built from real one-shots the
      prototype scored F1 0.12 at 2 ms (librosa tuned 0.27, at 10 ms 0.76); it had overfit the two
