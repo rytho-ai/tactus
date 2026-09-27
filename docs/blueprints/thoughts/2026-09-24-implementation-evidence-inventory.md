@@ -316,7 +316,7 @@ arrays 唯讀）需要實際錯誤證據才啟動。承載形式（作品目錄�
 - [ ] 選定既有 MIDI／SFZ 作品作為採用端，補齊其素材與 renderer 身分。
 - [ ] 將完整演奏接到 functional `run` 的音訊交付流程。
 - [ ] 需要 MIDI 檔案交換時接 Mido，明訂受支援事件與 preservation 政策。
-- [ ] 驗收 notes、velocity、CC／pedal、bend、同 tick ordering 及未修改事件的保留。
+- [x] 驗收 notes、velocity、CC／pedal、bend、同 tick ordering 及未修改事件的保留。（2026-09-27：見 [MIDI 驗收](2026-09-27-midi-acceptance.md)；bend 提早已修正。）
 - [ ] 驗收連續 instrument render 與尾音，交付可聽版本；依重複需求抽出共用 adapter。
 
 <a id="b2"></a>

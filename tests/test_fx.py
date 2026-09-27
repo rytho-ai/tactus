@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pedalboard
 import pytest
@@ -431,13 +433,16 @@ class _FakeInstrumentPlugin:
     def __init__(self):
         self.calls = []
 
-    def __call__(self, messages, *, duration, sample_rate, num_channels, reset=True):
+    def __call__(
+        self, messages, *, duration, sample_rate, num_channels, buffer_size=8192, reset=True
+    ):
         self.calls.append(
             {
                 "messages": list(messages),
                 "duration": duration,
                 "sample_rate": sample_rate,
                 "num_channels": num_channels,
+                "buffer_size": buffer_size,
                 "reset": reset,
             }
         )
@@ -496,6 +501,50 @@ def test_render_instrument_passes_messages_through_to_performance_call():
     fx.render_instrument(plugin, messages, duration=1.0, sample_rate=1000, warmup_seconds=0.2)
 
     assert plugin.calls[1]["messages"] == messages
+
+
+def test_render_instrument_renders_in_small_blocks_by_default():
+    # Pedalboard's 8192-frame default applies pitch bend and CC at the start of the block
+    # containing them; the small default keeps them near their stated time.
+    plugin = _FakeInstrumentPlugin()
+    fx.render_instrument(plugin, [], duration=1.0, sample_rate=1000, warmup_seconds=0.2)
+    assert [call["buffer_size"] for call in plugin.calls] == [64, 64]
+
+    plugin = _FakeInstrumentPlugin()
+    fx.render_instrument(
+        plugin, [], duration=1.0, sample_rate=1000, warmup_seconds=0.0, buffer_size=256
+    )
+    assert plugin.calls[0]["buffer_size"] == 256
+
+
+def test_render_instrument_rejects_non_positive_buffer_size():
+    with pytest.raises(ValueError, match="buffer_size"):
+        fx.render_instrument(
+            _FakeInstrumentPlugin(), [], duration=1.0, sample_rate=1000, buffer_size=0
+        )
+
+
+_DEXED = Path.home() / ".vst3" / "Dexed.vst3"
+
+
+@pytest.mark.skipif(not _DEXED.exists(), reason="needs the Dexed VST3 instrument")
+def test_render_instrument_pitch_bend_lands_on_time_with_a_real_plugin():
+    import mido
+    import pedalboard
+
+    rate, bend_at = 48000, 1.02
+
+    def render(with_bend):
+        plugin = pedalboard.load_plugin(str(_DEXED))
+        msgs = [mido.Message("note_on", note=43, velocity=100, time=0.1)]
+        if with_bend:
+            msgs.append(mido.Message("pitchwheel", pitch=8191, time=bend_at))
+        msgs.append(mido.Message("note_off", note=43, time=1.8))
+        return fx.render_instrument(plugin, msgs, duration=2.0, sample_rate=rate)
+
+    diff = np.abs(render(True) - render(False)).max(axis=1)
+    first = int(np.flatnonzero(diff > 1e-6)[0])
+    assert abs(first - bend_at * rate) <= 0.002 * rate  # within 2 ms, not a block early
 
 
 def test_render_instrument_validates_args():

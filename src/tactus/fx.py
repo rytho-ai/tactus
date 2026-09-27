@@ -564,6 +564,7 @@ def render_instrument(
     sample_rate: int,
     num_channels: int = 2,
     warmup_seconds: float = 1.0,
+    buffer_size: int = 64,
 ) -> np.ndarray:
     """Render a VST instrument plugin (MIDI in, audio out) to Tactus's `(frames,
     channels)` layout.
@@ -576,21 +577,38 @@ def render_instrument(
     audible start transient even when no notes play in that render, so the warm-up
     absorbs it. The performance render then runs with `reset=False` so it continues from
     the warmed-up state instead of resetting the plugin (which brings the transient
-    back). Pedalboard returns instrument audio as `(channels, frames)`; this transposes
+    back).
+
+    `buffer_size` is the block Pedalboard renders in. VST3 carries pitch bend and CC as
+    parameter changes that most plugins read once per block, so they take effect at the
+    start of the block that contains them: at Pedalboard's default of 8192 frames a bend
+    landed up to 170 ms early (note on/off are unaffected). The default of 64 keeps that
+    error near 1 ms at little cost (an 8 s Dexed phrase: 0.24 s vs 0.21 s).
+
+    Pedalboard returns instrument audio as `(channels, frames)`; this transposes
     to Tactus's `(frames, channels)` before returning, at exactly `round(duration *
     sample_rate)` frames (padded with silence or truncated if the plugin returns a
     different length).
     """
     _validate_render_instrument_args(duration, sample_rate, num_channels, warmup_seconds)
+    if buffer_size < 1:
+        raise ValueError(f"buffer_size must be >= 1, got {buffer_size!r}")
 
     if warmup_seconds > 0:
-        plugin([], duration=warmup_seconds, sample_rate=sample_rate, num_channels=num_channels)
+        plugin(
+            [],
+            duration=warmup_seconds,
+            sample_rate=sample_rate,
+            num_channels=num_channels,
+            buffer_size=buffer_size,
+        )
 
     raw = plugin(
         list(messages),
         duration=duration,
         sample_rate=sample_rate,
         num_channels=num_channels,
+        buffer_size=buffer_size,
         reset=False,
     )
     audio = np.asarray(raw)

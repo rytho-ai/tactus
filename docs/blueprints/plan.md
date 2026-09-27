@@ -190,6 +190,13 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   idioms brief using them and wrote no Bjorklund of its own. See the
   [plan](plans/2026-09-27-euclid-and-cycle.md).
 
+- **MIDI performance acceptance (B1)** — measured `fx.render_instrument` with a real plugin:
+  velocity, sustain pedal, raw tuples and over-length messages behave; pitch bend took effect at
+  the start of Pedalboard's 8192-frame block, up to 170 ms early. Three fresh Agents delivered
+  those early bends without noticing (4/6 errors each), so `render_instrument` now renders in
+  64-frame blocks (`buffer_size`, the same idea DawDreamer uses, without its engine); three more
+  Agents then scored 0/6. See the [acceptance](thoughts/2026-09-27-midi-acceptance.md).
+
 ## 🚧 In progress
 
 None.
@@ -213,12 +220,6 @@ None.
      would be a beat grid pinned as a material, per the frozen-analysis rule.
   Key, chords and structure stay out of scope. See the
   [probe](thoughts/2026-09-27-audio-analysis-probe.md).
-- **MIDI performance acceptance (B1), candidate** — the adopted Mido path (phonon-ballad) was
-  checked only for length and signal control; the inventory's acceptance list is still open:
-  notes, velocity, CC and pedal, bend, same-tick ordering and preservation of untouched events.
-  It is a path already in use without those guarantees. See the
-  [inventory](thoughts/2026-09-24-implementation-evidence-inventory.md) §B1.
-
 ## ⏸ Future — evidence-gated
 
 - **Marker warp (B2 remainder)** — fixed-ratio stretch shipped; stretching between markers (warp

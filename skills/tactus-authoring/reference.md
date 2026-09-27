@@ -124,7 +124,8 @@ environment variable keeps its old result when that input changes, so read input
   range-checks it, and returns the value actually set; record that one.
 - `fx.render_instrument(plugin, messages, duration=seconds, sample_rate=rate)` renders a VST3
   instrument from `mido` messages or `(bytes, seconds)` tuples in absolute seconds, after a
-  silent warm-up render that removes a start transient; returns `(frames, channels)`.
+  silent warm-up render that removes a start transient; returns `(frames, channels)`. It renders
+  in 64-frame blocks (`buffer_size`) because plugins apply pitch bend and CC at block starts.
 - `fx.process_automated(chain, audio, rate, update, block_seconds=0.02, tail_seconds=…)`
   processes in blocks, calling `update(t)` with each block's start time so you can set
   parameters over time; it handles reset, tail silence and reported latency.
