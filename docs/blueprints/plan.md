@@ -181,9 +181,14 @@ None.
 
 ## ▶ Next
 
-None. Candidates awaiting Paul: mechanical helpers where Agents repeat divergent code (see the
-[gaps and repetition](thoughts/2026-09-27-timing-gaps-and-repetition.md) note), Pattern helpers
-(C1), and unified basic audio analysis.
+- **Mechanical helpers (load, place, markers, quantize, note values, RMS fit)** — a two-arm
+  probe (2026-09-27) found both arms error-free but the helper arm used 21% fewer tokens and
+  about a third less code, and handled level targets consistently where the other arm invented
+  three approaches (two hard-clipping over 20,000 samples). By the pre-registered rule six
+  helpers integrate (`db_to_gain`/`gain_to_db` unused, dropped); `fit_rms` must first stop
+  flat-topping. Next: a grounded plan, then integration. See the
+  [probe](thoughts/2026-09-27-mechanical-helpers-probe.md).
+- Other candidates awaiting Paul: Pattern helpers (C1) and unified basic audio analysis.
 
 ## ⏸ Future — evidence-gated
 
