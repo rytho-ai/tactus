@@ -127,11 +127,19 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 | Standard MIDI File 交換 | Mido（base dependency） | 例如 `sfizz_render` 需要 `.mid` 檔；三次完整歌曲 dogfood 的 Agent 都因為沒有 MIDI 套件而各自手寫 SMF writer，因此改為預設安裝。Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 composition model。 |
 | Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `e43cc6d`，GPL-2.0-only） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。`extreme_stretch`（PaulStretch）是可選的創作處理：長度只是近似值，每個 process 內依呼叫順序固定亂數。這個 revision 因為 libpaulstretch 而改成 GPL-2.0-only，和 Pedalboard 的 GPLv3 不能一起對外發佈；目前只在內部使用，公開發佈前必須解決（見 plan 的 Future）。 |
 
+**Marker warp 的實際製作驗證（2026-09-28）：** 已安裝的 `pytimestretch.time_warp` 接受
+`(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。
+作品先在 `render` 外取得拍點，把採用的 map 固定成素材，再由一次連續的引擎呼叫完成伸縮。
+Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差由固定伸縮的 600.49 ms 降到
+逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。來源拍點與音質仍待 Paul 試聽，
+不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
+詳見 [製作驗證](blueprints/thoughts/2026-09-28-beat-alignment-production.md)。
+
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 
 自有 DSP 的有限實驗支持 Python／Numba 實作與 native／WASM 輸出的可行性，但尚未形成產品的通用 export pipeline。驗證移植算法時要涵蓋時變參數、state 與 block boundaries；參考輸出本身也可能有錯，不能只因符合單一 golden 就宣稱正確。
 
-**尚未定案：**marker warp 的產品介面；效果鏈的 latency、tail、automation 與具體 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
+**尚未定案：**是否有跨作品共用 marker-map authoring helper 的必要；效果鏈的 latency、tail、automation 與具體 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
 
 ## 試聽：Offline、stateful、候選隔離
 

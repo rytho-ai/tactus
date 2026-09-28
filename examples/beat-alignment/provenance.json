@@ -1,0 +1,15 @@
+{
+  "title": "Hungarian Dance No. 5 (string orchestra)",
+  "composer": "Johannes Brahms",
+  "performer": "US Army Strings",
+  "license": "CC-PDM-1.0 (librosa supplied attribution metadata)",
+  "source_url": "https://musopen.org/music/43805-hungarian-dance-no-5-in-f-sharp-minor-woo-1-string-orch",
+  "download_url": "https://librosa.org/data/audio/Hungarian_Dance_number_5_-_Allegro_in_F_sharp_minor_(string_orchestra).hq.ogg",
+  "original_sha256": "8e93ff0182a93168b15346c497b164cb49d2a97bf1e987a1149ea579e914532e",
+  "source_ref": "sha256:c61c2ae027c7dfa5d2f0a507fb5c02d39125b1077ab27653a71fbba1d0cbb8ab",
+  "analysis_ref": "sha256:9f557ace48f448e5ed1428d8a29d70265e3b83c10667669cda3d6a6176648d00",
+  "sample_rate": 44100,
+  "frames": 2021760,
+  "preparation": "Decode HQ Ogg to stereo PCM24 WAV at original sample rate; no timing edits.",
+  "grid_status": "Unedited estimator output, frozen provisionally for comparison; human review pending."
+}

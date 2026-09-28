@@ -1,0 +1,72 @@
+{
+  "sample_rate": 44100,
+  "backend": "rubberband",
+  "target_bpm": 160,
+  "source_duration_s": 27.50403628117914,
+  "target_duration_s": 27.0,
+  "beat_intervals": 72,
+  "source_interval_bpm_range": [
+    117.45383522727278,
+    206.7187500000002
+  ],
+  "fixed_affine_marker_error": {
+    "mean_abs_ms": 600.5652724503095,
+    "median_abs_ms": 297.9105107640354,
+    "p95_abs_ms": 1568.193330519208,
+    "max_abs_ms": 1614.4470240607839
+  },
+  "identical_percussion_sha256": "a4a87259082aabd2dd1690607e0bf67d87ddbe6e31d0d54a0740e1ffc3f03357",
+  "measurement": "48-band log-mel plus positive spectral difference; unconstrained-by-markers full-phrase DTW, 10 ms hops, +/-25% global band, steps (1,1)/(1,2)/(2,1); query frozen source beat times afterwards. Exclude first/last two anchors.",
+  "candidates": {
+    "fixed": {
+      "audio_correspondence_grid_error": {
+        "mean_abs_ms": 600.4937723881822,
+        "median_abs_ms": 299.3537414965974,
+        "p95_abs_ms": 1569.7324263038554,
+        "max_abs_ms": 1609.5578231292543
+      },
+      "audio_correspondence_mapping_error": {
+        "mean_abs_ms": 2.5506215806521526,
+        "median_abs_ms": 2.1304950853284765,
+        "p95_abs_ms": 5.746326559329162,
+        "max_abs_ms": 8.89346423809556
+      },
+      "boundaries": {
+        "largest_marker_step": 0.038790225982666016,
+        "largest_relative_step": 1.4054874846513907,
+        "isolated_step_flags": 0,
+        "definition": "Peak sample difference within 1 ms of each marker vs local 100 ms p99; flag >0.02 and >3x. Diagnostic, not audibility test."
+      },
+      "music_rms_dbfs": -27.812225019619916,
+      "mix_peak_dbfs": -7.59,
+      "clipped_samples": 0,
+      "frames": 1190700
+    },
+    "warp": {
+      "audio_correspondence_grid_error": {
+        "mean_abs_ms": 7.790758815603494,
+        "median_abs_ms": 6.984126984129091,
+        "p95_abs_ms": 17.664399092970477,
+        "max_abs_ms": 20.963718820860677
+      },
+      "audio_correspondence_mapping_error": {
+        "mean_abs_ms": 7.790758815603494,
+        "median_abs_ms": 6.984126984129091,
+        "p95_abs_ms": 17.664399092970477,
+        "max_abs_ms": 20.963718820860677
+      },
+      "boundaries": {
+        "largest_marker_step": 0.03469288349151611,
+        "largest_relative_step": 1.2666365460705558,
+        "isolated_step_flags": 0,
+        "definition": "Peak sample difference within 1 ms of each marker vs local 100 ms p99; flag >0.02 and >3x. Diagnostic, not audibility test."
+      },
+      "music_rms_dbfs": -27.698481198790745,
+      "mix_peak_dbfs": -7.95,
+      "clipped_samples": 0,
+      "frames": 1190700
+    }
+  },
+  "dtw_identity_max_error_s": 0.0,
+  "listening_status": "Human assessment of grid, artifacts and preference pending."
+}

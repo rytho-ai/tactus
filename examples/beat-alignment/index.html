@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tactus｜真人演奏拍點對齊</title>
+<style>
+:root{color-scheme:dark;--bg:#141716;--card:#202522;--ink:#edf1e8;--muted:#a8b3a9;--a:#efbc83;--b:#91d3ae}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 system-ui,sans-serif}main{max-width:1080px;margin:auto;padding:44px 24px 80px}h1{font-size:clamp(28px,5vw,44px);line-height:1.25;margin:10px 0 20px}h2{font-size:22px;margin:0 0 14px}p{margin:10px 0}.eyebrow{color:var(--b);letter-spacing:.16em;font-size:12px}.muted,small{color:var(--muted)}a{color:var(--b)}section{background:var(--card);border:1px solid #354036;border-radius:16px;padding:24px;margin:22px 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:14px 18px;background:#191e1b;border-radius:10px}.stat strong{font-size:30px;display:block;font-variant-numeric:tabular-nums}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}button,select{font:inherit;border:1px solid #627164;background:#151b17;color:var(--ink);padding:10px 18px;border-radius:9px;cursor:pointer}button.active{background:var(--b);border-color:var(--b);color:#102018;font-weight:700}button#a.active{background:var(--a);border-color:var(--a)}button:hover{filter:brightness(1.12)}input[type=range]{width:100%;accent-color:var(--b)}audio{width:100%;margin-top:10px}.badge{display:inline-block;border:1px solid #617162;border-radius:30px;padding:2px 12px;font-size:13px;color:var(--muted)}.chart{width:100%;height:220px;display:block}.legend{display:flex;gap:20px;font-size:14px}.legend .a{color:var(--a)}.legend .b{color:var(--b)}.two{display:grid;grid-template-columns:1fr 1fr;gap:22px}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:10px 8px;text-align:left;border-bottom:1px solid #414b41}ul{padding-left:22px}.time{font-variant-numeric:tabular-nums}#error{color:#ffae9d;white-space:pre-wrap}details{margin-top:16px}summary{cursor:pointer;color:var(--b)}@media(max-width:650px){.grid,.two{grid-template-columns:1fr}.stat strong{font-size:25px}main{padding:26px 16px}section{padding:18px}.chart{height:185px}}
+</style></head>
+<body><main>
+<div class="eyebrow">TACTUS · 實際製作 01</div>
+<h1>讓速度會變的演奏，<br>跟同一段鼓一起走。</h1>
+<p class="muted">《匈牙利舞曲第 5 號》真人弦樂演奏 → pyqmdsp 拍點 → 160 BPM。兩版使用相同片段、鼓組、增益與 Rubber Band 引擎。</p>
+<span class="badge">技術檢查完成 · 拍點判讀與音質待你試聽</span>
+<div class="grid" style="margin-top:24px">
+<div class="stat"><small>來源拍間速度（估計）</small><strong>117–207 <small>BPM</small></strong></div>
+<div class="stat"><small>A 固定伸縮｜音訊對應偏差均值</small><strong id="fixed-ms">—</strong></div>
+<div class="stat"><small>B 逐拍對齊｜音訊對應偏差均值</small><strong id="warp-ms">—</strong></div>
+</div>
+<section><h2>1. 先確認來源拍點</h2>
+<p>這段原音長約 27.50 秒，來自錄音的 4.13–31.64 秒。拍點是未手動修正的估計，尚未認定為正確小節線。先聽 click 是否落在你認為的脈動上。</p>
+<label for="source-mode">來源試聽：</label><select id="source-mode"><option value="with-clicks">原音＋偵測拍點</option><option value="music">只有原音</option></select>
+<audio id="source-audio" controls preload="metadata"></audio>
+</section>
+<section><h2>2. 在同一時間切換 A / B</h2>
+<p class="muted">先聽「加鼓成品」的合拍感，再切到「弦樂單獨」比較音色、拉扯感與雜音。A/B 切換會保留播放位置；「跳到速度轉折」適合快速比較。</p>
+<div class="controls"><button id="a" class="active" aria-pressed="true">A · 整段固定伸縮</button><button id="b" aria-pressed="false">B · 逐拍對齊</button><select id="stem" aria-label="試聽內容"><option value="mix">加鼓成品</option><option value="music">弦樂單獨</option><option value="with-clicks">弦樂＋目標拍點</option></select></div>
+<div class="controls"><button id="play">播放</button><button id="jump">跳到速度轉折（17 秒）</button><span id="time" class="time">0:00 / 0:27</span></div>
+<input id="seek" aria-label="播放位置" type="range" min="0" max="27" step="0.01" value="0">
+<p><a id="download-a" download>下載 A WAV</a>　<a id="download-b" download>下載 B WAV</a></p>
+<audio id="audio-a" preload="auto"></audio><audio id="audio-b" preload="auto"></audio>
+<p id="error" role="alert"></p>
+</section>
+<div class="two"><section><h2>來源的速度變化</h2><p class="muted">橫軸：來源片段秒數；縱軸：拍間 BPM。</p><svg id="tempo-chart" class="chart" viewBox="0 0 480 220" role="img" aria-label="來源速度曲線"></svg></section>
+<section><h2>輸出音訊落在目標哪裡？</h2><p class="muted">橫軸：目標秒數；縱軸：相對目標的偏差（ms）。正值是較晚。</p><svg id="error-chart" class="chart" viewBox="0 0 480 220" role="img" aria-label="A B 音訊時間對應偏差"></svg><div class="legend"><span class="a">● A 固定伸縮</span><span class="b">● B 逐拍對齊</span></div></section></div>
+<section><h2>3. 這些數字能說明什麼</h2>
+<table><thead><tr><th>檢查</th><th>A 固定伸縮</th><th>B 逐拍對齊</th></tr></thead><tbody id="metrics"></tbody></table>
+<p>時間偏差來自來源與輸出音訊的頻譜對應（DTW，10 ms 分析間隔），算完對應路徑後才查詢來源拍點。它不是人工標註的拍點準確度，也不是將 marker 座標當作量測結果。</p>
+<p class="muted">兩版鼓的 WAV hash 相同；弦樂 RMS 相差約 0.11 dB，未做個別音量正規化。邊界檢查沒有觸發孤立跳變門檻，但這不代表聽不到失真。兩版均由引擎連續處理整段，沒有逐拍剪接。</p>
+<details><summary>量測方法與來源</summary><p>48-band log-mel 加正向頻譜差分，完整片段 DTW；不把 warp markers 放進配對演算法。查詢時排除頭尾各兩個點。固定伸縮的音訊對應與已知等比例映射平均差約 2.55 ms，作為方法校驗。</p><p>作曲：Johannes Brahms；演奏：US Army Strings。librosa 附帶來源資料標記為 CC-PDM-1.0。<a href="https://librosa.org/doc/dev/recordings.html">官方素材說明</a> · <a href="provenance.json">來源與素材 hash</a> · <a href="measurements.json">完整量測 JSON</a> · <a href="detected-beats.json">凍結的原始拍點</a></p></details>
+</section>
+<section><h2>聽完告訴我三件事</h2><ul><li>原音上的 click 有沒有抓到你認為的拍子？</li><li>B 跟鼓的配合是否更好？有沒有把想保留的呼吸感拉掉？</li><li>弦樂單獨聽時，哪一版有較明顯的抖動、破音或不自然拉扯？</li></ul><p class="muted">目前兩個都是候選，還沒有替你選定版本。</p></section>
+</main><script>
+const $=id=>document.getElementById(id);let active='fixed',manifests={},switchId=0;const players={fixed:$('audio-a'),warp:$('audio-b')};
+function uri(name,stem){return 'runs/final/'+name+'/'+manifests[name].outputs[stem].file}
+// Blob URLs make seeking reliable even with Python's simple server (no HTTP Range support).
+const audioCache=new Map();
+function audioUrl(name,stem){const path=uri(name,stem);if(!audioCache.has(path))audioCache.set(path,fetch(path).then(r=>{if(!r.ok)throw Error('音訊讀取失敗');return r.blob()}).then(blob=>URL.createObjectURL(blob)));return audioCache.get(path)}
+function setState(){const playing=!players[active].paused;$('play').textContent=playing?'暫停':'播放';['fixed','warp'].forEach((k,i)=>{let b=$(i?'b':'a');b.classList.toggle('active',k===active);b.setAttribute('aria-pressed',k===active)})}
+async function at(player,time){if(player.readyState<1)await new Promise((ok,bad)=>{player.addEventListener('loadedmetadata',ok,{once:true});player.addEventListener('error',bad,{once:true})});const desired=Math.min(time,player.duration||27);if(Math.abs(player.currentTime-desired)>.005){const sought=new Promise(ok=>player.addEventListener('seeked',ok,{once:true}));player.currentTime=desired;await sought}}
+async function choose(name){const token=++switchId;const old=players[active];const time=old.currentTime,play=!old.paused;old.pause();$('source-audio').pause();active=name;await at(players[active],time);if(play&&token===switchId)await players[active].play();setState()}
+async function changeStem(){const old=players[active],time=old.currentTime,play=!old.paused;Object.values(players).forEach(p=>p.pause());for(const name of ['fixed','warp']){players[name].src=await audioUrl(name,$('stem').value);await at(players[name],time)}$('download-a').href=uri('fixed',$('stem').value);$('download-b').href=uri('warp',$('stem').value);if(play)await players[active].play();setState()}
+const guard=fn=>async()=>{try{await fn();$('error').textContent=''}catch(e){$('error').textContent='播放未成功：'+(e.message||e)}};
+$('a').onclick=guard(()=>choose('fixed'));$('b').onclick=guard(()=>choose('warp'));$('play').onclick=guard(async()=>{$('source-audio').pause();let p=players[active];if(p.paused)await p.play();else p.pause();setState()});$('stem').onchange=guard(changeStem);$('jump').onclick=guard(()=>at(players[active],17));$('seek').oninput=()=>{players[active].currentTime=+$('seek').value};
+$('source-mode').onchange=guard(async()=>{$('source-audio').src=await audioUrl('source',$('source-mode').value)});$('source-audio').onplay=()=>{Object.values(players).forEach(p=>p.pause());setState()};
+Object.entries(players).forEach(([name,p])=>{p.ontimeupdate=()=>{if(active!==name)return;let t=p.currentTime;$('seek').value=t;$('time').textContent=Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0')+' / 0:27'};p.onended=setState});
+function chart(id,series,ymin,ymax,unit){const svg=$(id),W=480,H=220,L=54,R=12,T=14,B=30;let xmax=Math.max(...series.flatMap(s=>s.x));let sx=x=>L+x/xmax*(W-L-R),sy=y=>T+(ymax-y)/(ymax-ymin)*(H-T-B);let html='';for(let i=0;i<5;i++){let y=ymin+(ymax-ymin)*i/4;html+=`<line x1="${L}" y1="${sy(y)}" x2="${W-R}" y2="${sy(y)}" stroke="#3b473c"/><text x="${L-7}" y="${sy(y)+4}" fill="#a8b3a9" text-anchor="end" font-size="11">${Math.round(y)}</text>`}for(let i=0;i<5;i++){let x=xmax*i/4;html+=`<text x="${sx(x)}" y="${H-7}" fill="#a8b3a9" text-anchor="middle" font-size="11">${x.toFixed(1)}s</text>`}for(const s of series){html+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${s.x.map((x,i)=>sx(x)+','+sy(s.y[i])).join(' ')}"/>`;s.x.forEach((x,i)=>{html+=`<circle cx="${sx(x)}" cy="${sy(s.y[i])}" r="3" fill="${s.color}"><title>${x.toFixed(2)}s：${s.y[i].toFixed(1)} ${unit}</title></circle>`})}svg.innerHTML=html}
+(async()=>{try{for(const name of ['source','fixed','warp'])manifests[name]=await fetch('runs/final/'+name+'/manifest.json').then(r=>{if(!r.ok)throw Error('找不到 render：'+name);return r.json()});const m=await fetch('measurements.json').then(r=>r.json()),p=await fetch('runs/plot.json').then(r=>r.json());$('source-audio').src=await audioUrl('source','with-clicks');await changeStem();for(const name of ['fixed','warp'])$(name+'-ms').textContent=m.candidates[name].audio_correspondence_grid_error.mean_abs_ms.toFixed(1)+' ms';let rows=[['時間對應偏差 p95（ms）',...['fixed','warp'].map(n=>m.candidates[n].audio_correspondence_grid_error.p95_abs_ms.toFixed(1))],['長度','27.00 秒','27.00 秒'],['輸出削頂 samples',0,0],['marker 附近孤立跳變警示',...['fixed','warp'].map(n=>m.candidates[n].boundaries.isolated_step_flags)]];$('metrics').innerHTML=rows.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('');chart('tempo-chart',[{x:p.source_times.slice(0,-1),y:p.source_bpm,color:'#91d3ae'}],100,220,'BPM');chart('error-chart',[{x:p.target_times.slice(2,-2),y:p.fixed_residual_ms.slice(2,-2),color:'#efbc83'},{x:p.target_times.slice(2,-2),y:p.warp_residual_ms.slice(2,-2),color:'#91d3ae'}],Math.floor(Math.min(0,...p.fixed_residual_ms.slice(2,-2),...p.warp_residual_ms.slice(2,-2))/500)*500,Math.ceil(Math.max(0,...p.fixed_residual_ms.slice(2,-2),...p.warp_residual_ms.slice(2,-2))/500)*500,'ms')}catch(e){$('error').textContent=e.message}})();
+</script></body></html>

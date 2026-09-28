@@ -221,7 +221,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## 🚧 In progress
 
-None.
+- **Real-performance beat alignment — listening pending.** Brahms/US Army Strings, 72 estimated
+  intervals mapped to 160 BPM: fixed-ratio and marker-warp candidates rendered with identical
+  percussion. Actual audio-correspondence residual falls from 600.49 to 7.79 ms mean; no output
+  clipping. Existing `pytimestretch.time_warp` suffices for this work. Source beat interpretation,
+  artifacts and candidate preference await Paul. See the
+  [plan](plans/2026-09-28-beat-alignment-production.md),
+  [evidence](thoughts/2026-09-28-beat-alignment-production.md) and
+  [production](../../examples/beat-alignment/README.md).
 
 ## ▶ Next
 
@@ -252,10 +259,10 @@ None.
   [probe](thoughts/2026-09-27-audio-analysis-probe.md).
 ## ⏸ Future — evidence-gated
 
-- **Marker warp (B2 remainder)** — fixed-ratio stretch shipped; stretching between markers (warp
-  like a DAW) has no chosen binding, map format or length-error policy (design.md lists it as
-  undecided). It pairs with beat tracking in the parked analysis item, whose output would be the
-  markers. Trigger: a work needs audio aligned to a beat grid or markers.
+- **Shared marker-map authoring helper** — existing `pytimestretch.time_warp` now has a real
+  production trial (see In progress); it accepts integer source/output frame pairs and explicit
+  endpoints. Timing benefit is measured, human audition pending. A Tactus wrapper or shared
+  map helper still needs repeated authoring friction across works; one production is insufficient.
 - **Comparison and delivery report (C3 remainder)** — beyond measurements: candidate IDs, regions,
   mapping playback position to source audio, playback-only level matching (design.md
   "驗證與觀察"). Trigger: a real revision flow where comparing candidates is the friction.
