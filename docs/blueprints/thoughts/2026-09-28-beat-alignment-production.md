@@ -1,7 +1,7 @@
 # Real-performance beat alignment through existing packages
 
-> 2026-09-28 · Technical production trial complete; Paul has not yet auditioned or accepted
-> the source grid or either candidate. This is not a general beat-accuracy or quality verdict.
+> 2026-09-28 · Technical trial complete; Paul reports a modest listening improvement.
+> Final grid/candidate acceptance remains open. This is not a general beat-accuracy or quality verdict.
 
 ## Question
 
@@ -78,11 +78,15 @@ The useful boundary is an explicit, frozen source-to-target map owned by the wor
 by the package's continuous warp. Acceptance of the estimated map remains a musical decision.
 One work does not yet show repeated authoring friction that warrants a shared map helper.
 
-## Listening decision still open
+## Listening feedback and remaining decision
 
-Listen to original + detected clicks first, then A/B with drums, then music alone. Paul chooses
-whether the beat interpretation is usable, whether B sounds better for the goal, and whether
-artifacts or lost expression outweigh the timing benefit. Neither candidate has been accepted.
+Paul's first response to the A/B comparison: **「我覺得有好一點」** (2026-09-28).
+In context this is preliminary positive feedback on B's beat-marker alignment. It supports
+using B as the basis for further work on this production. It does not specify which passage
+improved, validate every detected beat, or settle the audible-artifact trade-off.
+
+The source grid and final candidate are still provisional. Next refinement, if requested,
+should follow a specific audible problem rather than adding a shared warp API on this evidence.
 
 ## Completion checks
 

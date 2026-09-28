@@ -221,11 +221,11 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 ## 🚧 In progress
 
-- **Real-performance beat alignment — listening pending.** Brahms/US Army Strings, 72 estimated
+- **Real-performance beat alignment — preliminary positive listening feedback.** Brahms/US Army Strings, 72 estimated
   intervals mapped to 160 BPM: fixed-ratio and marker-warp candidates rendered with identical
   percussion. Actual audio-correspondence residual falls from 600.49 to 7.79 ms mean; no output
-  clipping. Existing `pytimestretch.time_warp` suffices for this work. Source beat interpretation,
-  artifacts and candidate preference await Paul. See the
+  clipping. Existing `pytimestretch.time_warp` suffices for this work. Paul heard a modest
+  improvement ("我覺得有好一點"); final grid/candidate acceptance remains open. See the
   [plan](plans/2026-09-28-beat-alignment-production.md),
   [evidence](thoughts/2026-09-28-beat-alignment-production.md) and
   [production](../../examples/beat-alignment/README.md).
@@ -261,7 +261,7 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
 
 - **Shared marker-map authoring helper** — existing `pytimestretch.time_warp` now has a real
   production trial (see In progress); it accepts integer source/output frame pairs and explicit
-  endpoints. Timing benefit is measured, human audition pending. A Tactus wrapper or shared
+  endpoints. Timing benefit is measured; Paul reports a modest listening improvement. A Tactus wrapper or shared
   map helper still needs repeated authoring friction across works; one production is insufficient.
 - **Comparison and delivery report (C3 remainder)** — beyond measurements: candidate IDs, regions,
   mapping playback position to source audio, playback-only level matching (design.md

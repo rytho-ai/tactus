@@ -131,8 +131,8 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 `(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。
 作品先在 `render` 外取得拍點，把採用的 map 固定成素材，再由一次連續的引擎呼叫完成伸縮。
 Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差由固定伸縮的 600.49 ms 降到
-逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。來源拍點與音質仍待 Paul 試聽，
-不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
+逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。Paul 初步試聽回饋「我覺得有好一點」；
+來源拍點與最終候選尚待確認，不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
 詳見 [製作驗證](blueprints/thoughts/2026-09-28-beat-alignment-production.md)。
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。

@@ -4,8 +4,10 @@ This work turns a variable-tempo recording into two 27-second, 160 BPM candidate
 fixed-ratio stretch and beat-marker warp, with identical authored percussion. It uses the
 existing `pytimestretch.time_warp` through ordinary Python; no new Tactus runtime API is needed.
 
-**Status:** rendered and measured; source beat interpretation, audible artifacts and candidate
-preference await Paul. The frozen beat map is provisional, not ground truth or a downbeat grid.
+**Status:** rendered and measured; Paul reports a modest improvement in the A/B comparison.
+Final grid/candidate acceptance remains open. See the
+[listening feedback](../../docs/blueprints/thoughts/2026-09-28-beat-alignment-production.md#listening-feedback-and-remaining-decision).
+The frozen beat map is provisional, not ground truth or a downbeat grid.
 
 ## Source and frozen decisions
 
