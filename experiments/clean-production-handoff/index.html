@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tactus｜完整作品搬移與交付</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;color:#eaf0eb;background:#141917}*{box-sizing:border-box}body{margin:0}main{max-width:950px;margin:auto;padding:42px 22px 72px}h1{font-size:clamp(28px,5vw,42px);line-height:1.25}h2{font-size:22px}p,li{line-height:1.8}.eyebrow{color:#9bd2b4;letter-spacing:.12em;font-size:13px}.muted{color:#a6b7ab}section{padding:22px;border:1px solid #3e5145;border-radius:14px;margin:24px 0;background:#1c2520}a{color:#a8dec0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:16px;background:#24342b;border-radius:10px}.stat strong{display:block;font-size:27px}button,select{font:inherit;padding:11px 15px;background:#131d17;color:#eaf0eb;border:1px solid #819788;border-radius:9px;cursor:pointer}button[aria-pressed=true]{background:#a8dec0;color:#14251c;font-weight:700}button:disabled{opacity:.5;cursor:wait}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:16px 0}audio{width:100%}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 7px;border-bottom:1px solid #3e5145}#error{color:#ffb4a2}code{word-break:break-all}@media(max-width:600px){main{padding:22px 14px}.stats{grid-template-columns:1fr}section{padding:16px}th,td{font-size:14px}}
+</style>
+<main><div class="eyebrow">TACTUS · 完整作品驗收</div><h1>換一個環境，<br>接著完成同一首作品。</h1>
+<p>把先前的 ambient／lo-fi 作品搬進全新環境，重建五個聲部，再只調整 bass 音量。這次比較的是製作流程。A、B 都是本輪候選，尚未取代你先前認可的版本。</p>
+<div class="stats"><div class="stat"><strong>2 分 29 秒</strong>46 小節 · 74 BPM · 4/4</div><div class="stat"><strong id="exact">檢查中</strong>保存演奏後搬移的全部 outputs</div><div class="stat"><strong>−3 dB</strong>B 唯一的參數修改</div></div>
+<section><h2>比較完整作品</h2><p class="muted">A、B 共用同一份已保存的 pads 與 bass 演奏。切換時保留播放位置；先聽 mix，也可以單聽 bass。</p>
+<div class="row"><button id="a" aria-pressed="true">A｜重建基準</button><button id="b" aria-pressed="false">B｜Bass 降低 3 dB</button></div>
+<div class="row"><label for="stem">聲部</label><select id="stem"><option value="mix">完整混音</option><option value="bass">Bass</option><option value="pads">Pads</option><option value="textures">Textures</option><option value="keys">Keys</option><option value="drums">Drums</option></select><button id="jump">跳到完整段落（78 秒）</button></div>
+<audio id="player" controls preload="auto"></audio><p id="status" role="status">正在載入音訊…</p><p id="error" role="alert"></p><div class="row"><a id="download-a" download>下載 A 音訊</a><a id="download-b" download>下載 B 音訊</a></div></section>
+<section><h2>這次驗證了什麼</h2><table><thead><tr><th>項目</th><th>結果</th></tr></thead><tbody id="results"></tbody></table>
+<p class="muted">第一次直接重新演奏未通過：OB-Xf 尾段音量差 1.075 dB，SFZ bass 也出現不一致。第二輪把兩個演奏固定成素材，再從頭計算其餘聲部與混音，才得到完全相同的結果。這不代表外部合成引擎已修好。這次使用同一台 Linux 主機的 CPU／kernel，隔離檔案系統和 Python 環境；尚未驗證 macOS、Windows 或另一台電腦。</p></section>
+<section><h2>交付</h2><div class="row"><a href="delivery.zip" download>下載 mix、五軌 stems 與製作資料（ZIP）</a><a href="measurements.json">查看完整量測</a></div><p>兩版都是 44.1 kHz、stereo、24-bit WAV，各聲部起點與長度一致。壓縮檔內含 source、dependency lock、tempo／段落位置、執行紀錄及校驗碼。</p><p class="muted">Stems 已含各聲部效果與音量，但尚未經過 master bus 的壓縮與 limiter；直接相加不會等於成品 mix。原始 samples 與外掛另存在本機重建包，沒有公開散布。</p></section>
+</main>
+<script>
+const $=id=>document.getElementById(id), player=$('player'), cache=new Map();
+let active='baseline', busy=false;
+const uri=(version,stem)=>`delivery/${version}/${stem}.wav`;
+async function blobURL(path){if(!cache.has(path))cache.set(path,fetch(path).then(r=>{if(!r.ok)throw Error('找不到音訊：'+path);return r.blob()}).then(URL.createObjectURL));return cache.get(path)}
+function lock(value){busy=value;for(const id of ['a','b','stem','jump'])$(id).disabled=value}
+async function load(version=active){if(busy)return;lock(true);const time=player.currentTime||0, playing=!player.paused;player.pause();try{const stem=$('stem').value;const url=await blobURL(uri(version,stem));const loaded=new Promise((ok,bad)=>{player.addEventListener('canplay',ok,{once:true});player.addEventListener('error',bad,{once:true})});player.src=url;await loaded;const target=Math.min(time,player.duration);if(Math.abs(player.currentTime-target)>.005){const sought=new Promise(ok=>player.addEventListener('seeked',ok,{once:true}));player.currentTime=target;await sought}active=version;$('a').setAttribute('aria-pressed',active==='baseline');$('b').setAttribute('aria-pressed',active==='bass-minus-3db');$('download-a').href=uri('baseline',stem);$('download-b').href=uri('bass-minus-3db',stem);$('status').textContent=(active==='baseline'?'A｜重建基準':'B｜Bass 降低 3 dB')+' · '+$('stem').selectedOptions[0].textContent;if(playing)await player.play()}catch(e){$('error').textContent=String(e)}finally{lock(false)}}
+$('a').onclick=()=>load('baseline');$('b').onclick=()=>load('bass-minus-3db');$('stem').onchange=()=>load();$('jump').onclick=()=>{player.currentTime=78};
+(async()=>{try{const r=await fetch('measurements.json').then(x=>x.json());const exact=['mix','pads','bass','drums','keys','textures'].filter(k=>r.host_to_clean[k].byte_identical).length;$('exact').textContent=exact+' / 6 完全相同';const rows=[['乾淨環境執行','讀取兩份固定演奏，重算其餘聲部與 mix'],['主機 → 隔離環境',exact+' 個 outputs 逐 byte 相同'],['素材遺失／損壞／工具遺失','14 項反向測試皆明確失敗'],['只改 bass，其餘四軌',r.checks.four_untouched_stems_exact?'逐 byte 相同':'未通過'],['Bass 實際音量變化',r.bass_change_db.toFixed(6)+' dB'],['基準／修改版渲染時間',r.elapsed_seconds.clean_baseline.toFixed(2)+' / '+r.elapsed_seconds.candidate.toFixed(2)+' 秒']];$('results').innerHTML=rows.map(row=>'<tr>'+row.map(t=>'<td>'+t+'</td>').join('')+'</tr>').join('');await load()}catch(e){$('error').textContent=String(e)}})();
+</script></html>

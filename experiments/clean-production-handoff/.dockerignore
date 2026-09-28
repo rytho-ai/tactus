@@ -1,0 +1,6 @@
+pool
+tools
+work/tools
+work/.venv
+**/__pycache__
+vendor/tactus/.venv

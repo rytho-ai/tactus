@@ -110,6 +110,13 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 
 選擇性重用（`@stage`／`--reuse`，見上）已交付。它的價值主要是讓比較公平，而不是速度：OB-Xf 這類每次 render 都不同的外掛會讓候選之間混進隨機差異；有 reuse 時 3/3 的 fresh Agent 交出「只有 bass 變」的候選，沒有時 0/3（見 thoughts `2026-09-26-stage-reuse-probe.md`）。實際 session 等 render 的時間只占 1～10%，所以速度本身還不構成需求；checkpoint、region-only 計算與跨機器共用 cache 仍等實際 consumer 證明需求後再加入。Graph 可以支援執行與檢查，但目前沒有把它擴張成全曲創作模型的計畫。
 
+**乾淨環境交接的已驗證邊界：**2026-09-28 的完整作品實驗，直接重跑 OB-Xf／SFZ
+未通過重現門檻。把主機基準的 pads、bass pre-gain arrays 固定成素材後，全新 pool／Python
+環境在斷網容器內重建的六個 WAV 全部相同；單改 bass gain 時其他四軌不變。
+因此需要保留的演奏可以成為作品明確引用的 material，生成 source 與 receipt 一併保存；
+它不應只存在 cache，也不能宣稱這證明 generator 本身可重現。這是同主機 Linux 的驗收，
+尚未形成通用交接 CLI。見 [`完整交接驗收`](blueprints/thoughts/2026-09-28-clean-production-handoff.md)。
+
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
 ## 套件與工具邊界：直接採用既有能力

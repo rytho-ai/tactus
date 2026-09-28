@@ -219,6 +219,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   See the [plan](plans/2026-09-28-pyqmdsp-integration.md) and
   [evidence](../../experiments/pyqmdsp-integration/README.md).
 
+- **Clean-environment full production handoff — bounded trial complete.** A 46-bar work was
+  restored into a fresh Python/pool/container with networking disabled. Regenerating SFZ/OB-Xf
+  failed the reproduction gates; pinning the host pads/bass performances as materials reproduced
+  all six WAVs exactly. A -3 dB bass edit preserved the other four stems. Fourteen negative
+  checks, aligned mix/stem delivery and unpacked checksums passed. No runtime API added and
+  neither new candidate accepted. See the [findings](thoughts/2026-09-28-clean-production-handoff.md)
+  and [reproduction scripts](../../experiments/clean-production-handoff/README.md).
+
 ## 🚧 In progress
 
 - **Real-performance beat alignment — preliminary positive listening feedback.** Brahms/US Army Strings, 72 estimated

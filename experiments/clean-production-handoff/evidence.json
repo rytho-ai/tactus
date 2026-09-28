@@ -1,0 +1,493 @@
+{
+  "original_source_unchanged": true,
+  "runtime_commit": "6f6ae208db8ed3e106c379113a943867712bbad1",
+  "regeneration": {
+    "checks": {
+      "deterministic_stems_exact": false,
+      "stochastic_pad_sections_within_1db": false,
+      "four_untouched_stems_exact": true,
+      "bass_and_mix_changed": true,
+      "bass_gain_within_two_pcm24_steps": true,
+      "fresh_baseline_computed_all_stages": true,
+      "candidate_reused_all_stages": true,
+      "only_bass_parameter_changed": true,
+      "source_and_lock_unchanged": true,
+      "materials_and_tools_complete": true,
+      "same_imported_package_versions": true
+    },
+    "passed": false,
+    "host_to_clean": {
+      "bass": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 0.03384661674499512,
+        "rms_difference": 0.0010147027857747208
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.4436918497085571,
+        "rms_difference": 0.26491966652432186
+      },
+      "pads": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.076195478439331,
+        "rms_difference": 0.1525655160377237
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "clean_baseline_to_candidate": {
+      "bass": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 0.11371719837188721,
+        "rms_difference": 0.003996097183211461
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 0.20665240287780762,
+        "rms_difference": 0.004963813757858173
+      },
+      "pads": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "approved_c7_to_current_host": {
+      "bass": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.5028562545776367,
+        "rms_difference": 0.2662779057531307
+      },
+      "pads": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.0274643898010254,
+        "rms_difference": 0.15311432450107942
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "pad_sections": [
+      {
+        "section": "intro",
+        "rms_change_db": 0.1780059874532573
+      },
+      {
+        "section": "rise",
+        "rms_change_db": 0.26465809353027375
+      },
+      {
+        "section": "core_a1",
+        "rms_change_db": 0.32335424863311507
+      },
+      {
+        "section": "core_a2",
+        "rms_change_db": -0.5726816686377185
+      },
+      {
+        "section": "core_b",
+        "rms_change_db": 0.09275201398945634
+      },
+      {
+        "section": "outro",
+        "rms_change_db": -1.0753797023953455
+      }
+    ],
+    "bass_change_db": -3.0000004983448516,
+    "bass_gain_max_sample_error": 1.2243699221148319e-07,
+    "elapsed_seconds": {
+      "host": 17.266,
+      "clean_baseline": 12.604,
+      "candidate": 1.026
+    },
+    "delivery": {
+      "sample_rate": 44100,
+      "frames": 6579243,
+      "duration_seconds": 149.1891836734694,
+      "channels": 2,
+      "format": "PCM_24",
+      "start_frame": 0
+    },
+    "limits": [
+      "Same CPU/kernel, separate Ubuntu filesystem and Python environment; no cross-OS claim.",
+      "OB-Xf fresh performances are stochastic; 1 dB section RMS is a coarse gate, not proof of perceptual equivalence.",
+      "Stems contain channel processing and output gains, before nonlinear master compression/limiting; their sum is not the delivered master.",
+      "Bass candidate is an unaccepted edit for audition."
+    ]
+  },
+  "saved_performance": {
+    "mode": "frozen-performances",
+    "preservation": {
+      "bass": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "pads": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "checks": {
+      "deterministic_stems_exact": true,
+      "stochastic_pad_sections_within_1db": true,
+      "four_untouched_stems_exact": true,
+      "bass_and_mix_changed": true,
+      "bass_gain_within_two_pcm24_steps": true,
+      "fresh_baseline_computed_all_stages": true,
+      "candidate_reused_all_stages": true,
+      "only_bass_parameter_changed": true,
+      "source_and_lock_unchanged": true,
+      "materials_and_tools_complete": true,
+      "same_imported_package_versions": true,
+      "all_six_outputs_exact": true,
+      "original_host_performance_preserved": true,
+      "network_disabled": true,
+      "only_declared_mounts": true,
+      "negative_checks_rejected": true
+    },
+    "passed": true,
+    "host_to_clean": {
+      "bass": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "pads": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "clean_baseline_to_candidate": {
+      "bass": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 0.11371719837188721,
+        "rms_difference": 0.004007164915500032
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 0.20877468585968018,
+        "rms_difference": 0.004961994351212793
+      },
+      "pads": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "approved_c7_to_current_host": {
+      "bass": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "drums": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "keys": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      },
+      "mix": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.5028562545776367,
+        "rms_difference": 0.2662779057531307
+      },
+      "pads": {
+        "byte_identical": false,
+        "max_abs_sample_difference": 1.0274643898010254,
+        "rms_difference": 0.15311432450107942
+      },
+      "textures": {
+        "byte_identical": true,
+        "max_abs_sample_difference": 0.0,
+        "rms_difference": 0.0
+      }
+    },
+    "pad_sections": [
+      {
+        "section": "intro",
+        "rms_change_db": 0.0
+      },
+      {
+        "section": "rise",
+        "rms_change_db": 0.0
+      },
+      {
+        "section": "core_a1",
+        "rms_change_db": 0.0
+      },
+      {
+        "section": "core_a2",
+        "rms_change_db": 0.0
+      },
+      {
+        "section": "core_b",
+        "rms_change_db": 0.0
+      },
+      {
+        "section": "outro",
+        "rms_change_db": 0.0
+      }
+    ],
+    "bass_change_db": -3.0000004731721175,
+    "bass_gain_max_sample_error": 1.2243699221148319e-07,
+    "elapsed_seconds": {
+      "host": 6.704,
+      "clean_baseline": 8.083,
+      "candidate": 1.516
+    },
+    "delivery": {
+      "sample_rate": 44100,
+      "frames": 6579243,
+      "duration_seconds": 149.1891836734694,
+      "channels": 2,
+      "format": "PCM_24",
+      "start_frame": 0
+    },
+    "limits": [
+      "Same CPU/kernel, separate Ubuntu filesystem and Python environment; no cross-OS claim.",
+      "OB-Xf fresh performances are stochastic; 1 dB section RMS is a coarse gate, not proof of perceptual equivalence.",
+      "Stems contain channel processing and output gains, before nonlinear master compression/limiting; their sum is not the delivered master.",
+      "Bass candidate is an unaccepted edit for audition."
+    ]
+  },
+  "delivery": {
+    "files_verified": 231,
+    "zip_sha256": "82eb2fb51baab1a59b58917e60bf194658ac5545981a1bd748eab1939b661f80",
+    "zip_bytes": 295132542,
+    "passed": true
+  },
+  "bundles": {
+    "restored_blobs": 2314,
+    "restored_tools": 2,
+    "no_venv_or_stage_cache": true,
+    "sha256": {
+      "delivery.zip": "82eb2fb51baab1a59b58917e60bf194658ac5545981a1bd748eab1939b661f80",
+      "rebuild-inputs.tar.gz": "f8a880cc4da97da2604dec9695e0921ceae0a2f39b37ca3f19f8ffae7b51f13d",
+      "runtime-image.tar": "ea7350a5466e9e0f5d31aa3892560a0b302eec519a13630dc2b20011d282fd40"
+    },
+    "bytes": {
+      "delivery.zip": 295132542,
+      "rebuild-inputs.tar.gz": 1080426711,
+      "runtime-image.tar": 404194304
+    }
+  },
+  "negative_checks": [
+    {
+      "name": "missing sha256:052396c08773289c56dcea08568a4e3852613ec0679c14cc7d423ae2aa0856a3",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:15a617634f4c80634e71f3f1efe15cae7cbfcfa923de71f728e1deb91f13f24f",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:6eef6609ce9e39adc01fa0e9ae77a428abb8cc100517a958cc0f3113d19409a5",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:b5db7f54a51ff00369e3c851dfe83e7685d31841233458ae8c4af3f1efacfb43",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:c2f856e4bcae32d57a199d0d10caebb779f03f57dd2a0549fc15732ceee8a0f5",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:d32b5fc57cf97243437fa5d75bb89db1e4a68dda6e7e02559de9a9adcda362f1",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:ddec6235c47ff8fcd7190eea487b298a3d5358d49988e03ed887d197fe22c42b",
+      "rejected": true
+    },
+    {
+      "name": "missing tree:sha256:5b0331d6c2d34aabd30b2098c19b4f39d4f2b57c01b2fe7cc64d00d5685b468a",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:0c880b7062bb1e19af826daa30a7d1c76d508ee814043389f08ce321faa0560b",
+      "rejected": true
+    },
+    {
+      "name": "missing sha256:ea4c35dc77f4c951dd1b487ac9748cd3713f8c2758f8f0a3795b945cbece3a64",
+      "rejected": true
+    },
+    {
+      "name": "missing OB-Xf.vst3",
+      "rejected": true
+    },
+    {
+      "name": "missing sfizz_render",
+      "rejected": true
+    },
+    {
+      "name": "corrupt file",
+      "rejected": true
+    },
+    {
+      "name": "missing tree member",
+      "rejected": true
+    }
+  ],
+  "sfizz_probe": {
+    "intermittent": true,
+    "single_cpu_pair_max_difference": 0.00494384765625,
+    "single_cpu_pair_sha256": [
+      "9adbf9d571514e83eb0ed2c48f583adc9322c87d92be1e03a48abe6978043440",
+      "41a60e725172df3e3539f76fa38b39dfc4bdd4a372e9bb23d1bd81fa403bfe84"
+    ],
+    "subsequent_tracked_probe": {
+      "identical": true,
+      "max_sample_difference": 0.0,
+      "sha256": [
+        "41a60e725172df3e3539f76fa38b39dfc4bdd4a372e9bb23d1bd81fa403bfe84",
+        "41a60e725172df3e3539f76fa38b39dfc4bdd4a372e9bb23d1bd81fa403bfe84"
+      ],
+      "midi_sha256": "5bba7efbd95599bda34ed7d63870ebfc07907218ed4f03fec38795099a03941a"
+    },
+    "internal_cause": "Unconfirmed; no engine fix claimed."
+  },
+  "verification": {
+    "pytest": "400 passed, 1 skipped",
+    "ruff": "passed",
+    "container_network": "none",
+    "image_config_id": "sha256:58a02d547302097f257ae81b9c7f798082048e7e93c2f2a2ab79949765cd6189",
+    "browser": {
+      "downloads": [
+        {
+          "bytes": "295132542",
+          "path": "delivery.zip",
+          "status": 200
+        },
+        {
+          "bytes": "39475502",
+          "path": "delivery/baseline/bass.wav",
+          "status": 200
+        },
+        {
+          "bytes": "39475502",
+          "path": "delivery/bass-minus-3db/bass.wav",
+          "status": 200
+        }
+      ],
+      "error": "",
+      "overflow": false,
+      "playingSwitch": {
+        "after": 78,
+        "before": 78,
+        "playing": true
+      },
+      "stemPositionPreserved": true
+    },
+    "mobile_width_px": 390,
+    "mobile_overflow": false
+  },
+  "candidate_accepted": false
+}
