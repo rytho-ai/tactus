@@ -11,7 +11,7 @@ Ported from the audio-analysis probe's `tanalysis.py` prototype (see
 `docs/blueprints/plans/2026-09-27-audio-analysis-measurements.md`), keeping its flat-run
 definition. Stereo-field and dropout measurements (`dc_offset`, `correlation_windows`,
 `silent_runs`) were cut from that prototype port; onsets and beat tracking are not part of
-this package yet.
+this category.
 
 Reads: numpy · scipy.signal · pyloudnorm
 """

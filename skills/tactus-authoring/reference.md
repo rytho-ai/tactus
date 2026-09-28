@@ -90,7 +90,8 @@ removing the worktree deletes everything inside it.
   the same as any other material) or a `Path` `material()` already returned.
 - Imported Python distributions are recorded automatically; declare only non-Python
   executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile, pyloudnorm,
-  librosa, Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch) and
+  librosa, Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch),
+  pyqmdsp (qm-dsp analysis) and
   `mido` (MIDI files, for example for `sfizz_render --midi`). Their own documentation is the
   reference for using them.
 
@@ -137,14 +138,22 @@ environment variable keeps its old result when that input changes, so read input
 
 ## Measuring audio
 
-Start at `tactus analyze --help` to list categories (`level`, `spectral`), then
+Start at `tactus analyze --help` to list categories (`level`, `spectral`, `rhythm`), then
 `tactus analyze CATEGORY --help` to list that category's analyses, then
 `tactus analyze CATEGORY NAME --help` for its parameters, result fields, units and
 definitions — read definitions there, not here. Run with
 `tactus analyze CATEGORY NAME PATH... [--flags] [--out DIR]`; `PATH` is a WAV file or a
-run/excerpt directory (every named output measured). The library mirrors the CLI:
+run/excerpt directory (every named output measured). Each stdout line is one JSON object
+with `path`, `analysis`, `revision`, `params` and a `result` object holding the measurements;
+run/excerpt outputs also have `output`. For example, read beat times at `.result.beats_s`.
+The library returns the measurements directly and mirrors the CLI:
 `from tactus.analysis import spectral; spectral.centroid(audio, rate, threshold_hz=2000.0)`.
 Every analysis reports values, never a verdict — apply your own thresholds.
+
+For beat times and tempo, use `tactus analyze rhythm beats FILE > beats.json` outside
+`render`. Inspect the result, then pin the accepted JSON with `tactus material add beats.json`
+or copy the chosen values into source constants. Read `tactus analyze rhythm beats --help` for duration
+limits and the distinction between estimated beats and bar/downbeat positions.
 
 Values are measured on whatever array you pass, or on the saved WAV for a resolved run/excerpt
 output — not on some other stage of your signal chain.

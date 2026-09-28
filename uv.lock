@@ -344,6 +344,14 @@ wheels = [
 ]
 
 [[package]]
+name = "pyqmdsp"
+version = "0.1.0"
+source = { git = "https://github.com/openmirlab/pyqmdsp?rev=09b36d656b347425ba36c1c38ca372b337f0b527#09b36d656b347425ba36c1c38ca372b337f0b527" }
+dependencies = [
+    { name = "numpy" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -496,6 +504,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pedalboard" },
     { name = "pyloudnorm" },
+    { name = "pyqmdsp" },
     { name = "pytimestretch" },
     { name = "scipy" },
     { name = "soundfile" },
@@ -514,6 +523,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26" },
     { name = "pedalboard", specifier = ">=0.9.25" },
     { name = "pyloudnorm", specifier = ">=0.2" },
+    { name = "pyqmdsp", git = "https://github.com/openmirlab/pyqmdsp?rev=09b36d656b347425ba36c1c38ca372b337f0b527" },
     { name = "pytimestretch", git = "https://github.com/openmirlab/pytimestretch?rev=e43cc6dc000c61715540d5031bb526b4a28f2ee9" },
     { name = "scipy", specifier = ">=1.14" },
     { name = "soundfile", specifier = ">=0.13" },

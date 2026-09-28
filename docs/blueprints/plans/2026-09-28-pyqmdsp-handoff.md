@@ -1,5 +1,10 @@
 # pyqmdsp — handoff: why and how
 
+> Update 2026-09-28: the package is now published at `openmirlab/pyqmdsp`, with the broader
+> qm-dsp API, nanobind bindings and upstream parity checks. The current Tactus integration
+> and verification are tracked in [the integration plan](2026-09-28-pyqmdsp-integration.md).
+> The original proposal below is historical; the prototype branch remains local.
+
 > Generated: 2026-09-28 · Paul, for handing the work to someone else: "幫我寫一個要如何做？為什麼要做跟要怎麼做
 > pyqmdsp 的訊息，我們交接給別人做" · Status: **not started**. A working prototype binding lives on
 > branch `qmdsp-beats` of this repo (commits `aeb485a`, `69afd4d`).

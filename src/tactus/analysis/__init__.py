@@ -14,16 +14,16 @@ structure:
     spectral.centroid(mix, rate, threshold_hz=2000.0)   # -> dict
     help(spectral)                                       # -> category summary + analyses
 
-See `level.py` and `spectral.py` for the categories currently shipped, and each analysis's own
+See `level.py`, `spectral.py` and `rhythm.py` for the shipped categories, and each analysis's own
 docstring for its parameters, result fields, units and definitions.
 
-Reads: level · spectral
+Reads: level · spectral · rhythm
 """
 
 from __future__ import annotations
 
-from . import level, spectral
+from . import level, rhythm, spectral
 
-CATEGORIES = {"level": level, "spectral": spectral}
+CATEGORIES = {"level": level, "spectral": spectral, "rhythm": rhythm}
 
-__all__ = ["CATEGORIES", "level", "spectral"]
+__all__ = ["CATEGORIES", "level", "rhythm", "spectral"]

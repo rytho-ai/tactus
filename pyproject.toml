@@ -11,6 +11,7 @@ dependencies = [
     "numpy>=1.26",
     "pedalboard>=0.9.25",
     "pyloudnorm>=0.2",
+    "pyqmdsp",
     "pytimestretch",
     "scipy>=1.14",
     "soundfile>=0.13",
@@ -31,6 +32,7 @@ dev = ["pytest>=8.3", "ruff>=0.6"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = [".claude/worktrees"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -39,4 +41,5 @@ markers = [
 ]
 
 [tool.uv.sources]
+pyqmdsp = { git = "https://github.com/openmirlab/pyqmdsp", rev = "09b36d656b347425ba36c1c38ca372b337f0b527" }
 pytimestretch = { git = "https://github.com/openmirlab/pytimestretch", rev = "e43cc6dc000c61715540d5031bb526b4a28f2ee9" }

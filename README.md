@@ -21,9 +21,9 @@ This product succession does not imply API compatibility or feature parity. The 
 implementation now installs as `tactus-daw`, imports as `tactus_daw`, and runs as `tactus-daw`.
 
 The default scientific stack includes NumPy, SciPy, SoundFile, pyloudnorm, and librosa;
-Pedalboard, pytimestretch and Mido are installed as well. Production source can use these
-packages directly. Tactus does not yet provide a shared
-analysis API; detected onsets, tempo, and pitch remain observations for the author to evaluate.
+Pedalboard, pytimestretch, pyqmdsp and Mido are installed as well. Production source can use
+these packages directly. `tactus.analysis` exposes level, spectral and beat measurements;
+estimated beats and tempo remain observations for the author to evaluate.
 
 ## Current status
 
@@ -93,7 +93,7 @@ saved audio without rendering again. Accepting a candidate is a source edit comm
 ## Supported surface
 
 The CLI provides `init` (with `--tactus-path`/`--tactus`), `run` (with `--reuse`), `excerpt`,
-`analyze CATEGORY NAME` (categories `level` and `spectral`; `tactus analyze --help` lists
+`analyze CATEGORY NAME` (categories `level`, `spectral` and `rhythm`; `tactus analyze --help` lists
 categories, `tactus analyze CATEGORY --help` lists analyses, `tactus analyze CATEGORY NAME
 --help` gives parameters and definitions), `material add`, `doctor`, help and version.
 The public Python exports are `run`, `excerpt`, `RunError`, `AudioRef`, `material`, `tool`,
@@ -108,6 +108,26 @@ with your audio tools.
 The earlier Project/Track arrangement prototype and its build/render/inspect/diff commands
 have been removed. There are no compatibility aliases or arrangement-format loaders.
 The distribution, Python import, and command are all `tactus` (version `0.1.0`).
+
+### Beat analysis
+
+```bash
+uv run tactus analyze rhythm beats loop.wav > beats.json
+uv run tactus material add beats.json
+```
+
+Each stdout line is one JSON object; its `result` contains `beats_s` (seconds), `bpm` (median tempo), and `tempo_curve`
+(BPM between consecutive beats). Python: `from tactus.analysis import rhythm`, then
+`rhythm.beats(audio, sample_rate)` with `(frames,)` or `(frames, channels)` audio.
+Channels are averaged to mono. Freeze accepted results as source constants or a pinned
+material before using them for slicing or alignment inside `render`.
+
+Beat tracking uses [pyqmdsp](https://github.com/openmirlab/pyqmdsp), pinned in the dependency
+lock, with no Vamp installation or separate Tactus native build. Source installation needs
+a C/C++ toolchain. Short material (roughly 7.45 seconds or less of active audio) or silence
+returns empty arrays and `bpm: null`. Beat tracking does not identify meter or downbeats.
+The [integration check](experiments/pyqmdsp-integration/README.md) records corpus parity
+and its accuracy limits.
 
 ## Working hypothesis
 

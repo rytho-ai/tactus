@@ -69,7 +69,9 @@ one by merging.
 - **Creating a work**, **Listening to part of a run**, **Keeping a candidate**: the full
   commands and checks behind steps 0, 5 and 6.
 - **Inputs**: folder materials, `tool()` on plugin bundles, and the packages installed with
-  Tactus (NumPy, SciPy, SoundFile, pyloudnorm, librosa, Pedalboard, pytimestretch, `mido`).
+  Tactus (NumPy, SciPy, SoundFile, pyloudnorm, librosa, Pedalboard, pytimestretch, pyqmdsp, `mido`).
+- **Measuring audio**: discover level, spectral and rhythm analyses through `tactus analyze`,
+  including beat times and tempo; freeze accepted estimates before using them in `render`.
 - **Reusing unchanged stages**: `@stage` with `--reuse`, so an approved part does not re-roll
   while you audition another parameter.
 - **Helpers** (`tactus.fx`) for plugin parameters, VST3 instruments and automation, and

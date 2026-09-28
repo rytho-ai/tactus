@@ -210,13 +210,22 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   probe (tools halved tokens); a fresh Agent passed both audit rounds from the skill alone. See the
   [plan](plans/2026-09-27-audio-analysis-measurements.md).
 
+- **Beat analysis via pyqmdsp** — `tactus.analysis.rhythm.beats` and generated
+  `tactus analyze rhythm beats` use the standalone package at `09b36d6`, without Vamp.
+  All 72 corpus files match direct package output exactly; mean F differs from the saved
+  Vamp reference by 0.000492 (gate 0.005). Full pytest: 400 passed, 1 opt-in test skipped;
+  that installation test passed separately. Ruff/build and a new-work install passed.
+  A fresh Agent analyzed two unseen recordings and pinned/read back results successfully.
+  See the [plan](plans/2026-09-28-pyqmdsp-integration.md) and
+  [evidence](../../experiments/pyqmdsp-integration/README.md).
+
 ## 🚧 In progress
 
 None.
 
 ## ▶ Next
 
-- **Unified basic audio analysis (level and spectral shipped; onsets, pitch, beats open)** — a three-arm probe found
+- **Unified basic audio analysis (level, spectral and beats shipped; onsets and pitch open)** — a three-arm probe found
   Agents with only the installed libraries (pyloudnorm, librosa, scipy — all three used them)
   made 71 errors, all in onset detection, at about 230k tokens; CLI and function arms made 0
   at about 100k. CLI and functions tied: one implementation, two doors (functions and a
@@ -233,23 +242,12 @@ None.
      prototype scored F1 0.12 at 2 ms (librosa tuned 0.27, at 10 ms 0.76); it had overfit the two
      synthetic test loops, so the probe's accuracy gap was an artifact. Precise onset detection is a
      research problem; revisit only with a method that passes the same unseen-material test.
-  3. Beat tracking (tempo, beats, downbeat, tempo changes): Paul flagged it as essential for a
-     DAW (warp, slicing, aligning loops); not yet tested. A survey of non-NN engines (2026-09-28) found
-     QM's Bar and Beat Tracker (qm-dsp, GPL-2.0+) the only non-NN downbeat option, not yet built
-     here; Paul then asked for a measured comparison: on
-     72 annotated files (31 synthetic from real drum hits, 41 Ballroom) QM's tempo tracker beat
-     librosa on beats (hard subsets 0.92 vs 0.78 F; Ballroom 0.80 vs 0.71); Essentia multifeature
-     was best on BPM; QM downbeats failed (0.48 on steady 4/4). Paul chose qm-dsp; after listening
-     to click overlays (QM and Essentia "明顯準很多", "librosa非常不準") he chose to integrate without an
-     Agent necessity probe. A prototype binding (`rhythm.beats`, ctypes over vendored qm-dsp) sits
-     on branch `qmdsp-beats` (`aeb485a`, worktree `.claude/worktrees/agent-aa411ac583c8aa2ea`): mean
-     beat F equals the Vamp plugin's (0.865), 5/72 files differ by up to 0.037 (float noise in
-     TempoTrackV2's decode). Paused by Paul ("先不要做") before moving it to a standalone
-     `pyqmdsp` package (pybind11) — also open: whether to publish that package on GitHub. No
-     downbeats yet. See the
-     [survey and comparison](thoughts/2026-09-28-beat-engine-survey.md). Annotate material, compare librosa with
-     dedicated trackers (check licence and install), then a two-arm Agent probe. The output
-     would be a beat grid pinned as a material, per the frozen-analysis rule.
+  3. Beat tracking: **integrated via pyqmdsp**, with 72-file CLI/package equality and the
+     Vamp reference gate passing (mean F 0.864849 vs 0.865342; difference 0.000492).
+     Paul chose qm-dsp after the [engine comparison](thoughts/2026-09-28-beat-engine-survey.md)
+     and listening. Downbeats failed that evaluation and remain excluded. The standalone
+     package is now `openmirlab/pyqmdsp`; the old local prototype branch stays local.
+     See the [integration plan](plans/2026-09-28-pyqmdsp-integration.md).
   Key, chords and structure stay out of scope. See the
   [probe](thoughts/2026-09-27-audio-analysis-probe.md).
 ## ⏸ Future — evidence-gated

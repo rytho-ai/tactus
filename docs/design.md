@@ -114,7 +114,7 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 
 ## 套件與工具邊界：直接採用既有能力
 
-Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard、pytimestretch 與 Mido 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
+Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard、pytimestretch、pyqmdsp 與 Mido 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |
@@ -122,6 +122,7 @@ Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓
 | 自有 stateful DSP | 有需要時採用 Python／Numba | 保留 Python authoring，以 Faust 演算法作為參考與比對；不要求另一套創作語言。 |
 | Audio file I/O | SoundFile | 採用既有編解碼能力；Tactus 處理必要的資料與工具銜接。 |
 | Loudness 與音訊分析 | pyloudnorm、librosa | 提供現成量測與分析，避免每份作品重做；不因安裝套件而引入強制分析 schema。 |
+| 拍點與速度估計 | `pyqmdsp`（base dependency，固定 Git revision `09b36d6`）+ `tactus.analysis.rhythm.beats` | 直接使用 qm-dsp，不依賴 Vamp。Tactus 只轉換 JSON 格式，沿用原型的空結果 `bpm: null`；聲道平均、分幀、參數與時間換算都由套件負責。只提供 beats，不提供 downbeats。 |
 | 效果與 VST3 | Pedalboard（base dependency）+ `tactus.fx` | `set_param` 依單位對到最近的合法值，`process_automated` 以分段處理 automation、tail 與延遲，`render_instrument` 以暖機消除起始雜訊並回傳 Tactus layout。曲線與音色由作品決定。盲聽中內建 reverb 勝過自寫。External sidechain 是已知缺口，不宣稱普遍 plugin 相容；部分 VST（如 OB-Xf）不可逐 sample 重現。 |
 | Standard MIDI File 交換 | Mido（base dependency） | 例如 `sfizz_render` 需要 `.mid` 檔；三次完整歌曲 dogfood 的 Agent 都因為沒有 MIDI 套件而各自手寫 SMF writer，因此改為預設安裝。Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 composition model。 |
 | Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `e43cc6d`，GPL-2.0-only） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。`extreme_stretch`（PaulStretch）是可選的創作處理：長度只是近似值，每個 process 內依呼叫順序固定亂數。這個 revision 因為 libpaulstretch 而改成 GPL-2.0-only，和 Pedalboard 的 GPLv3 不能一起對外發佈；目前只在內部使用，公開發佈前必須解決（見 plan 的 Future）。 |
@@ -167,10 +168,10 @@ Runtime 檢查宣告的 shape、dtype、finite values、sample rate、時間關�
 
 `tactus.analysis` 按分類（category）組織，一個 category 是一個模組，用 progressive disclosure 的
 三層 `--help` 自我描述：`tactus analyze --help` 列出 category，`tactus analyze CATEGORY --help`
-列出該 category 的分析，`tactus analyze CATEGORY NAME --help` 給參數、欄位、單位與定義。已出貨兩個
-category：`level`（`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`，whole-file 振幅量測）與
+列出該 category 的分析，`tactus analyze CATEGORY NAME --help` 給參數、欄位、單位與定義。已出貨三個
+category：`level`（`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`，whole-file 振幅量測）、
 `spectral`（`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`，頻域量測，都是有明確定義的計算，
-不是估計器）。每個分析都是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳
+不是估計器），以及 `rhythm`（`beats`，拍點時間、BPM 與速度曲線估計）。每個分析都是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳
 JSON-ready dict，帶一個 `revision` int；CLI 從這個結構自動產生子命令，沒有手寫的 per-analysis CLI
 程式碼。這些都只回報數值，從不判斷通過或失敗——門檻由 work 或 Agent 自己套。
 
@@ -178,9 +179,15 @@ JSON-ready dict，帶一個 `revision` int；CLI 從這個結構自動產生子�
 `docs/blueprints/thoughts/2026-09-27-frequency-analysis-probes.md`）顯示 `fundamental` 在未見素材上
 只有 47.5% 落在 ±50 cents 內——兩個 SFZ bass patch 帶有比 fundamental 更大聲的低八度層，讓每種方法
 （harmonic-sum、librosa pyin/yin、autocorrelation）都失準；`f0_over_time` 的表現更差（62%，FM tone 上
-只有 7%）。在有更可靠的 pitch 估計方法之前，這部分不出貨。Onsets 與 beat tracking 也尚未出貨：onsets
-還在等未見素材的驗證跑完，beat tracking 還沒 probe 過。
+只有 7%）。在有更可靠的 pitch 估計方法之前，這部分不出貨。Onsets 在未見素材上未通過驗證，仍不出貨。
 
-**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；onsets／beat tracking／
+**Beat tracking 已整合**：`tactus analyze rhythm beats FILE` 與 Python 使用同一函式。
+72 個驗證音檔經 CLI 的三個結果欄位與直接呼叫 pyqmdsp 完全一致；對原 Vamp 參考的平均
+F-measure 差 0.000492，小於 0.005 門檻。這是特定素材的驗證，不保證所有音樂準確。
+約 7.45 秒以下的有效音訊或全靜音會回傳空陣列與 `bpm: null`，不猜測小節或第一拍。
+分析結果採用後仍依 frozen-analysis 規則固定成素材或 source 常數。詳見
+[`整合計畫`](blueprints/plans/2026-09-28-pyqmdsp-integration.md)。
+
+**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；onsets／
 pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察
 值得標準化。
