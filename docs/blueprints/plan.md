@@ -239,8 +239,14 @@ None.
      here; Paul then asked for a measured comparison: on
      72 annotated files (31 synthetic from real drum hits, 41 Ballroom) QM's tempo tracker beat
      librosa on beats (hard subsets 0.92 vs 0.78 F; Ballroom 0.80 vs 0.71); Essentia multifeature
-     was best on BPM; QM downbeats failed (0.48 on steady 4/4). Recommendation, awaiting Paul:
-     bind qm-dsp directly (as Mixxx does) for beats; no downbeats yet. See the
+     was best on BPM; QM downbeats failed (0.48 on steady 4/4). Paul chose qm-dsp; after listening
+     to click overlays (QM and Essentia "明顯準很多", "librosa非常不準") he chose to integrate without an
+     Agent necessity probe. A prototype binding (`rhythm.beats`, ctypes over vendored qm-dsp) sits
+     on branch `qmdsp-beats` (`aeb485a`, worktree `.claude/worktrees/agent-aa411ac583c8aa2ea`): mean
+     beat F equals the Vamp plugin's (0.865), 5/72 files differ by up to 0.037 (float noise in
+     TempoTrackV2's decode). Paused by Paul ("先不要做") before moving it to a standalone
+     `pyqmdsp` package (pybind11) — also open: whether to publish that package on GitHub. No
+     downbeats yet. See the
      [survey and comparison](thoughts/2026-09-28-beat-engine-survey.md). Annotate material, compare librosa with
      dedicated trackers (check licence and install), then a two-arm Agent probe. The output
      would be a beat grid pinned as a material, per the frozen-analysis rule.
