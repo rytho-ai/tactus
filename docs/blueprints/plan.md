@@ -227,6 +227,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   neither new candidate accepted. See the [findings](thoughts/2026-09-28-clean-production-handoff.md)
   and [reproduction scripts](../../experiments/clean-production-handoff/README.md).
 
+- **Deterministic native synthesis — local prototype verified.** Existing OB-Xf controls
+  did not give repeatable output. Fixed internal voice/oscillator/LFO seeds and a sfizz
+  background-loading barrier patch produced six byte-identical WAVs in three fresh full-song
+  renders with no cache/frozen performance. Native patches and failure/repair probes are
+  retained; installed tools and public APIs are unchanged. See the
+  [findings](thoughts/2026-09-28-deterministic-instruments.md) and
+  [reproduction](../../experiments/deterministic-instruments/README.md).
+
 ## 🚧 In progress
 
 - **Real-performance beat alignment — preliminary positive listening feedback.** Brahms/US Army Strings, 72 estimated

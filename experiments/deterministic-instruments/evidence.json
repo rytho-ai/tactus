@@ -1,0 +1,521 @@
+{
+  "obxf_commit": "1223e6f7b209b9affa91331c26f39d4095a4088e",
+  "sfizz_commit": "f5c6e29f23b8057867c08e88f5f6ac6738baa30b",
+  "obxf_existing_settings": {
+    "default": {
+      "hashes": [
+        "0643aa5bc07a83b6d5af03b6601bc7939add2df41564fd2f96e92dadc83e7b1b",
+        "4d9c9c0268a06608db9c6c5d287e33032af0b33caf347ac822aeded559fb1665",
+        "9917f409bac6e822d618f51f8bc4ba273658cf5aa68f7a8c77c35cd3ce8efa0d"
+      ],
+      "identical": false,
+      "max_differences": [
+        0.8025610446929932,
+        0.8416692614555359
+      ]
+    },
+    "zero-slop": {
+      "hashes": [
+        "5e8efe8260a8690656cd74029a58837a0e8f7ff3d7cd9d86d827fe7b0f0b73ff",
+        "e42c9efc686253d8433f985eeee1780afab3ab5987c901057e0432a51b61d3a7",
+        "3c4116d660c411060d191a383bf388b400fe037c5f2588bf20c3a2fb576b2ec7"
+      ],
+      "identical": false,
+      "max_differences": [
+        0.8682019114494324,
+        1.0775642395019531
+      ]
+    },
+    "c-seed": {
+      "hashes": [
+        "296f35754a5bbb079c61b86df8113b4a5f27449d219da5f7fe2bdd97a49a6bbb",
+        "96f9ff0418b3d7561e1ed62eca6d437b85d24339ce00cbce0f59067d51b33248",
+        "f7c2da13c09aaaa6fc6e6936a42fe604d64792011ed60cc77e555f99c7b4818c"
+      ],
+      "identical": false,
+      "max_differences": [
+        1.0239503383636475,
+        0.986106812953949
+      ]
+    },
+    "zero-slop-c-seed": {
+      "hashes": [
+        "d5244c790492ee9278f8551c8290ca8ffebcae47bd1263c87d3995e4209b6096",
+        "4f862b083a1690ec5855e8b6889024e914df5eb09c51e18c7b5ad3ce76b51f9b",
+        "e72f70245dd81e5c2c2119afca2c90a070fecfa8021d89ff95d319be737f2708"
+      ],
+      "identical": false,
+      "max_differences": [
+        1.0237056016921997,
+        1.0673668384552002
+      ]
+    }
+  },
+  "obxf_same_build_comparison": {
+    "unpatched": {
+      "hashes": [
+        "b89861fb081d464d408f3654f7cd6e5e97ca05a6722d63658dcb1d84acf1b93f",
+        "62316df2b52f326a45ee0d52733f6e6d6001b6e3e3e0b5a282490e0ec9f02c44",
+        "4123d34cc6e14f89b18b67ce5262053b7130185486ed90c928fa0532b433412a"
+      ],
+      "identical": false,
+      "max_differences": [
+        0.8825372457504272,
+        0.8203015923500061
+      ]
+    },
+    "fixed": {
+      "hashes": [
+        "f155c57889d18e31f896475f7d3f615ddca91c992d520e7642cbde566b530c6b",
+        "f155c57889d18e31f896475f7d3f615ddca91c992d520e7642cbde566b530c6b",
+        "f155c57889d18e31f896475f7d3f615ddca91c992d520e7642cbde566b530c6b",
+        "f155c57889d18e31f896475f7d3f615ddca91c992d520e7642cbde566b530c6b",
+        "f155c57889d18e31f896475f7d3f615ddca91c992d520e7642cbde566b530c6b"
+      ],
+      "identical": true,
+      "max_differences": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "sfizz": {
+    "sfizz-installed": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 1,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 2,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 3,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 4,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 5,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 6,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 7,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 8,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 9,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0
+    },
+    "sfizz-unpatched": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 1,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 2,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 3,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 4,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 5,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 6,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 7,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 8,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 9,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0
+    },
+    "sfizz-delayed-single-checked": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "17f11c99750c95d19883a64368dc8ffb2f4100282b802fe242f32d450b0ccbc6",
+          "max_difference_from_first": 0.000732421875,
+          "sample_rate": 44100,
+          "frames": 45056
+        },
+        {
+          "run": 1,
+          "sha256": "17f11c99750c95d19883a64368dc8ffb2f4100282b802fe242f32d450b0ccbc6",
+          "max_difference_from_first": 0.000732421875,
+          "sample_rate": 44100,
+          "frames": 45056
+        },
+        {
+          "run": 2,
+          "sha256": "17f11c99750c95d19883a64368dc8ffb2f4100282b802fe242f32d450b0ccbc6",
+          "max_difference_from_first": 0.000732421875,
+          "sample_rate": 44100,
+          "frames": 45056
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0,
+      "matches_reference": false
+    },
+    "sfizz-fixed-delayed-single": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "7b2bed13fcc5a586543716bd6b2b1349dcae2230f4cb89e0e0a2841facf3d7e5",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 45056
+        },
+        {
+          "run": 1,
+          "sha256": "7b2bed13fcc5a586543716bd6b2b1349dcae2230f4cb89e0e0a2841facf3d7e5",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 45056
+        },
+        {
+          "run": 2,
+          "sha256": "7b2bed13fcc5a586543716bd6b2b1349dcae2230f4cb89e0e0a2841facf3d7e5",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 45056
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0,
+      "matches_reference": true
+    },
+    "sfizz-fixed-delayed-full": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 1,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 2,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0,
+      "matches_reference": true
+    },
+    "sfizz-fixed-full": {
+      "runs": [
+        {
+          "run": 0,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 1,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 2,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 3,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 4,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 5,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 6,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 7,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 8,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        },
+        {
+          "run": 9,
+          "sha256": "1c118e2275e70bfa10a122453515c63c177cae0ea997dbca72d4e3185ba3162a",
+          "max_difference_from_first": 0.0,
+          "sample_rate": 44100,
+          "frames": 6551552
+        }
+      ],
+      "unique_outputs": 1,
+      "cpu": 0,
+      "matches_reference": true
+    }
+  },
+  "full_song": {
+    "runs": [
+      {
+        "hashes": {
+          "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+          "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+          "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+          "mix": "4786ffda677f957e7f07e94ff4d9235d608d87836d794d814183bc940a6c6a30",
+          "pads": "82f0be422500b987e6698c602756d7f316da24f1e88faa6ae8c1090a7773350a",
+          "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+        },
+        "seconds": 16.803,
+        "reuse": false,
+        "source_files": {
+          "song.py": "4f9b2cfeb48b545729ad374d5afa6419eded510006faef1130c3740da88b8020"
+        },
+        "tools": [
+          {
+            "kind": "tree",
+            "name": "/project/work/tools/OB-Xf.vst3",
+            "path": "/trial/tools/OB-Xf.vst3",
+            "sha256": "a3fa88a8b8e944159c76fc5201dff4d1fe16d2e67016f315a9069f6fe683c99a"
+          },
+          {
+            "kind": "file",
+            "name": "/project/work/tools/sfizz_render",
+            "path": "/trial/tools/sfizz_render",
+            "sha256": "d406fc4180ff3fda008a5b349aec5ce8e9f3bc29fc3ea0c37febc2f9b5c7a5a7"
+          }
+        ]
+      },
+      {
+        "hashes": {
+          "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+          "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+          "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+          "mix": "4786ffda677f957e7f07e94ff4d9235d608d87836d794d814183bc940a6c6a30",
+          "pads": "82f0be422500b987e6698c602756d7f316da24f1e88faa6ae8c1090a7773350a",
+          "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+        },
+        "seconds": 13.925,
+        "reuse": false,
+        "source_files": {
+          "song.py": "4f9b2cfeb48b545729ad374d5afa6419eded510006faef1130c3740da88b8020"
+        },
+        "tools": [
+          {
+            "kind": "tree",
+            "name": "/project/work/tools/OB-Xf.vst3",
+            "path": "/trial/tools/OB-Xf.vst3",
+            "sha256": "a3fa88a8b8e944159c76fc5201dff4d1fe16d2e67016f315a9069f6fe683c99a"
+          },
+          {
+            "kind": "file",
+            "name": "/project/work/tools/sfizz_render",
+            "path": "/trial/tools/sfizz_render",
+            "sha256": "d406fc4180ff3fda008a5b349aec5ce8e9f3bc29fc3ea0c37febc2f9b5c7a5a7"
+          }
+        ]
+      },
+      {
+        "hashes": {
+          "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+          "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+          "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+          "mix": "4786ffda677f957e7f07e94ff4d9235d608d87836d794d814183bc940a6c6a30",
+          "pads": "82f0be422500b987e6698c602756d7f316da24f1e88faa6ae8c1090a7773350a",
+          "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+        },
+        "seconds": 12.513,
+        "reuse": false,
+        "source_files": {
+          "song.py": "4f9b2cfeb48b545729ad374d5afa6419eded510006faef1130c3740da88b8020"
+        },
+        "tools": [
+          {
+            "kind": "tree",
+            "name": "/project/work/tools/OB-Xf.vst3",
+            "path": "/trial/tools/OB-Xf.vst3",
+            "sha256": "a3fa88a8b8e944159c76fc5201dff4d1fe16d2e67016f315a9069f6fe683c99a"
+          },
+          {
+            "kind": "file",
+            "name": "/project/work/tools/sfizz_render",
+            "path": "/trial/tools/sfizz_render",
+            "sha256": "d406fc4180ff3fda008a5b349aec5ce8e9f3bc29fc3ea0c37febc2f9b5c7a5a7"
+          }
+        ]
+      }
+    ],
+    "all_six_outputs_exact": true,
+    "other_stems_match_prior_host": {
+      "bass": true,
+      "drums": true,
+      "keys": true,
+      "textures": true
+    },
+    "plugin_sha256": "a3fa88a8b8e944159c76fc5201dff4d1fe16d2e67016f315a9069f6fe683c99a",
+    "sfizz_sha256": "d406fc4180ff3fda008a5b349aec5ce8e9f3bc29fc3ea0c37febc2f9b5c7a5a7",
+    "image": "sha256:86495ca1de8d7bb457ff087ed9fe224a691d3e12e975d6c73b71c2b09d40f163",
+    "scope": "Fresh full synthesis, no stage reuse or saved performances; same Linux CPU/kernel."
+  },
+  "native_tools": {
+    "obxf_unpatched": "1b467f723c8a8a1e3835a882e365fe8614e1aea9b79d8f6eab3747dd6f369771",
+    "obxf_fixed": "a3fa88a8b8e944159c76fc5201dff4d1fe16d2e67016f315a9069f6fe683c99a",
+    "sfizz-unpatched": "5925e1bc8c49d84b23621046e4512787b8049e0f59a6c373f3dd9bcf83848ca1",
+    "sfizz-delayed": "233dc2971f150a7a070a8ca88067336f09020ead7f1f98129f59199186006abf",
+    "sfizz-fixed-delayed": "c59532959a4e015b0b7d0308812487f22e4e55623277759f8f2357c5638f367e",
+    "sfizz-fixed": "d406fc4180ff3fda008a5b349aec5ce8e9f3bc29fc3ea0c37febc2f9b5c7a5a7"
+  },
+  "builder_image": "sha256:b1b237248e32013a1cc18a319cf039ef04fab49e166cb172ae6569fc229d173d",
+  "scope": "Local native patch prototype; no installed tool or runtime API replacement; same Linux CPU/kernel.",
+  "patches": {
+    "sfizz-dispatch-delay.patch": "f3024a0d5c11f400b8fdc5068f28ff71fc1a0a14308df254e6be9a432df9e315",
+    "obxf-repeatable-initialization.patch": "ec0d11ec8d58f9e420015ce3daaffce4d051b38132d3e18953a299d162111148",
+    "sfizz-loading-barrier.patch": "4b8af1b465fbd9dc19b652d122207978bfb06fa51a60870f7346961dbdde68a0"
+  },
+  "verification": {
+    "pytest": "400 passed, 1 skipped",
+    "ruff": "passed"
+  },
+  "installed_tools_unchanged": true
+}

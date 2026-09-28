@@ -1,0 +1,19 @@
+--- a/src/sfizz/FilePool.cpp
++++ b/src/sfizz/FilePool.cpp
+@@ -594,6 +594,16 @@
+ {
+     std::lock_guard<std::mutex> guard { loadingJobsMutex };
+ 
++    // A request can still be queued when the dispatcher has not run yet.
++    // Freewheeling must wait for those requests as well as already-dispatched jobs.
++    QueuedFileData queuedData;
++    while (filesToLoad->try_pop(queuedData)) {
++        if (!queuedData.id.expired())
++            loadingJobs.push_back(threadPool->enqueue(
++                [this](const QueuedFileData& data) { loadingJob(data); },
++                std::move(queuedData)));
++    }
++
+     for (auto& job : loadingJobs)
+         job.wait();
+ 

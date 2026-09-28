@@ -117,6 +117,11 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 它不應只存在 cache，也不能宣稱這證明 generator 本身可重現。這是同主機 Linux 的驗收，
 尚未形成通用交接 CLI。見 [`完整交接驗收`](blueprints/thoughts/2026-09-28-clean-production-handoff.md)。
 
+後續本機原生修補實驗，讓 OB-Xf 的 voice／oscillator／LFO 使用固定的局部 seeds，
+並修正 sfizz 離線渲染等待背景載入的缺口；三個新容器直接重新合成，六個 WAV 全部一致。
+這證明該作品與修補版的可行性。正式依賴、seed 的作品介面與跨平台保證仍未交付，
+既有安裝未替換。見 [`固定合成實驗`](blueprints/thoughts/2026-09-28-deterministic-instruments.md)。
+
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
 ## 套件與工具邊界：直接採用既有能力
