@@ -73,3 +73,32 @@ Paul：「那你可以幫我 run 起來比較一下嗎」。判定規則事先�
 **限制：**合成素材每類只有 5 個檔案，只能看趨勢；Ballroom 全是舞曲，不代表所有曲風。
 
 **建議（待 Paul 決定）：**拍點偵測如果要做，用 qm-dsp。照 Mixxx 的做法直接綁定 `DetectionFunction` 與 `TempoTrackV2`，不經過 Vamp；授權是 GPL-2.0+，與現有的授權相容。Essentia 需要 AGPL 和另一個 Python 版本，整合成本高。第一拍暫不做。
+
+## qm-dsp 其他功能：起音與調性（2026-09-28）
+
+Paul：「我在想會不會直接以 pyqmdsp 為主，而不使用 librosa，如果他全面比較準的話？」→「好，接著做」。
+判定規則事先寫定（scratchpad `qm-vs/PREREGISTERED.md`，副本在分支 `qmdsp-beats` 的 `experiments/beat-eval/onsets/`）。
+門檻：比 librosa 高 0.05 以上，而且不比最好的其他引擎低超過 0.02。
+
+- **起音偵測**：素材是 9 個用真實 one-shot 排成的 loop，這些引擎都沒見過。qm-dsp **沒有比較準**。
+
+  | 引擎 | F（±50 ms） | F（±10 ms） |
+  |---|---|---|
+  | librosa 調參 | 0.85 | 0.76 |
+  | librosa 預設 | 0.79 | 0.53 |
+  | aubio | 0.79 | 0.72 |
+  | qm-dsp | 0.75 | 0.49 |
+  | Essentia | 0.73 | 0.45 |
+
+  qm-dsp 抓到的起音都是真的（精確度 1.00），但會漏抓（找回率 0.62），緊貼的 flam 加上很小聲的 ghost，17 擊只抓到 4 擊。
+- **調性偵測**：素材是 28 首已知調性的合成曲，加上 GiantSteps Key 的 40 首真實音樂。qm-dsp **沒有比較準**。
+
+  | 引擎 | 合成 | GiantSteps | 全部 |
+  |---|---|---|---|
+  | qm-dsp | 1.00 | 0.49 | 0.70 |
+  | Essentia | 0.93 | 0.55 | 0.70 |
+  | librosa + Krumhansl | 0.94 | 0.49 | 0.67 |
+
+  整體只比 librosa 高 0.03。
+- **結論**：qm-dsp 不是「全面比較準」，只在拍點追蹤上明顯勝出。Tactus 只用它做拍點；
+  pyqmdsp 套件可以包更多功能給其他人用。交接文件：[pyqmdsp handoff](../plans/2026-09-28-pyqmdsp-handoff.md)。
