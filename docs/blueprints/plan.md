@@ -236,7 +236,12 @@ None.
   3. Beat tracking (tempo, beats, downbeat, tempo changes): Paul flagged it as essential for a
      DAW (warp, slicing, aligning loops); not yet tested. A survey of non-NN engines (2026-09-28) found
      QM's Bar and Beat Tracker (qm-dsp, GPL-2.0+) the only non-NN downbeat option, not yet built
-     here; Paul paused it ("先不用做"). See the [survey](thoughts/2026-09-28-beat-engine-survey.md). Annotate material, compare librosa with
+     here; Paul then asked for a measured comparison: on
+     72 annotated files (31 synthetic from real drum hits, 41 Ballroom) QM's tempo tracker beat
+     librosa on beats (hard subsets 0.92 vs 0.78 F; Ballroom 0.80 vs 0.71); Essentia multifeature
+     was best on BPM; QM downbeats failed (0.48 on steady 4/4). Recommendation, awaiting Paul:
+     bind qm-dsp directly (as Mixxx does) for beats; no downbeats yet. See the
+     [survey and comparison](thoughts/2026-09-28-beat-engine-survey.md). Annotate material, compare librosa with
      dedicated trackers (check licence and install), then a two-arm Agent probe. The output
      would be a beat grid pinned as a material, per the frozen-analysis rule.
   Key, chords and structure stay out of scope. See the

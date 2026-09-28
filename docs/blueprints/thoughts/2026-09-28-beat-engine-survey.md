@@ -32,3 +32,44 @@
 4. 判定規則先寫定。
 
 測試腳本放在 scratchpad `beat-engines/`。
+
+## 實測比較（2026-09-28）
+
+Paul：「那你可以幫我 run 起來比較一下嗎」。判定規則事先寫定（scratchpad `beat-eval/PREREGISTERED.md`）。
+
+**做法：**
+- 引擎與素材由兩個互相看不到對方的 Agent 分別準備；所有引擎都用文件上的預設參數，不調參。
+- QM 從原始碼編譯（qm-dsp、vamp-plugin-sdk，放在使用者目錄，不需要 root），透過 Python `vamp` host 呼叫。Essentia 在獨立的 Python 3.10 環境執行。
+- 素材有兩部分：
+  - 31 個合成檔，用 crate 裡真實錄製的鼓聲排成，真值取自生成參數。分成穩定、變速、弱起拍、奇數拍號、切分、完整混音六類，每類 5–6 個；
+  - Ballroom 真實音樂 41 首，附人工標註（CPJKU BallroomAnnotations），在 9 種舞曲間分層抽樣。
+- 評分用 `mir_eval`。
+
+**拍點 F-measure（±70 ms）：**
+
+| 引擎 | 穩定 | 變速 | 弱起拍 | 奇數拍號 | 切分 | 完整混音 | Ballroom |
+|---|---|---|---|---|---|---|---|
+| librosa | 0.86 | 0.80 | 0.98 | 0.89 | 0.64 | 0.91 | 0.71 |
+| QM tempo | 0.98 | 0.94 | 0.98 | 0.98 | 0.85 | 0.97 | 0.80 |
+| QM bar | 0.96 | 0.92 | 0.96 | 0.84 | 0.84 | 0.97 | 0.81 |
+| Essentia multifeature | 0.96 | 0.95 | 0.96 | 0.96 | 0.84 | 0.96 | 0.77 |
+| Essentia degara | 0.96 | 0.95 | 0.96 | 0.84 | 0.84 | 0.96 | 0.80 |
+| aubio | 0.83 | 0.50 | 0.77 | 0.58 | 0.73 | 0.90 | 0.60 |
+
+**BPM 準確率（±4%）：**
+- 切分：librosa 0.20，其他引擎 0.60；
+- Ballroom：Essentia multifeature 0.71、Percival 0.68、degara 0.66、QM bar 0.63、QM tempo 0.59、librosa 0.54、aubio 0.54。
+
+**第一拍 F-measure（只有 QM bar 做得到）：**
+- 穩定 0.48、變速 0.16、弱起拍 0.19、Ballroom 0.44；
+- 提供正確拍號後：Ballroom 0.56，奇數拍號反而從 0.25 降到 0.07。
+
+**依事先規則判定：**
+- **拍點：**QM tempo 明顯比 librosa 準。三類困難素材平均 0.92 對 0.78；Ballroom 0.80 對 0.71；穩定素材也沒有變差。Essentia multifeature 同樣過門檻（0.92；Ballroom 0.77）。
+- **BPM：**Essentia multifeature 最好；QM 略優於 librosa。
+- **第一拍：**QM 在穩定 4/4 只有 0.48，低於 0.8 的門檻，**不可用**。目前沒有可用的非 NN 第一拍方案。
+- aubio 全面落後。
+
+**限制：**合成素材每類只有 5 個檔案，只能看趨勢；Ballroom 全是舞曲，不代表所有曲風。
+
+**建議（待 Paul 決定）：**拍點偵測如果要做，用 qm-dsp。照 Mixxx 的做法直接綁定 `DetectionFunction` 與 `TempoTrackV2`，不經過 Vamp；授權是 GPL-2.0+，與現有的授權相容。Essentia 需要 AGPL 和另一個 Python 版本，整合成本高。第一拍暫不做。
