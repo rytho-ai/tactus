@@ -237,23 +237,42 @@ def test_peaks_ranks_a_strong_second_harmonic_bass_note_above_the_weaker_fundame
 # -- spectral.stft --------------------------------------------------------------------------------
 
 
-def test_stft_without_out_returns_a_summary_only():
-    x = sine(1000, SR, 1.0)
+def test_stft_returns_arrays_with_calibrated_sine_levels():
+    rate, size, hop = 8192, 1024, 256
+    x = sine(1024, rate, 1.0, amp=0.5)
+    result = spectral.stft(x, rate, n_fft=size, hop=hop)
+    np.testing.assert_array_equal(result["freqs_hz"], np.fft.rfftfreq(size, 1 / rate))
+    np.testing.assert_allclose(result["times_s"], np.arange(33) * hop / rate)
+    assert result["shape"] == [513, 33]
+    assert result["duration_s"] == 1.0
+    np.testing.assert_allclose(result["level_db"][128, 2:-2], 20 * np.log10(0.5), atol=1e-10)
+
+
+@pytest.mark.parametrize("length", [1, 100, 512, 1000, 2048])
+def test_stft_short_silence_keeps_fft_grid_and_negative_infinity(length):
+    result = spectral.stft(np.zeros(length), SR)
+    assert result["shape"] == [1025, 1 + math.ceil(length / 512)]
+    assert np.isneginf(result["level_db"]).all()
+    assert result["duration_s"] == length / SR
+
+
+def test_stft_retains_original_scipy_values():
+    from scipy.signal import stft
+
+    x = np.random.default_rng(81).normal(size=(5000, 2))
+    freqs, times, transformed = stft(
+        x.sum(axis=1), fs=SR, window="hann", nperseg=2048, noverlap=1536, boundary="zeros"
+    )
     result = spectral.stft(x, SR)
-    assert "file" not in result
-    assert "note" in result
-    assert result["shape"][0] > 0 and result["shape"][1] > 0
+    np.testing.assert_array_equal(result["freqs_hz"], freqs)
+    np.testing.assert_array_equal(result["times_s"], times)
+    np.testing.assert_array_equal(result["level_db"], 10 * np.log10(4 * abs(transformed) ** 2))
 
 
-def test_stft_with_out_writes_npz_and_returns_its_path(tmp_path):
-    x = sine(1000, SR, 1.0)
-    out_path = tmp_path / "result.npz"
-    result = spectral.stft(x, SR, out=str(out_path))
-    assert result["file"] == str(out_path)
-    assert out_path.is_file()
-    with np.load(out_path) as data:
-        assert set(data.files) == {"times_s", "freqs_hz", "level_db"}
-        assert data["level_db"].shape == tuple(result["shape"])
+@pytest.mark.parametrize("kwargs", [{"n_fft": 1}, {"hop": 0}, {"hop": 4096}])
+def test_stft_invalid_parameters(kwargs):
+    with pytest.raises(ValueError):
+        spectral.stft(np.zeros(2048), SR, **kwargs)
 
 
 # -- cross-category consistency contract -----------------------------------------------------

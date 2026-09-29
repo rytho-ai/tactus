@@ -19,7 +19,8 @@ definitions, not estimators, so they carry no equivalent overfitting risk.
 dB reference for the original five measurements: 0 dB = the power of a full-scale
 (amplitude 1.0) sine wave, i.e. mean-square 0.5. The owned feature functions `mel`,
 `chroma` and `mfcc` have their own units, documented individually, and return NumPy
-arrays for Python; the CLI saves those arrays as attachments with `--out DIR`.
+arrays for Python; STFT also returns its matrix directly. The CLI saves matrix arrays
+as attachments with `--out DIR`; analysis.image adds an optional SVG view.
 
 Reads: numpy · scipy.signal/fft · _features
 """
@@ -28,7 +29,6 @@ from __future__ import annotations
 
 import math
 from itertools import pairwise
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -320,14 +320,13 @@ def peaks(
     return {"peaks": out[:n]}
 
 
-@_revision(1)
+@_revision(2)
 def stft(
     audio: np.ndarray,
     sample_rate: int,
     *,
     n_fft: int = 2048,
     hop: int = 512,
-    out: str | None = None,
 ) -> dict[str, Any]:
     """Short-time Fourier transform magnitude, in dB, over time.
 
@@ -336,32 +335,38 @@ def stft(
     `level_db` is power in dB relative to a full-scale sine (see module docstring), computed
     from the STFT magnitude as `|X|^2` scaled so a full-scale sine bin reads ~0 dB.
 
-    The full `times_s`/`freqs_hz`/`level_db` arrays are large, so they are only returned when
-    `out` names a directory to write them to (as `.npz`, arrays `times_s`, `freqs_hz`,
-    `level_db`); the CLI passes its own `--out DIR` here. Without `out`, only a summary is
-    returned, and `note` says so.
+    Returns NumPy arrays directly; use analysis.image(result) for an SVG view. The CLI
+    requires --out DIR for arrays and accepts --image to save both views. Silence remains
+    -inf in the numeric matrix. Channels are summed; short inputs are zero-padded to keep
+    the requested FFT size. Frames include the final padded hop, possibly past duration_s.
+    Requires nonempty finite audio, positive integer sample_rate, n_fft >= 2 and
+    1 <= hop <= n_fft. Revision 2 replaces the summary/file-only return and out parameter.
 
     Returns:
-        file (path): `.npz` path holding `times_s`, `freqs_hz`, `level_db`; absent without
-            `out`.
-        shape (frames, bins): `level_db`'s shape, `(len(freqs_hz), len(times_s))`.
+        times_s (seconds): frame-center times as a NumPy array.
+        freqs_hz (Hz): linearly spaced FFT-bin centers as a NumPy array.
+        level_db (dB re full-scale sine): matrix shaped (frequency_bins, time_frames).
+        shape (bins, frames): `level_db`'s shape, `(len(freqs_hz), len(times_s))`.
         duration_s (s): the analysed signal's duration.
-        note (text): present, and explains how to get the full arrays, only when `out` was not
-            given.
     """
-    times_s, freqs, level_db = _stft(audio, sample_rate, n_fft, hop)
-    shape = [len(freqs), len(times_s)]
-    duration_s = len(_to_mono(audio)) / sample_rate if sample_rate else 0.0
-    if out is None:
-        return {
-            "shape": shape,
-            "duration_s": duration_s,
-            "note": "pass --out DIR (CLI) or out=PATH (library) to write the full "
-            "times_s/freqs_hz/level_db arrays as .npz",
-        }
-    out_path = Path(out)
-    np.savez(out_path, times_s=times_s, freqs_hz=freqs, level_db=level_db)
-    return {"file": str(out_path), "shape": shape, "duration_s": duration_s}
+    x = _features.mono(audio, sample_rate, average=False)
+    _features.positive_int("n_fft", n_fft)
+    _features.positive_int("hop", hop)
+    if n_fft < 2 or hop > n_fft:
+        raise ValueError("require n_fft >= 2 and hop <= n_fft")
+    duration_s = len(x) / sample_rate
+    frames = 1 + math.ceil(len(x) / hop)
+    if len(x) < n_fft:
+        x = np.pad(x, (0, n_fft - len(x)))
+    times_s, freqs, level_db = _stft(x, sample_rate, n_fft, hop)
+    level_db = level_db[:, :frames]
+    return {
+        "times_s": times_s[:frames],
+        "freqs_hz": freqs,
+        "level_db": level_db,
+        "shape": list(level_db.shape),
+        "duration_s": duration_s,
+    }
 
 
 @_revision(1)

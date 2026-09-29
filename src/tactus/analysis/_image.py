@@ -3,6 +3,7 @@
 PNG heatmap encoding uses stdlib zlib/struct. Rows keep their original index spacing,
 with exact center labels; this avoids implying a linear axis for Mel or BPM bins.
 Display averages at most 1200 time columns before logarithmic conversion.
+STFT dB values are averaged in linear power; numeric silence (-inf) is preserved.
 """
 
 import base64
@@ -15,6 +16,7 @@ import numpy as np
 
 SUPPORTED = frozenset(
     (
+        "spectral.stft",
         "spectral.cqt",
         "spectral.vqt",
         "spectral.mel",
@@ -57,21 +59,31 @@ def _colors(values):
 def image(
     result: dict, *, title: str = "Analysis", vmin: float | None = None, vmax: float | None = None
 ) -> str:
-    """Return a standalone SVG image from a CQT/VQT, Mel, chroma, MFCC or tempogram result.
+    """Return a standalone SVG from an STFT, CQT/VQT, Mel, chroma, MFCC or tempogram result.
 
     Call after the analysis; input arrays are never modified and no file is written.
     Save the returned string as UTF-8 .svg, or display it with an SVG viewer.
     Magnitude uses 20*log10(max(value, 1e-10)), power uses 10*log10(max(value, 1e-10)),
     both relative to 1 in their feature units (not dBFS). Default Q range -80..0 dB;
     Mel uses peak-80..peak dB (silence -100..-20). Chroma/tempogram use 0..1;
+    STFT already contains dB re full-scale sine, defaults to -80..0, and allows -inf
+    silence. STFT time reduction averages linear power, then returns to dB.
     MFCC uses a symmetric range about zero. vmin/vmax override display bounds in
     these units; reuse both for comparisons. Require finite vmin < vmax.
     At most 1200 time columns, averaged in the numeric domain before conversion;
     full resolution stays in result. Rows are equally spaced by matrix index with
-    exact center labels, NOT a linear frequency/BPM axis. SVG metadata records
+    exact center labels; only STFT rows are linear in Hz. SVG metadata records
     scale, bounds and original/display shapes. The image is a view, not an inverse.
     """
-    if "magnitude" in result:
+    if "level_db" in result:
+        key, axis, label, factor, unit = (
+            "level_db",
+            "freqs_hz",
+            "Frequency (Hz; linear rows)",
+            0,
+            "dB re full-scale sine",
+        )
+    elif "magnitude" in result:
         key, axis, label, factor, unit = (
             "magnitude",
             "freqs_hz",
@@ -112,16 +124,16 @@ def image(
             "DCT coefficient",
         )
     else:
-        raise ValueError("image requires a CQT/VQT, Mel, chroma, MFCC or tempogram result")
+        raise ValueError("image requires an STFT, CQT/VQT, Mel, chroma, MFCC or tempogram result")
     values = np.asarray(result[key])
     times = np.asarray(result["times_s"], dtype=float)
     if (
         values.dtype.kind not in "fiu"
         or values.ndim != 2
         or not values.size
-        or not np.isfinite(values).all()
+        or not (np.isfinite(values) | ((key == "level_db") & np.isneginf(values))).all()
     ):
-        raise ValueError("image matrix must be nonempty, finite and real")
+        raise ValueError("image matrix must be nonempty, real and finite (STFT allows -inf)")
     if (
         times.ndim != 1
         or len(times) != values.shape[1]
@@ -134,13 +146,21 @@ def image(
         raise ValueError("row labels must match matrix rows")
     if axis != "pitch_classes" and not np.isfinite(rows).all():
         raise ValueError("row coordinates must be finite")
-    if key != "coefficients" and np.any(values < 0):
+    if key not in {"coefficients", "level_db"} and np.any(values < 0):
         raise ValueError("image magnitudes, powers and relative strengths must be nonnegative")
     edges = np.linspace(0, values.shape[1], min(1200, values.shape[1]) + 1, dtype=int)
-    display = np.add.reduceat(values.astype(float), edges[:-1], axis=1) / np.diff(edges)
+    numeric = values.astype(float)
+    if key == "level_db":
+        # Normalize before exponentiation to avoid overflow for large finite dB values.
+        reference = np.max(numeric, where=np.isfinite(numeric), initial=0.0)
+        numeric = np.power(10.0, (numeric - reference) / 10.0)
+    display = np.add.reduceat(numeric, edges[:-1], axis=1) / np.diff(edges)
+    if key == "level_db":
+        with np.errstate(divide="ignore"):
+            display = reference + 10 * np.log10(display)
     if factor:
         display = factor * np.log10(np.maximum(display, 1e-10))
-    if key == "magnitude":
+    if key in {"magnitude", "level_db"}:
         lower, upper = -80.0, 0.0
     elif key == "power":
         upper = max(-20.0, float(display.max()))
@@ -164,7 +184,11 @@ def image(
         "vmax": upper,
         "shape": list(values.shape),
         "display_shape": list(display.shape),
-        "time_reduction": "block mean before display conversion",
+        "time_reduction": (
+            "linear power mean before dB"
+            if key == "level_db"
+            else "block mean before display conversion"
+        ),
         "row_spacing": "matrix index",
     }
     parts = [

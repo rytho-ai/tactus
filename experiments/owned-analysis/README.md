@@ -86,8 +86,9 @@ integrated validation and result-conversion overhead. Ownership does not depend 
 Aligned level windows reduce local hop bins once. Other grids retain direct reductions.
 Neither path subtracts global prefix sums, preserving very quiet energy after loud signals.
 FFT work is chunked to avoid a whole-file windowed-frame allocation. No Numba path is shipped.
-The earlier [Numba startup probe](../../docs/blueprints/thoughts/2026-09-29-owned-analysis-performance-probe.md)
-explains that choice; it does not establish Numba's value for future stateful DSP.
+The earlier startup probe found that compilation/import overhead could outweigh short
+analysis runs. Later [Q-transform timings](../q-transforms/README.md#startup-matters)
+separate startup from warm throughput; DSP now independently uses Numba where measured.
 
 ## Integrated performance results
 

@@ -21,9 +21,7 @@ No Tactus runtime API was added. Inputs, native binaries and rendered audio stay
   passed. Delivery ZIP was unpacked and all 231 files verified. The source records the frozen
   refs; the generation source and receipt remain included.
 
-See [findings](../../docs/blueprints/thoughts/2026-09-28-clean-production-handoff.md),
-[plan](../../docs/blueprints/plans/2026-09-28-clean-production-handoff.md) and
-[evidence.json](evidence.json) for measured values and limits.
+See [evidence.json](evidence.json) for measured values and the limitations below.
 
 ## Files
 

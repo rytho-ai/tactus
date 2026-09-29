@@ -113,7 +113,8 @@ commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`
 `run` 維持一次命令完成生成與預設 PCM24 試聽；另存原始 arrays 會增加磁碟用量。
 舊 run 沒有 checkpoint 時使用已保存的 PCM，明確記為 `published-pcm`，不能恢復先前丟失的精度。
 每次 export 有自己的目錄與 `export.json`；失敗只清除該次新目錄。`take export` 則持續負責
-單一演奏素材包的轉移。驗證依據見 [export probe](blueprints/thoughts/2026-09-29-export-boundary-probe.md)。
+單一演奏素材包的轉移。完整介面見 [export 契約](project-commands.md#export-a-completed-render)，
+回歸驗證見 [export 測試](../tests/test_export.py)。
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
@@ -128,7 +129,7 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 環境在斷網容器內重建的六個 WAV 全部相同；單改 bass gain 時其他四軌不變。
 因此需要保留的演奏可以成為作品明確引用的 material，生成 source 與 receipt 一併保存；
 它不應只存在 cache，也不能宣稱這證明 generator 本身可重現。這是同主機 Linux 的驗收，
-尚未形成通用交接 CLI。見 [`完整交接驗收`](blueprints/thoughts/2026-09-28-clean-production-handoff.md)。
+尚未形成通用交接 CLI。見 [完整交接驗收](../experiments/clean-production-handoff/README.md)。
 
 **保存 take 是正式重現方式（2026-09-29）：** Paul 決定使用原版樂器。原生修補實驗保留為
 原因調查與可行性證據，不作為安裝或重現的前提。作品要保留某次演奏時，在同一次 `render`
@@ -149,7 +150,7 @@ manifest version 3，增加 `{name: tree_ref}` 的 `takes`；其他 run 維持 v
 匯入，得到相同 ref。這個 bundle 足以讀回演奏；重新生成所需的 sample libraries、binaries 與
 Python 環境仍需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用
 演奏的唯一保存處。完整契約見 [Saved takes](../skills/tactus-authoring/reference.md#saved-takes)，
-實作與驗證見 [計畫](blueprints/plans/2026-09-29-saved-takes.md)。
+實際驗證見 [saved takes 實驗](../experiments/saved-takes/README.md)。
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
@@ -174,7 +175,7 @@ Base environment 選用 NumPy、SciPy、SoundFile，讓 production code 可以�
 Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差由固定伸縮的 600.49 ms 降到
 逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。Paul 初步試聽回饋「我覺得有好一點」；
 來源拍點與最終候選尚待確認，不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
-詳見 [製作驗證](blueprints/thoughts/2026-09-28-beat-alignment-production.md)。
+詳見 [製作範例與驗證](../examples/beat-alignment/README.md)。
 
 **內建 DSP（2026-09-29）：** `tactus.dsp` 提供普通函式 `gain`、`fade`、`pan`、
 `biquad`，並公開既有 `fx.varispeed`／`fx.fit_rms`。前四項使用 NumPy／SciPy、保留
@@ -192,14 +193,14 @@ state 是 `(2, channels)` 的 direct-form-II-transposed 記憶值，由作品明
 tanh 與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。這四項不提供跨呼叫
 state，不承諾分塊等價；delay 時間變動會改變音高，控制曲線不會自動平滑。
 完整參數契約由 README 的 Owned DSP 段落維護。
-整合理由是減少跨作品重寫與重測；[fresh-agent 實驗](blueprints/thoughts/2026-09-29-dsp-reuse-value-probe.md)
-另提供 delay 插值與 wet-only 錯誤的直接證據，但沒有量測節省的時間或 token。
+整合理由是減少跨作品重寫與重測；先前 fresh-agent 實驗觀察到 delay 插值與 wet-only 錯誤，
+但沒有量測節省的時間或 token。這些邊界已納入 [DSP 回歸測試](../tests/test_dsp_effects.py)。
 
 這三個逐 sample 迴圈已抽成 private Numba kernel，使用 `cache=True`、不開 fastmath。
 Numba 因實測加速而成為 runtime dependency；analysis 的 librosa 仍是
 選用參考，pyloudnorm 已移除。公開 API 與 whole-clip 行為相同；首次使用需要編譯，新 process 可載入
 磁碟快取，不能把穩態處理時間當作完整 CLI 啟動時間。固定 cutoff 與 saturation
-維持 NumPy／SciPy 路徑。驗證與量測見 [加速計畫](blueprints/plans/2026-09-29-dsp-numba.md)。
+維持 NumPy／SciPy 路徑。數值一致性驗證見 [Numba DSP 測試](../tests/test_dsp_numba.py)。
 
 **分頻與 delay 切換（2026-09-29）：** Paul 試聽接受後，整合 `crossover` 與
 `crossfade_delay`。前者以 SciPy 提供固定 cutoff 的雙路 LR4，回傳 low／high；
@@ -208,8 +209,8 @@ crossfade，回傳 wet-only，保留 feedback 與指定尾音；過渡途中不�
 完成後採用最新要求。既有 `delay` 維持會改變音高的移動讀取位置行為。
 兩者每次呼叫重設，不提供 streaming state。Crossfade 可能干涉或抵消；新增介面
 明定起始位置與過渡端點，不宣稱與 Faust `sdelay` 逐 sample 相同。見
-[整合計畫](blueprints/plans/2026-09-29-crossover-crossfade-delay.md) 與
-[先前 probe](blueprints/thoughts/2026-09-29-faust-components-probe.md)。
+[可執行範例](../examples/dsp-components/README.md) 與
+[響應與切換測試](../tests/test_dsp_components.py)。
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 
@@ -284,8 +285,7 @@ floor 讓單純 gain 改變數值。靜音與聲道抵消後的零 power frame �
 全部回傳 JSON lists/scalars，不是品質判斷。數值定義、參考比對和實際處理比較見
 [驗證紀錄](../experiments/analysis-descriptors/README.md)。既有 stereo／DC／dropout 延後決定不變。
 
-**沒有 `pitch` category**：頻率驗證（見
-`docs/blueprints/thoughts/2026-09-27-frequency-analysis-probes.md`）顯示 `fundamental` 在未見素材上
+**沒有 `pitch` category**：先前的本機頻率驗證顯示 `fundamental` 在未見素材上
 只有 47.5% 落在 ±50 cents 內——兩個 SFZ bass patch 帶有比 fundamental 更大聲的低八度層，讓每種方法
 （harmonic-sum、librosa pyin/yin、autocorrelation）都失準；`f0_over_time` 的表現更差（62%，FM tone 上
 只有 7%）。在有更可靠的 pitch 估計方法之前，這部分不出貨。
@@ -328,10 +328,17 @@ Tempogram 由現有 Mel SuperFlux onset strength 做局部線性自相關，除�
 
 `analysis.image(result, ...)` 從既有矩陣產生帶座標與色階的 SVG，內嵌 PNG heatmap，
 不增加繪圖依賴。新三項及既有 Mel／chroma／MFCC 共用這個呈現層。
+STFT 也共用此呈現層；revision 2 改成直接回傳 `times_s`、`freqs_hz`、`level_db`
+陣列，取代舊的摘要／Python `out=` 寫檔介面。CLI 與其他矩陣分析一致，需要 `--out`。
+原本的 full-scale sine dB 定義保留；短素材補零以維持指定 FFT 格點。
+STFT 圖片預設 −80..0 dB，靜音的 `-inf` 僅在顯示時落到色階底端；時間縮減先在
+linear power 平均再轉回 dB。Mel spectrogram 沿用 `spectral.mel`，數值為 power，
+圖片才轉成 feature power dB；與 STFT 的 dB 參考不同，兩者色階不能直接當成相同音量。
 CLI `--out DIR --image` 同時保存數值、圖片與 artifact hashes；`--image-min/max`
 控制顯示範圍並與分析 params 分開記錄。Python 始終能直接取得完整矩陣。
 圖片最多 1200 個時間欄，先取數值區塊平均再轉色彩；列等距呈現並標示實際中心頻率／BPM，
-不假裝是不規則 BPM 的線性座標。Q magnitude 的 dB 與 Mel power 的 dB 都是特徵單位、非 dBFS。
+STFT 的 Hz 軸為線性，其他分析保留原本的頻帶／lag 間距。Q magnitude 的 dB 與
+Mel power 的 dB 都是特徵單位、非 dBFS。
 規格、限制與效能測試見 [驗證](../experiments/q-transforms/README.md)。
 
 **Beat tracking 已整合**：`tactus analyze rhythm beats FILE` 與 Python 使用同一函式。
@@ -339,7 +346,7 @@ CLI `--out DIR --image` 同時保存數值、圖片與 artifact hashes；`--imag
 F-measure 差 0.000492，小於 0.005 門檻。這是特定素材的驗證，不保證所有音樂準確。
 約 7.45 秒以下的有效音訊或全靜音會回傳空陣列與 `bpm: null`，不猜測小節或第一拍。
 分析結果採用後仍依 frozen-analysis 規則固定成素材或 source 常數。詳見
-[`整合計畫`](blueprints/plans/2026-09-28-pyqmdsp-integration.md)。
+[整合驗證](../experiments/pyqmdsp-integration/README.md)。
 
 **作品自訂分析與交付：** 常用或難實作的能力由 Tactus 內建；其他分析與交付邏輯由作品
 自己的 Python 定義，在 `pyproject.toml` 明確註冊：`[tool.tactus.analysis]` 的 `category.name`

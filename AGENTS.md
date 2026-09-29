@@ -1,7 +1,8 @@
 # Tactus development
 
-This repository is the active Tactus product, formerly `tactus-code`. Start with
-`docs/blueprints/plan.md` for current work. `../tactus-daw` is a reference implementation;
+This repository is the active Tactus product, formerly `tactus-code`. Start with README.md
+for delivered behavior and examples. When a local `docs/blueprints/plan.md` exists, read it
+for ongoing work. `../tactus-daw` is a reference implementation;
 reuse mechanisms only when the active product needs them. Its package and CLI use distinct names.
 
 Before implementation, design changes, or review, read `docs/positioning.md` for product principles
@@ -14,6 +15,8 @@ grounded plans in `docs/blueprints/plans/`, decision rationale and experiments i
 `docs/blueprints/thoughts/`,
 and current status in `docs/blueprints/plan.md`. Historical docs retain their original names;
 follow supersession notices before treating them as current requirements.
+Blueprints are local, Git-ignored working documents. Keep usage contracts and verification
+needed by a clean checkout in tracked docs, examples, tests, or experiments.
 
 Use `uv` for the Python environment. Run pytest and Ruff for code changes; verify CLI behavior
 when commands or packaging change. Gamut is retired; no workflow should invoke or synchronize it.

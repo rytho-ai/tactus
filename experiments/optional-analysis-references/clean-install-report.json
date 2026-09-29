@@ -1,0 +1,103 @@
+{
+  "source_head": "82d7486df12080cd0e53033f924db93a0fd8b9f4",
+  "pending_changes_applied": true,
+  "installation": "built wheel in a new uv environment, dependencies from frozen lock and local download cache",
+  "python": "3.12.11",
+  "default_librosa": false,
+  "default_pyloudnorm": false,
+  "blueprints_in_checkout_or_distributions": false,
+  "render_outputs": 6,
+  "exports_without_generator": {
+    "wav": "byte-identical to published WAVs",
+    "flac": "decoded arrays equal published WAVs"
+  },
+  "fixture_seconds": 19.0,
+  "analyses": [
+    {
+      "analysis": "level.loudness",
+      "revision": 1,
+      "image": false,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "rhythm.onsets",
+      "revision": 1,
+      "image": false,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "rhythm.beats",
+      "revision": 1,
+      "image": false,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "spectral.stft",
+      "revision": 2,
+      "image": true,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "spectral.mel",
+      "revision": 1,
+      "image": true,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "spectral.cqt",
+      "revision": 1,
+      "image": true,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "spectral.vqt",
+      "revision": 1,
+      "image": true,
+      "artifact_hashes_verified": true
+    },
+    {
+      "analysis": "rhythm.tempogram",
+      "revision": 1,
+      "image": true,
+      "artifact_hashes_verified": true
+    }
+  ],
+  "default_tests": {
+    "passed": 129,
+    "command": "uv run --no-sync pytest -q tests/test_analysis.py tests/test_analysis_images.py tests/test_cli.py tests/test_export.py tests/test_project_commands.py"
+  },
+  "optional_tests": {
+    "passed": 53,
+    "deselected": 1043,
+    "command": "uv run --no-sync pytest -q -m reference",
+    "librosa": "1.0.0",
+    "pyloudnorm_installed": false,
+    "installation": "wheel[librosa], constrained by uv.lock, in a separate new environment"
+  },
+  "wheel_sha256": "58d83b692ac30e0c404b74a40c49476f0ae4ba5581d6632fca2bec10121a5fbd",
+  "wheel_extras": [
+    "librosa"
+  ],
+  "wheel_requirements": [
+    "mido>=1.3",
+    "numba<0.68,>=0.67",
+    "numpy>=1.26",
+    "pedalboard>=0.9.25",
+    "pyqmdsp",
+    "pytimestretch",
+    "scipy>=1.14",
+    "soundfile>=0.13",
+    "librosa==1.0.0; extra == 'librosa'"
+  ],
+  "verified_sources": {
+    "src/tactus/analysis/spectral.py": "7ebfd4f9858e02c176f14d146691cb16d2a4efaa0f0222e5b4e8900a92477e4e",
+    "src/tactus/analysis/_image.py": "f3403451ab313051cbb25905081ddc439439bcd09c1dc306a2d3f5b4af016b29",
+    "pyproject.toml": "2ea211febfddae3c57344c3dd78efd487c9f46220c99df1e7d6a952406792238",
+    "uv.lock": "919c3007f2cd5fdfdbde3f1979c5c92eb46bbb6a1a27c9fffba4dde9e7532ea8"
+  },
+  "limits": [
+    "Same Linux host and Python 3.12.11; not cross-platform verification.",
+    "Dependency downloads reused a local cache because network is restricted; both environments were newly installed.",
+    "Global tool installation and remote publication are separate from this verification."
+  ]
+}

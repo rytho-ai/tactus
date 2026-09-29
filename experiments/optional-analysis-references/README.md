@@ -97,3 +97,32 @@ comparisons; EBU and frozen test answers cover loudness.
 Reproduce the ordinary checks with `uv sync --group dev` and
 `uv run pytest tests/test_analysis.py tests/test_owned_analysis.py tests/test_level_curves.py`.
 Use `uv run --extra librosa pytest -m reference` for optional librosa comparisons.
+
+## Clean installation and STFT/Mel verification (2026-09-29)
+
+A separate local Git clone of `82d7486` plus the pending tracked changes contained no
+blueprints, dogfood files or existing environment. `uv sync --frozen --offline --group dev`
+installed a new environment from the lock, using a copied dependency download cache.
+`uv build --offline` produced an sdist and wheel; both exclude blueprints. Replacing the
+editable installation with that wheel verified imports from the new environment's
+`site-packages`, not the development source. Default installs omit librosa and pyloudnorm.
+
+- Analysis, image, CLI, export and custom-command tests: **129 passed**.
+- A second new environment installed the built `tactus[librosa]` wheel, constrained by
+  the lock: librosa 1.0.0 present, pyloudnorm absent; **53 reference tests passed**.
+- The checked-in DSP effects example rendered six outputs. After deleting its generator,
+  WAV export remained byte-identical to published WAVs; FLAC decoded arrays matched them.
+- A 19 s fixture made from that render passed eight actual CLI analyses: loudness,
+  onsets, beats, STFT, Mel, CQT, VQT and tempogram. The five matrix analyses emitted SVGs;
+  artifact hashes matched and STFT/Mel NPZ arrays equaled direct Python results.
+
+STFT revision 2 returns arrays directly and shares the numeric/image path with Mel.
+See the [current usage and migration note](../../README.md#stft-mel-spectrogram-cqt-vqt-tempogram-and-images).
+[clean-install-report.json](clean-install-report.json) records the source hashes, wheel
+metadata and results. Raw CLI logs are local under
+`dogfood/2026-09-29-stft-mel-clean-install/`.
+
+This verifies a new environment on the same Linux/Python 3.12.11 host using cached
+downloads. It does not establish cross-platform compatibility, a global tool update,
+or remote publication. Source hashes identify the tested pending changes independently
+of the base commit.

@@ -417,7 +417,7 @@ def test_analyze_spectral_passes_a_custom_flag_through_to_params(tmp_path, capsy
     assert len(report["result"]["peaks"]) <= 2
 
 
-def test_analyze_stft_without_out_is_a_summary_and_with_out_writes_npz(tmp_path, capsys):
+def test_analyze_stft_requires_out_and_saves_numeric_attachments(tmp_path, capsys):
     import numpy as np
     import soundfile as sf
 
@@ -426,12 +426,14 @@ def test_analyze_stft_without_out_is_a_summary_and_with_out_writes_npz(tmp_path,
     tone = (0.5 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
     sf.write(wav, np.stack([tone, tone], axis=1), 48000, subtype="PCM_24")
 
-    assert main(["analyze", "spectral", "stft", str(wav)]) == 0
-    summary = json.loads(capsys.readouterr().out.strip())
-    assert "file" not in summary["result"]
-    assert "note" in summary["result"]
+    assert main(["analyze", "spectral", "stft", str(wav)]) != 0
+    assert "pass --out DIR" in capsys.readouterr().out
 
     out_dir = tmp_path / "out"
     assert main(["analyze", "spectral", "stft", str(wav), "--out", str(out_dir)]) == 0
     written = json.loads(capsys.readouterr().out.strip())
-    assert Path(written["result"]["file"]).is_file()
+    assert written["revision"] == 2
+    ref = written["result"]["level_db"]
+    with np.load(ref["file"]) as arrays:
+        assert arrays[ref["key"]].shape == tuple(written["result"]["shape"])
+    assert "visualization" not in written

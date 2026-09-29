@@ -27,7 +27,7 @@ preserved audio as materials; this experiment fixes repeatability at native synt
 Raw sfizz repeatability failures are intermittent without perturbation. The unmodified normal
 10-run controls happened to match in this trial; their success does not erase the previous
 observed failure. Delaying dispatch supplies a stable red-capable reference comparison.
-See [evidence.json](evidence.json) and the [findings](../../docs/blueprints/thoughts/2026-09-28-deterministic-instruments.md).
+See [evidence.json](evidence.json) for the measured results.
 
 These results apply to the pinned native revisions, this MIDI/patch and this Linux machine.
 They do not establish cross-platform identity or deterministic behavior for every SFZ opcode.

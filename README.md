@@ -13,7 +13,7 @@ For implementation decisions, start with the
 the self-contained, current product and design constraints.
 The [current design](docs/design.md) records chosen approaches, their reasons, and undecided
 interfaces; it includes directions that are not yet implemented.
-The [plan board](docs/blueprints/plan.md) owns current work and delivery status.
+The supported commands below and the checked-in examples describe delivered behavior.
 
 The previous implementation is preserved in
 [tactus-daw](https://github.com/rytho-ai/tactus-daw) as a reference for tested mechanisms.
@@ -355,17 +355,21 @@ Strength units differ between variants; neither is a probability or guaranteed m
 Sparse projection and bounded FFT chunks reduce work and memory; see
 [reference, accuracy and performance checks](experiments/superflux-frontends/README.md).
 
-#### CQT, VQT, tempogram and images
+#### STFT, Mel spectrogram, CQT, VQT, tempogram and images
 
 These built-ins use owned NumPy/SciPy implementations and require no librosa:
 
 | Analysis | Numeric result | Definition |
 | --- | --- | --- |
+| `spectral stft` | `level_db`, `times_s`, `freqs_hz` | Hann-window STFT on linear frequency bins; dB relative to a full-scale sine |
+| `spectral mel` | `power`, `times_s`, `freqs_hz` | Slaney Mel power spectrogram; area-normalized filters, feature units |
 | `spectral cqt` | `magnitude`, `times_s`, `freqs_hz`, `window_samples` | Geometric frequency grid with longer Hann windows at lower frequencies |
 | `spectral vqt` | Same arrays, plus resolved `gamma_hz` | Positive gamma shortens low-frequency windows; `--gamma 0` equals CQT |
 | `rhythm tempogram` | `tempogram`, `times_s`, `bpms`, `lags` | Local autocorrelation of Mel SuperFlux strength, normalized by zero-lag energy |
 
 ```bash
+uv run tactus analyze spectral stft loop.wav --out analysis --image
+uv run tactus analyze spectral mel loop.wav --n-mels 128 --out analysis --image
 uv run tactus analyze spectral cqt loop.wav --out analysis --image
 uv run tactus analyze spectral vqt loop.wav --gamma 13 --out analysis --image
 uv run tactus analyze rhythm tempogram loop.wav --window-s 4 --out analysis --image
@@ -375,7 +379,7 @@ uv run tactus analyze spectral cqt loop.wav --out comparisons --image --image-mi
 
 `--out` saves the full numeric arrays as NPZ and the analysis/provenance record as JSON.
 `--image` additionally saves a standalone labeled `image.svg` (with an embedded PNG
-heatmap), covered by the same artifact hashes. The flag also supports existing Mel,
+heatmap), covered by the same artifact hashes. The flag also supports existing
 chroma and MFCC analyses. It needs no plotting package. Python can use either view:
 
 ```python
@@ -385,7 +389,20 @@ from tactus.analysis import image, spectral
 result = spectral.cqt(audio, sample_rate)
 matrix = result["magnitude"]  # (frequency_bins, time_frames)
 Path("cqt.svg").write_text(image(result, title="CQT", vmin=-80, vmax=0), encoding="utf-8")
+
+stft = spectral.stft(audio, sample_rate)
+levels = stft["level_db"]  # (frequency_bins, time_frames), silence remains -inf
+Path("stft.svg").write_text(image(stft, title="STFT"), encoding="utf-8")
+mel = spectral.mel(audio, sample_rate, n_mels=128)
+power = mel["power"]  # (mel_bands, time_frames)
+Path("mel.svg").write_text(image(mel, title="Mel spectrogram"), encoding="utf-8")
 ```
+
+STFT revision 2 returns arrays directly, replacing its old summary/file-only result and
+Python `out=` parameter. The CLI now requires `--out` like the other matrix analyses;
+use the JSON array references to locate the NPZ arrays. Existing STFT scaling is retained,
+with a fixed FFT grid for short inputs. `shape` is `(frequency_bins, time_frames)`;
+`duration_s` describes the original signal, and the last padded frame may extend past it.
 
 Q transforms sum channels, use centered zero padding and default to C1, 84 bins,
 12 bins/octave and a 512-sample hop. Their L1-normalized complex filters have gain 2;
@@ -400,10 +417,14 @@ then retains positive integer lags corresponding to 30–300 BPM. Rows are ascen
 but **not uniformly spaced in BPM**; no prior or single tempo/beat estimate is returned.
 Short clips are zero-padded and may not provide useful periodicity evidence.
 
-Images preserve row-index spacing and label exact Hz/BPM centers; they do not imply
-a linear Hz/BPM axis. Q images use `20*log10(magnitude)` relative to 1, default -80..0;
+Images preserve row-index spacing and label exact Hz/BPM centers; only STFT rows are
+linear in Hz. STFT displays its existing dB values with a default -80..0 range; silence
+uses the lowest color without changing numeric `-inf`. Time reduction averages linear
+power before returning to dB. Q images use `20*log10(magnitude)` relative to 1, default -80..0;
 Mel uses power dB with an automatic 80 dB range, chroma/tempogram use 0..1, MFCC uses
 symmetric coefficient bounds. Display settings live separately from analysis params.
+Mel power dB and STFT full-scale-sine dB use different references, so matching their
+color bounds does not make their levels interchangeable.
 For readability, at most 1200 time columns are averaged before display conversion;
 NPZ retains every frame. Image metadata records units, color bounds and display shape.
 See [verification and acceleration evidence](experiments/q-transforms/README.md).
@@ -566,6 +587,7 @@ Use these functions inside `render()`; no separate DSP CLI or mandatory processo
 - NumPy DSP, external tools, and specialized production code should remain usable as ordinary
   source, subject to an explicit execution and materialization boundary.
 
-Ordinary Python can already use installed DSP/analysis libraries. Shared temporal/Pattern APIs,
-MIDI file delivery and selective caching remain open directions, to be implemented when concrete production needs justify them. See the
-[vertical-slice plan](docs/blueprints/plans/2026-09-16-code-first-production-slice.md).
+Ordinary Python can use the installed DSP/analysis libraries, optional timing helpers,
+and opt-in stage reuse. Broader Pattern APIs and built-in MIDI delivery remain directions
+to revisit when concrete production needs justify them; custom export can already implement
+work-specific delivery. See the [command contract](docs/project-commands.md).

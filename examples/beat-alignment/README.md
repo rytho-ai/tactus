@@ -5,8 +5,7 @@ fixed-ratio stretch and beat-marker warp, with identical authored percussion. It
 existing `pytimestretch.time_warp` through ordinary Python; no new Tactus runtime API is needed.
 
 **Status:** rendered and measured; Paul reports a modest improvement in the A/B comparison.
-Final grid/candidate acceptance remains open. See the
-[listening feedback](../../docs/blueprints/thoughts/2026-09-28-beat-alignment-production.md#listening-feedback-and-remaining-decision).
+Final grid/candidate acceptance remains open; the listening feedback was preliminary.
 The frozen beat map is provisional, not ground truth or a downbeat grid.
 
 ## Source and frozen decisions

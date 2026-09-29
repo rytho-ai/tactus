@@ -24,7 +24,15 @@ def parsed(svg):
 
 @pytest.mark.parametrize(
     "fn",
-    [spectral.cqt, spectral.vqt, spectral.mel, spectral.chroma, spectral.mfcc, rhythm.tempogram],
+    [
+        spectral.stft,
+        spectral.cqt,
+        spectral.vqt,
+        spectral.mel,
+        spectral.chroma,
+        spectral.mfcc,
+        rhythm.tempogram,
+    ],
 )
 def test_image_metadata_axes_and_nonmutation(fn):
     result = fn(np.zeros(1000), 22050)
@@ -78,9 +86,55 @@ def test_image_time_reduction_and_invalid_scaling():
             image(result, **kwargs)
 
 
+def test_stft_image_uses_existing_db_and_mel_uses_power_db():
+    axes = {"freqs_hz": np.array([100, 200]), "times_s": np.array([0, 1])}
+    db = np.array([[-40, -20], [-10, 0]])
+    stft_root, stft_meta = parsed(image({**axes, "level_db": db}, vmin=-40, vmax=0))
+    mel_root, mel_meta = parsed(image({**axes, "power": 10 ** (db / 10)}, vmin=-40, vmax=0))
+    assert stft_meta["unit"] == "dB re full-scale sine"
+    assert mel_meta["unit"] == "dB re power 1"
+    assert "linear rows" in "".join(stft_root.itertext())
+    assert "Mel-spaced rows" in "".join(mel_root.itertext())
+    assert (
+        stft_root.find(".//s:image", NS).attrib["href"]
+        == mel_root.find(".//s:image", NS).attrib["href"]
+    )
+
+
+def test_stft_image_reduction_averages_power_and_preserves_silence():
+    db = np.tile([0.0, -np.inf], (1, 1200))
+    result = {"level_db": db, "freqs_hz": np.array([100]), "times_s": np.arange(2400)}
+    root, meta = parsed(image(result))
+    expected, _ = parsed(
+        image(
+            {
+                "level_db": np.full((1, 1200), 10 * np.log10(0.5)),
+                "freqs_hz": np.array([100]),
+                "times_s": np.arange(1200),
+            }
+        )
+    )
+    assert meta["time_reduction"] == "linear power mean before dB"
+    assert meta["display_shape"] == [1, 1200]
+    assert (
+        root.find(".//s:image", NS).attrib["href"] == expected.find(".//s:image", NS).attrib["href"]
+    )
+    assert np.isneginf(db[:, 1::2]).all()
+    assert np.equal(db[:, ::2], 0).all()
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf])
+def test_stft_image_rejects_invalid_nonfinite_values(value):
+    with pytest.raises(ValueError, match="matrix"):
+        image(
+            {"level_db": np.array([[value]]), "freqs_hz": np.array([0]), "times_s": np.array([0])}
+        )
+
+
 @pytest.mark.parametrize(
     "category,name",
     [
+        ("spectral", "stft"),
         ("spectral", "cqt"),
         ("spectral", "vqt"),
         ("spectral", "mel"),
@@ -118,10 +172,11 @@ def test_cli_numeric_and_image_roundtrip(tmp_path, capsys, category, name):
     assert json.loads(capsys.readouterr().out)["error"]["code"] == "output_exists"
 
 
-def test_bad_image_request_cleans_up_and_requires_out(tmp_path, capsys):
+@pytest.mark.parametrize("name", ["stft", "mel", "cqt"])
+def test_bad_image_request_cleans_up_and_requires_out(tmp_path, capsys, name):
     wav = tmp_path / "input.wav"
     sf.write(wav, np.zeros(10), 22050)
-    args = ["analyze", "spectral", "cqt", str(wav)]
+    args = ["analyze", "spectral", name, str(wav)]
     assert main(args + ["--image"]) != 0
     assert "requires --out" in capsys.readouterr().out
     assert main(args + ["--image-min", "-80"]) != 0

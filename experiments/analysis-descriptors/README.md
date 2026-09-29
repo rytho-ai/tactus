@@ -10,8 +10,8 @@ Crest factor locates peak-to-average changes that whole-file loudness/LRA do not
 Bandwidth describes spread beyond a centroid; rolloff is a cumulative energy percentile;
 flatness describes how evenly power is distributed. These can compare processing candidates
 or help authors select material/sections. None infers punch, instruments or overall quality.
-See the [candidate assessment and plan](../../docs/blueprints/plans/2026-09-29-analysis-descriptors.md)
-for the explicitly deferred alternatives.
+PLR/LDR, stereo/DC/dropout checks, pitch/chord/key estimates, and further descriptors
+remain deferred pending distinct definitions, accuracy evidence or a concrete need.
 
 ## Definitions
 
