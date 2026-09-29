@@ -117,7 +117,7 @@ editable installation with that wheel verified imports from the new environment'
   artifact hashes matched and STFT/Mel NPZ arrays equaled direct Python results.
 
 STFT revision 2 returns arrays directly and shares the numeric/image path with Mel.
-See the [current usage and migration note](../../README.md#stft-mel-spectrogram-cqt-vqt-tempogram-and-images).
+See the [current usage and migration note](../../docs/analysis.md#stft-mel-spectrogram-cqt-vqt-tempogram-and-images).
 [clean-install-report.json](clean-install-report.json) records the source hashes, wheel
 metadata and results. Raw CLI logs are local under
 `dogfood/2026-09-29-stft-mel-clean-install/`.
