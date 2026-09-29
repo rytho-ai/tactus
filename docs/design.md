@@ -113,12 +113,14 @@ commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`
 `run` 維持一次命令完成生成與預設 PCM24 試聽；另存原始 arrays 會增加磁碟用量。
 舊 run 沒有 checkpoint 時使用已保存的 PCM，明確記為 `published-pcm`，不能恢復先前丟失的精度。
 每次 export 有自己的目錄與 `export.json`；失敗只清除該次新目錄。`take export` 則持續負責
-單一演奏素材包的轉移。完整介面見 [export 契約](project-commands.md#export-a-completed-render)，
+單一演奏素材包的轉移。完整介面見 [export 契約](../plugins/tactus/references/project-commands.md#export-a-completed-render)，
 回歸驗證見 [export 測試](../tests/test_export.py)。
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
-Agent 取得這些契約與 functional 寫作紀律的來源，是 repository 內的 `skills/tactus-authoring/SKILL.md`：它只寫高層準則（步驟與 functional 紀律），細節（契約、欄位、helper API、套件行為）放在同目錄的 `reference.md`，由 SKILL.md 指出何時該讀哪一段。測試會檢查兩者合起來列出每個 manifest、receipt 與錯誤欄位。skill 只教怎麼使用 Tactus，不教做音樂，也不代替各套件自己的文件；只有會影響 Tactus 結果的套件行為（陣列 layout、每次 render 不同導致 hash 對不上、回報看不到的削頂）才寫進去（見 positioning 第 1 條）。
+Agent 的指引由 [`tactus` plugin](../plugins/tactus/README.md) 提供。`compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，並以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，同時保留 caller 要控制的音樂選擇；不能只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。`dsp` 負責使用、撰寫與驗證 processor；`measure` 同時涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到另外兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法；不要求每首作品都走過同一流程。
+
+三個 skills 保持精簡，共用契約由 plugin 內的 `references/` 單獨維護，測試持續比對真實 manifest、receipt 與錯誤欄位。安裝只帶獨立的 `plugins/tactus/`，包含可複製修改的小型合成音源範例，runtime 另行安裝。內建 DSP、Pedalboard 與作品自寫函式都可自由使用；自寫分析不必先進 Tactus core。程式結構的紀律服務可理解、可修訂的音樂，而不替 Agent 指定音樂形式。
 
 已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
@@ -149,7 +151,7 @@ manifest version 3，增加 `{name: tree_ref}` 的 `takes`；其他 run 維持 v
 `tactus take export REF --out DIR` 匯出音訊與 provenance；另一台電腦以 `tactus material add DIR`
 匯入，得到相同 ref。這個 bundle 足以讀回演奏；重新生成所需的 sample libraries、binaries 與
 Python 環境仍需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用
-演奏的唯一保存處。完整契約見 [Saved takes](../skills/tactus-authoring/reference.md#saved-takes)，
+演奏的唯一保存處。完整契約見 [Saved takes](../plugins/tactus/references/runtime.md#saved-takes)，
 實際驗證見 [saved takes 實驗](../experiments/saved-takes/README.md)。
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。

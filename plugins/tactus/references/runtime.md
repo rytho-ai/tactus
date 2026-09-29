@@ -1,7 +1,17 @@
 # Tactus reference
 
-Details behind the [`tactus-authoring` skill](SKILL.md). Read the section you need when you
-reach it; the skill's steps and discipline are the rules.
+Shared execution contracts for the [compose](../skills/compose/SKILL.md),
+[dsp](../skills/dsp/SKILL.md) and [measure](../skills/measure/SKILL.md) skills.
+Read the relevant section on demand; installed help describes the work's pinned version.
+
+## Contents
+
+- [Render contract](#the-render-contract) and [creating a work](#creating-a-work)
+- [Excerpts](#listening-to-part-of-a-run), [keeping candidates](#keeping-a-candidate) and [saved takes](#saved-takes)
+- [Inputs](#inputs) and [stage reuse](#reusing-unchanged-stages)
+- [Plugin helpers](#helpers-from-tactus-import-fx) and [musical time](#musical-time-optional)
+- [Measurements](#measuring-audio) and [project commands/export](#project-commands-and-export)
+- [Library behavior](#library-behavior-that-affects-tactus-results) and [run results](#run-results)
 
 ## The `render` contract
 
@@ -141,18 +151,9 @@ the material checked on every run (a cache hit otherwise replays its earlier inp
   combinations raise; resampling is exact (`resample_poly`); `trim_db` drops leading silence
   before the first sample reaching `peak * 10**(trim_db/20)`. Takes a `"sha256:…"` ref (recorded
   the same as any other material) or a `Path` `material()` already returned.
-- Imported Python distributions are recorded automatically; declare only non-Python
-  executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile,
-  Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch),
-  pyqmdsp (qm-dsp analysis) and
-  `mido` (MIDI files, for example for `sfizz_render --midi`). Their own documentation is the
-  reference for using them. Librosa and pyloudnorm are development references, not runtime
-  dependencies; add them to the production with `uv add` if its source imports them.
-- Owned analysis is available through `tactus.analysis` and `tactus analyze`. Optional
-  `tactus.dsp` functions transform arrays inside `render`; see the repository README
-  "Owned DSP" section for gain/fade/pan, explicit-state biquad, and whole-clip
-  duck/delay/lowpass/saturate, LR4 crossover and crossfade_delay contracts.
-  Runnable examples: `examples/dsp-effects/song.py` and `examples/dsp-components/song.py`.
+- Imported Python distributions are recorded automatically; declare external executables
+  and native libraries with `tool()`. Read [Packages and integration notes](packages.md)
+  when choosing tools or connecting their audio, MIDI, timing and state conventions.
 
 ## Reusing unchanged stages
 
@@ -223,7 +224,7 @@ Register work-owned Python callables in `pyproject.toml`:
 `[tool.tactus.analysis]` maps `"category.name"` to `"module:function"`;
 `[tool.tactus.export]` maps `"delivery-name"` to `"module:function"`.
 They appear as `tactus analyze category name` and `tactus export delivery-name`.
-Read [the project command contract](../../docs/project-commands.md) before writing one: it
+Read [the project command contract](project-commands.md) before writing one: it
 owns signatures, flags, array attachments, provenance and trusted-code limits.
 
 `tactus export wav RUN --subtype DOUBLE --out NEW_DIR` delivers original float64 audio;
@@ -270,18 +271,8 @@ has the full API and precision notes.
 
 ## Library behavior that affects Tactus results
 
-- **Array layout.** Pedalboard effects and `fx.render_instrument` use Tactus's
-  `(frames, channels)`; only a direct instrument call (`plugin(messages, ...)`) returns
-  `(channels, frames)`.
-- **Renders that change between runs.** Some VST3 instruments (OB-Xf, for one) render slightly
-  different audio on every run; a re-render's hashes then do not match, even with unchanged
-  source. `pytimestretch.extreme_stretch` is different: each run repeats the same result
-  while the `extreme_stretch` calls before it stay the same, and changes when one is added,
-  removed or moved. Use **Saved takes** to retain a chosen performance across revisions and machines;
-  archive approved audio. Stage reuse only preserves it while that cache entry is reused.
-- **Clipping the report cannot see.** `clipped_samples` counts only what the work returns
-  outside ±1. Audio already clipped inside the work, by `np.clip` or by Pedalboard's `Limiter`
-  (a loudness maximizer that hard-clips at 0 dBFS), reports 0.
+[Packages and integration notes](packages.md) owns layouts, plugin state/tails, MIDI time,
+stretching and reproducibility caveats, including clipping that the run report cannot see.
 
 ## Run results
 
@@ -353,7 +344,7 @@ old version can be reproduced only after you re-render it and every output hash 
 `git.commit` and apply `source.patch` if present, `uv sync --frozen` (the work's own
 `dependency_lock` pins Tactus and every package), restore each `materials` ref into the pool
 (`tactus material add`), and run with the recorded `parameters`. A plugin that renders
-differently each run (see below) will not match by hash even after an exact rebuild.
+differently each run (see Library behavior above) will not match by hash even after an exact rebuild.
 
 **An older work without its own `pyproject.toml`** instead ran borrowing Tactus's own
 environment: check out `git.commit` and apply `source.patch` if present; for each

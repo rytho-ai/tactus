@@ -1,0 +1,13 @@
+{
+  "name": "tactus-local",
+  "metadata": {"description": "Composable Tactus music, DSP and measurement skills."},
+  "owner": {"name": "Paul", "email": "bernie40916@gmail.com"},
+  "plugins": [
+    {
+      "name": "tactus",
+      "source": "./plugins/tactus",
+      "description": "Compose music in Python, build DSP, and use or write audio analyses with Tactus.",
+      "version": "0.1.0"
+    }
+  ]
+}

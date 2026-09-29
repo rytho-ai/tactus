@@ -1,4 +1,4 @@
-"""Keep the tactus-authoring skill and its reference in step with the run contract."""
+"""Keep the plugin reference in step with the actual run contract."""
 
 from __future__ import annotations
 
@@ -7,14 +7,12 @@ from pathlib import Path
 
 from tactus import RunError, excerpt, run
 
-SKILL_DIR = Path(__file__).parents[1] / "skills" / "tactus-authoring"
+PLUGIN_DIR = Path(__file__).parents[1] / "plugins" / "tactus"
 
 
 def _skill_text() -> str:
-    """The skill and its reference together: the documented surface."""
-    return "\n".join(
-        (SKILL_DIR / name).read_text(encoding="utf-8") for name in ("SKILL.md", "reference.md")
-    )
+    """One maintained execution contract shared by all three skills."""
+    return (PLUGIN_DIR / "references" / "runtime.md").read_text(encoding="utf-8")
 
 
 SOURCE = """\
