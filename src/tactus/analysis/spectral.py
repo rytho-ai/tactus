@@ -1,4 +1,4 @@
-"""spectral: frequency-domain measurements — spectrum, band levels, centroid, peaks and STFT.
+"""spectral: frequency measurements, distribution descriptors and spectral feature arrays.
 
 Every function here *reports* a measurement; none returns a pass/fail verdict — Tactus reports,
 not blocks (see `docs/design.md`'s "驗證與觀察"). Each analysis takes `audio` in Tactus's
@@ -16,10 +16,12 @@ and defeat every method tried, not just this one), so there is no `pitch` catego
 `spectrum`, `band_levels`, `centroid`, `peaks` and `stft` are computations of stated
 definitions, not estimators, so they carry no equivalent overfitting risk.
 
-dB reference throughout this module: 0 dB = the power of a full-scale (amplitude 1.0) sine
-wave, i.e. mean-square 0.5.
+dB reference for the original five measurements: 0 dB = the power of a full-scale
+(amplitude 1.0) sine wave, i.e. mean-square 0.5. The owned feature functions `mel`,
+`chroma` and `mfcc` have their own units, documented individually, and return NumPy
+arrays for Python; the CLI saves those arrays as attachments with `--out DIR`.
 
-Reads: numpy · scipy.signal
+Reads: numpy · scipy.signal/fft · _features
 """
 
 from __future__ import annotations
@@ -30,9 +32,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from scipy.fft import dct
 from scipy.signal import find_peaks, welch
 from scipy.signal import stft as _scipy_stft
 
+from . import _features
 from ._revision import revision as _revision
 
 _FS_SINE_MEAN_SQUARE = 0.5
@@ -360,4 +364,324 @@ def stft(
     return {"file": str(out_path), "shape": shape, "duration_s": duration_s}
 
 
-ANALYSES = (spectrum, band_levels, centroid, peaks, stft)
+@_revision(1)
+def mel(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 2048,
+    hop: int = 512,
+    n_mels: int = 128,
+    fmin: float = 0.0,
+    fmax: float | None = None,
+) -> dict[str, Any]:
+    """Mel power spectrogram as a NumPy matrix (CLI: use --out DIR).
+
+    Channels are summed to mono without resampling or gain normalization. Uses librosa's
+    Slaney Mel scale and area-normalized triangular filters on squared, unnormalized FFT
+    magnitudes; values are features, not calibrated dBFS or whole-file mean-square power.
+    Centered Hann frames, even n_fft >= 4, 1 <= hop <= n_fft, constant zero padding.
+    fmin/fmax are Hz; fmax=None means Nyquist. Empty/nonfinite audio and invalid parameters
+    raise ValueError. Short audio is zero-padded; silence produces zero power.
+
+    Returns:
+        times_s (seconds): frame centers, j*hop/sample_rate, including the endpoint if it
+            falls on the hop grid. These are NumPy arrays, not JSON lists.
+        freqs_hz (Hz): theoretical center of each triangular Mel filter, ascending.
+        power (squared FFT magnitude per Hz): matrix shaped (n_mels, len(times_s));
+            filter weights use Slaney area normalization. CLI requires --out for arrays.
+    """
+    x = _features.mono(audio, sample_rate, average=False)
+    power, frequencies = _features.mel_power(x, sample_rate, n_fft, hop, n_mels, fmin, fmax)
+    return {
+        "times_s": _features.times(power.shape[1], sample_rate, hop),
+        "freqs_hz": frequencies,
+        "power": power,
+    }
+
+
+@_revision(1)
+def chroma(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 4096,
+    hop: int = 512,
+    tuning: float = 0.0,
+) -> dict[str, Any]:
+    """Twelve pitch-class energy features over time (CLI: use --out DIR).
+
+    Uses the established chroma_stft definition on power spectra, summed mono channels, centered zero-padded
+    Hann frames (even n_fft >= 4, 1 <= hop <= n_fft). No resampling or input normalization.
+    tuning is a finite semitone offset from A440 (0 fixes equal temperament; not estimated).
+    Filters use librosa's octave weighting (ctroct=5, octwidth=2) and C-first ordering;
+    each frame is divided by its largest bin. Silent frames remain zero. Short signals
+    are zero-padded. Invalid/empty/nonfinite input raises ValueError.
+    These are normalized pitch-class features, not chord, key or fundamental estimates.
+
+    Returns:
+        times_s (seconds): NumPy frame centers j*hop/sample_rate; endpoint included if
+            on the grid, as in mel.
+        pitch_classes (names): row labels C, C#, D, D#, E, F, F#, G, G#, A, A#, B.
+        chroma (relative energy, 0..1): NumPy matrix (12, len(times_s)), max-normalized
+            per frame. CLI requires --out for arrays.
+    """
+    if not np.isfinite(tuning):
+        raise ValueError("tuning must be finite")
+    x = _features.mono(audio, sample_rate, average=False)
+    power = _features.power_spectrum(x, n_fft, hop)
+    values = _features.chroma_power(power, sample_rate, n_fft, tuning)
+    return {
+        "times_s": _features.times(values.shape[1], sample_rate, hop),
+        "pitch_classes": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
+        "chroma": values,
+    }
+
+
+@_revision(1)
+def mfcc(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 2048,
+    hop: int = 512,
+    n_mels: int = 128,
+    n_mfcc: int = 20,
+    fmin: float = 0.0,
+    fmax: float | None = None,
+) -> dict[str, Any]:
+    """Mel-frequency cepstral coefficients as a NumPy matrix (CLI: use --out DIR).
+
+    Same summed-mono, centered Hann, zero-padded Mel power definition as mel; fmax=None
+    means Nyquist. Convert power to dB (ref=1, amin=1e-10, top_db=80),
+    then orthonormal DCT-II along Mel bands, retaining coefficients 0..n_mfcc-1 without
+    liftering or coefficient normalization. Require 1 <= n_mfcc <= n_mels.
+    Coefficients describe the spectral envelope; no similarity/classification is inferred.
+    Silence is finite: coefficient 0 is -100*sqrt(n_mels), the others approximately zero.
+    Empty/nonfinite audio and invalid parameters raise ValueError; short audio is padded.
+
+    Returns:
+        times_s (seconds): NumPy frame centers j*hop/sample_rate; endpoint included if
+            on the grid, as in mel.
+        coefficients (orthonormal DCT of log-Mel power): NumPy matrix
+            (n_mfcc, len(times_s)), starting with coefficient 0; not dBFS.
+            CLI requires --out for arrays.
+    """
+    _features.positive_int("n_mfcc", n_mfcc)
+    _features.positive_int("n_mels", n_mels)
+    if n_mfcc > n_mels:
+        raise ValueError("n_mfcc must not exceed n_mels")
+    x = _features.mono(audio, sample_rate, average=False)
+    power, _ = _features.mel_power(x, sample_rate, n_fft, hop, n_mels, fmin, fmax)
+    values = dct(_features.log_power(power), type=2, norm="ortho", axis=0)[:n_mfcc]
+    return {
+        "times_s": _features.times(values.shape[1], sample_rate, hop),
+        "coefficients": values,
+    }
+
+
+@_revision(1)
+def cqt(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    hop: int = 512,
+    fmin: float = 32.70319566257483,
+    n_bins: int = 84,
+    bins_per_octave: int = 12,
+    filter_scale: float = 1.0,
+) -> dict[str, Any]:
+    """Constant-Q magnitude: frequency-dependent Hann windows on a logarithmic grid.
+
+    Sum channels; no resampling, tuning estimation or input normalization. Centers
+    fmin*2**(k/bins_per_octave), default C1 and seven octaves at 12 bins/octave.
+    alpha=tanh(log(2)/bins_per_octave); window length ceil(filter_scale*sample_rate /
+    (alpha*frequency)). Periodic Hann, offsets arange(length)-length//2, zero-padded
+    edges; each complex sinusoidal filter has L1 norm 2. A resolved bin-centered
+    real sinusoid therefore reads approximately its peak amplitude. These are
+    features, not calibrated dBFS or librosa's length-scaled coefficients.
+    Windows must be 4..1048576 samples; at most 4096 bins. Center plus 0.75 times
+    nominal bandwidth must stay below Nyquist (Hann guard, not a brick-wall cutoff).
+    Invalid/nonfinite/empty input raises ValueError. Silence returns zero magnitude.
+    Low frequencies smear events across longer windows; no inverse/phase is returned.
+
+    Returns:
+        magnitude (amplitude feature): NumPy (n_bins, frames) nonnegative filter magnitudes.
+        times_s (seconds): NumPy frame centers j*hop/sample_rate, through duration if on grid.
+        freqs_hz (Hz): NumPy ascending geometric filter centers, in Hz.
+        window_samples (samples): NumPy integer window length for each frequency.
+        hop_samples (samples): requested positive integer hop, in samples.
+        gamma_hz (Hz): 0.0; CQT equals vqt with gamma=0 for otherwise identical parameters.
+    """
+    from ._qtransform import transform
+
+    return transform(audio, sample_rate, hop, fmin, n_bins, bins_per_octave, filter_scale, 0.0)
+
+
+@_revision(1)
+def vqt(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    hop: int = 512,
+    fmin: float = 32.70319566257483,
+    n_bins: int = 84,
+    bins_per_octave: int = 12,
+    filter_scale: float = 1.0,
+    gamma: float | None = None,
+) -> dict[str, Any]:
+    """Variable-Q magnitude with an explicit bandwidth offset gamma, in Hz.
+
+    Same grid, summed channels, centered zero padding, Hann filters and magnitude
+    units as cqt. Length=ceil(filter_scale*sample_rate/(alpha*frequency+gamma)),
+    alpha=tanh(log(2)/bins_per_octave). gamma=None resolves to 24.7*alpha/0.108 (ERB
+    convention); gamma=0 is exactly cqt. Larger gamma shortens low-frequency windows,
+    improving time localization while reducing frequency selectivity. Require finite
+    gamma >= 0 and cqt's window/band limits. This direct filter-bank transform does
+    not reproduce librosa's recursive resampling/sparse approximation coefficientwise.
+
+    Returns:
+        magnitude (amplitude feature): NumPy (n_bins, frames), as in cqt.
+        times_s (seconds): NumPy centered frame timestamps.
+        freqs_hz (Hz): NumPy geometric filter centers.
+        window_samples (samples): NumPy integer window length per frequency.
+        hop_samples (samples): positive integer frame step.
+        gamma_hz (Hz): resolved nonnegative bandwidth offset.
+    """
+    from ._qtransform import transform
+
+    return transform(audio, sample_rate, hop, fmin, n_bins, bins_per_octave, filter_scale, gamma)
+
+
+def _descriptor_result(values, field, valid, sample_rate, n_fft, hop):
+    return {
+        "times_s": _features.times(len(values), sample_rate, hop).tolist(),
+        field: [float(v) if keep else None for v, keep in zip(values, valid)],
+        "n_fft": int(n_fft),
+        "hop_samples": int(hop),
+    }
+
+
+@_revision(1)
+def bandwidth(
+    audio: np.ndarray, sample_rate: int, *, n_fft: int = 2048, hop: int = 512
+) -> dict[str, Any]:
+    """Power-weighted spectral standard deviation per frame, in Hz.
+
+    Describes spread around the power-weighted centroid, not a filter's -3 dB width.
+    Sum channels; centered periodic Hann frames with zero padding, even n_fft >= 4,
+    1 <= hop <= n_fft. Frame centers j*hop/sample_rate stop at the original duration,
+    matching mel/mfcc (legacy centroid has its own terminal-frame policy). Include DC
+    and Nyquist. No resampling or DC removal. Zero-power frames return null, including
+    opposite-phase channel cancellation. Values describe distribution, not mix quality.
+
+    Returns:
+        times_s (seconds): frame centers.
+        bandwidth_hz (Hz): power-weighted standard deviation; null for zero power.
+        n_fft (samples): transform size.
+        hop_samples (samples): frame step.
+    """
+    power, valid = _features.power_distribution(audio, sample_rate, n_fft, hop)
+    total = power.sum(axis=0)
+    weights = np.divide(power, total, out=np.zeros_like(power), where=valid)
+    frequencies = np.fft.rfftfreq(n_fft, 1 / sample_rate)[:, None]
+    center = np.sum(weights * frequencies, axis=0)
+    values = np.sqrt(np.sum(weights * (frequencies - center) ** 2, axis=0))
+    return _descriptor_result(values, "bandwidth_hz", valid, sample_rate, n_fft, hop)
+
+
+@_revision(1)
+def rolloff(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 2048,
+    hop: int = 512,
+    roll_percent: float = 0.85,
+) -> dict[str, Any]:
+    """Frequency below which a chosen fraction of frame spectral power accumulates.
+
+    Uses bandwidth's summed channels, centered Hann framing and time grid. Include DC
+    and Nyquist. roll_percent must be finite and strictly between 0 and 1. Select the
+    first FFT bin whose cumulative power reaches the fraction; no interpolation.
+    Zero-power frames return null. This is an energy percentile, not highest audible
+    frequency or an automatic low-pass cutoff. Finite nonempty real audio only.
+
+    Returns:
+        times_s (seconds): frame centers.
+        rolloff_hz (Hz): first bin reaching the power fraction; null for zero power.
+        roll_percent (fraction): requested cumulative power fraction.
+        n_fft (samples): transform size.
+        hop_samples (samples): frame step.
+    """
+    if (
+        isinstance(roll_percent, (bool, np.bool_))
+        or not np.isfinite(roll_percent)
+        or not 0 < roll_percent < 1
+    ):
+        raise ValueError("roll_percent must be finite and strictly between 0 and 1")
+    power, valid = _features.power_distribution(audio, sample_rate, n_fft, hop)
+    cumulative = np.cumsum(power, axis=0)
+    indices = np.argmax(cumulative >= roll_percent * cumulative[-1], axis=0)
+    values = np.fft.rfftfreq(n_fft, 1 / sample_rate)[indices]
+    return {
+        **_descriptor_result(values, "rolloff_hz", valid, sample_rate, n_fft, hop),
+        "roll_percent": float(roll_percent),
+    }
+
+
+@_revision(1)
+def flatness(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 2048,
+    hop: int = 512,
+    floor_ratio: float = 1e-12,
+) -> dict[str, Any]:
+    """Geometric/arithmetic mean of frame power: spectral evenness on a 0..1 scale.
+
+    Uses bandwidth's summed channels, centered Hann framing and time grid; DC and
+    Nyquist included. Divide power by each frame's maximum, then floor bins at
+    floor_ratio (finite, strictly between 0 and 1) before both means. This relative
+    floor keeps the descriptor gain-invariant within floating-point range. Uniform
+    spectra approach 1, concentrated spectra approach 0; not an instrument/noise label.
+    Zero-power frames return null rather than a misleading flatness of 1.
+
+    Returns:
+        times_s (seconds): frame centers.
+        flatness (ratio, 0..1): power flatness; null for zero-power frames.
+        floor_ratio (fraction): minimum power relative to the frame peak.
+        n_fft (samples): transform size.
+        hop_samples (samples): frame step.
+    """
+    if (
+        isinstance(floor_ratio, (bool, np.bool_))
+        or not np.isfinite(floor_ratio)
+        or not 0 < floor_ratio < 1
+    ):
+        raise ValueError("floor_ratio must be finite and strictly between 0 and 1")
+    power, valid = _features.power_distribution(audio, sample_rate, n_fft, hop)
+    bounded = np.maximum(power, floor_ratio)
+    values = np.clip(np.exp(np.mean(np.log(bounded), axis=0)) / bounded.mean(axis=0), 0, 1)
+    return {
+        **_descriptor_result(values, "flatness", valid, sample_rate, n_fft, hop),
+        "floor_ratio": float(floor_ratio),
+    }
+
+
+ANALYSES = (
+    spectrum,
+    band_levels,
+    centroid,
+    peaks,
+    stft,
+    mel,
+    chroma,
+    mfcc,
+    cqt,
+    vqt,
+    bandwidth,
+    rolloff,
+    flatness,
+)

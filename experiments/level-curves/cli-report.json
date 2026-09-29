@@ -1,0 +1,59 @@
+{
+  "input": "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+  "sha256": "32222836141353be4973175d26d2b7c600394d96dc68b89c2cf97362e486e4d1",
+  "commands": {
+    "momentary_loudness": {
+      "seconds_including_startup": 1.7703163288533688,
+      "saved_record": "dogfood/2026-09-29-level-curves/cli/momentary_loudness/mix-32222836.level.momentary_loudness.9c2e8720efaacc89/result.json",
+      "result": {
+        "hop_samples": 441,
+        "loudness_lufs": 14879,
+        "times_s": 14879,
+        "window_samples": 17640
+      }
+    },
+    "short_term_loudness": {
+      "seconds_including_startup": 1.4973739935085177,
+      "saved_record": "dogfood/2026-09-29-level-curves/cli/short_term_loudness/mix-32222836.level.short_term_loudness.7a81f41ced5b431c/result.json",
+      "result": {
+        "hop_samples": 4410,
+        "loudness_lufs": 1462,
+        "times_s": 1462,
+        "window_samples": 132300
+      }
+    },
+    "loudness_range": {
+      "seconds_including_startup": 1.5917723756283522,
+      "saved_record": "dogfood/2026-09-29-level-curves/cli/loudness_range/mix-32222836.level.loudness_range.d035e43dd4aeb20d/result.json",
+      "result": {
+        "duration_s": 149.1891836734694,
+        "gated_blocks": 1477,
+        "high_lufs": -7.3622329422849395,
+        "low_lufs": -8.696228372300306,
+        "lra_lu": 1.3339954300153662,
+        "provisional": false,
+        "relative_gate_lufs": -27.957167942583805
+      }
+    },
+    "rms_curve": {
+      "seconds_including_startup": 1.5016883919015527,
+      "saved_record": "dogfood/2026-09-29-level-curves/cli/rms_curve/mix-32222836.level.rms_curve.8e286cfc7a45bbed/result.json",
+      "result": {
+        "hop_samples": 441,
+        "rms_dbfs": 14914,
+        "times_s": 14914,
+        "window_samples": 2205
+      }
+    },
+    "peak_curve": {
+      "seconds_including_startup": 1.458576294593513,
+      "saved_record": "dogfood/2026-09-29-level-curves/cli/peak_curve/mix-32222836.level.peak_curve.b1ba0ef9ace8aadb/result.json",
+      "result": {
+        "hop_samples": 441,
+        "sample_peak_dbfs": 14914,
+        "times_s": 14914,
+        "window_samples": 2205
+      }
+    }
+  }
+}

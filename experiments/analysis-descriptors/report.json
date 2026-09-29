@@ -1,0 +1,201 @@
+{
+  "input": {
+    "path": "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+    "sha256": "32222836141353be4973175d26d2b7c600394d96dc68b89c2cf97362e486e4d1",
+    "sample_rate": 44100,
+    "frames": 6579243
+  },
+  "clip_ceiling": 0.3333333333333333,
+  "variants": {
+    "original": {
+      "crest_factor": 10.687711757425136,
+      "crest_factor_curve": {
+        "count": 14914,
+        "nulls": 0,
+        "median": 9.334740626883193
+      },
+      "bandwidth": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 465.1254338471267
+      },
+      "rolloff": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 990.52734375
+      },
+      "flatness": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 9.524865550258624e-06
+      }
+    },
+    "gain_minus_24db": {
+      "crest_factor": 10.687711757425136,
+      "crest_factor_curve": {
+        "count": 14914,
+        "nulls": 0,
+        "median": 9.334740626883196
+      },
+      "bandwidth": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 465.1254338471266
+      },
+      "rolloff": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 990.52734375
+      },
+      "flatness": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 9.52486555026089e-06
+      }
+    },
+    "lowpass_1500": {
+      "crest_factor": 11.309980646232088,
+      "crest_factor_curve": {
+        "count": 14914,
+        "nulls": 0,
+        "median": 9.00598228820461
+      },
+      "bandwidth": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 329.82939631274286
+      },
+      "rolloff": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 796.728515625
+      },
+      "flatness": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 5.228550448961046e-08
+      }
+    },
+    "clipped": {
+      "crest_factor": 3.2810162548888826,
+      "crest_factor_curve": {
+        "count": 14914,
+        "nulls": 0,
+        "median": 3.1737231808345996
+      },
+      "bandwidth": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 528.1117767509568
+      },
+      "rolloff": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 990.52734375
+      },
+      "flatness": {
+        "count": 12851,
+        "nulls": 0,
+        "median": 0.00045807853743707445
+      }
+    }
+  },
+  "reference": {
+    "bandwidth": {
+      "passed": true,
+      "max_abs_error": 2.7284841053187847e-12
+    },
+    "rolloff": {
+      "passed": true,
+      "max_abs_error": 0.0
+    },
+    "flatness": {
+      "passed": true,
+      "max_abs_error": 0.0
+    }
+  },
+  "cli": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "tactus",
+        "analyze",
+        "level",
+        "crest_factor",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-analysis-descriptors/crest_factor"
+      ],
+      "returncode": 0,
+      "matches_python": true
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "tactus",
+        "analyze",
+        "level",
+        "crest_factor_curve",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-analysis-descriptors/crest_factor_curve"
+      ],
+      "returncode": 0,
+      "matches_python": true
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "tactus",
+        "analyze",
+        "spectral",
+        "bandwidth",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-analysis-descriptors/bandwidth"
+      ],
+      "returncode": 0,
+      "matches_python": true
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "tactus",
+        "analyze",
+        "spectral",
+        "rolloff",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-analysis-descriptors/rolloff"
+      ],
+      "returncode": 0,
+      "matches_python": true
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "tactus",
+        "analyze",
+        "spectral",
+        "flatness",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-analysis-descriptors/flatness"
+      ],
+      "returncode": 0,
+      "matches_python": true
+    }
+  ],
+  "gain_invariant": true,
+  "source_sha256": {
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/experiments/analysis-descriptors/check.py": "cae70f08b379a86f57c55b45e00d25e3e3b4a9c8394469ded8da0da61d566b9c",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/analysis/level.py": "7018feb57d39a14035f4d6a18f9c766d6ae5d0bad0f985e031cec1067357e963",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/analysis/spectral.py": "ea67d7a21e0a3116af52162cc917bd07cf6599f77c45b9466e63bc5457ddb86e",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/analysis/_features.py": "1fed4d1a3d355141bea418d41abe9f689373eeb21c0bf3c9ff050f65472c7577"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "suites": {
+    "tests.xml": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "83",
+        "tests": "1055",
+        "time": "267.970",
+        "timestamp": "2026-09-29T15:58:13.930803+08:00",
+        "hostname": "worzpro-System-Product-Name"
+      }
+    ],
+    "reference-tests.xml": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "82",
+        "time": "3.092",
+        "timestamp": "2026-09-29T15:59:33.351137+08:00",
+        "hostname": "worzpro-System-Product-Name"
+      }
+    ]
+  },
+  "ruff_check": "pass",
+  "python_format": "pass",
+  "uv_build": "pass",
+  "browser": {
+    "loaded_images": 4,
+    "audio_duration_s": 20,
+    "horizontal_overflow": false
+  },
+  "note": "Repository-wide Markdown formatting has pre-existing differences in four unrelated files; Python formatting passes.",
+  "wheel_requires_dist": [
+    "Requires-Dist: mido>=1.3",
+    "Requires-Dist: numba<0.68,>=0.67",
+    "Requires-Dist: numpy>=1.26",
+    "Requires-Dist: pedalboard>=0.9.25",
+    "Requires-Dist: pyqmdsp",
+    "Requires-Dist: pytimestretch",
+    "Requires-Dist: scipy>=1.14",
+    "Requires-Dist: soundfile>=0.13"
+  ],
+  "wheel_implementation_bytes": "match",
+  "default_reference_skips_match_reference_passes": 82
+}

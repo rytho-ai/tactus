@@ -33,11 +33,11 @@ The baseline Tactus revision for this trial is `ccb3cc8`.
 
 ```bash
 uv sync --locked
-uv run python prepare.py
+uv run --with librosa python prepare.py
 uv run tactus run song.py --out runs/final/source --params '{"mode":"source"}'
 uv run tactus run song.py --out runs/final/fixed --params '{"mode":"fixed"}'
 uv run tactus run song.py --out runs/final/warp --params '{"mode":"warp"}'
-uv run python evaluate.py
+uv run --with librosa python evaluate.py
 python3 -m http.server 4186 --bind 127.0.0.1
 ```
 

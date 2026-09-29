@@ -1,0 +1,217 @@
+{
+  "absent": {
+    "librosa": true,
+    "pyloudnorm": true,
+    "numba": true
+  },
+  "commands": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "run",
+        "dogfood/2026-09-29-owned-analysis/song.py",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/dsp-run"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "spectral",
+        "mel",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/mel"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "spectral",
+        "mfcc",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/mfcc"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "spectral",
+        "chroma",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/chroma"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "rhythm",
+        "onset_strength",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/onset_strength"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "rhythm",
+        "onsets",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/onsets"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "rhythm",
+        "beats",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/beats"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "loudness",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/loudness"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "momentary_loudness",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/momentary_loudness"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "short_term_loudness",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/short_term_loudness"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "loudness_range",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/loudness_range"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "rms_curve",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/rms_curve"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "analyze",
+        "level",
+        "peak_curve",
+        "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/cli/peak_curve"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-dev",
+        "tactus",
+        "export",
+        "wav",
+        "dogfood/2026-09-29-owned-analysis/dsp-run",
+        "--out",
+        "dogfood/2026-09-29-owned-analysis/dsp-export"
+      ],
+      "returncode": 0
+    }
+  ],
+  "verification": "All saved analysis records match stdout; array descriptors loaded and shapes checked. DSP run uses bit-identical whole/block filtering; export completed."
+}

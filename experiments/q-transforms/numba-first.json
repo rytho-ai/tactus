@@ -1,0 +1,24 @@
+{
+  "numba": "0.67.0",
+  "threads": 4,
+  "fastmath": false,
+  "first_call_1s_including_compile_or_cache_s": 0.48276569694280624,
+  "cases": [
+    {
+      "duration_s": 1,
+      "sample_rate": 22050,
+      "scipy_median_s": 0.018397255800664425,
+      "scipy_max_error": 0.0,
+      "numba_median_s": 0.012193459086120129,
+      "numba_max_error": 4.440892098500626e-16
+    },
+    {
+      "duration_s": 30,
+      "sample_rate": 22050,
+      "scipy_median_s": 0.2626104662194848,
+      "scipy_max_error": 0.0,
+      "numba_median_s": 0.15956455189734697,
+      "numba_max_error": 6.661338147750939e-16
+    }
+  ]
+}

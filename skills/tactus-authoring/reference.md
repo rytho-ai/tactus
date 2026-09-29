@@ -142,11 +142,17 @@ the material checked on every run (a cache hit otherwise replays its earlier inp
   before the first sample reaching `peak * 10**(trim_db/20)`. Takes a `"sha256:…"` ref (recorded
   the same as any other material) or a `Path` `material()` already returned.
 - Imported Python distributions are recorded automatically; declare only non-Python
-  executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile, pyloudnorm,
-  librosa, Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch),
+  executables and libraries. Installed with Tactus: NumPy, SciPy, SoundFile,
+  Pedalboard (effects and VST3 hosting), pytimestretch (time stretch and pitch),
   pyqmdsp (qm-dsp analysis) and
   `mido` (MIDI files, for example for `sfizz_render --midi`). Their own documentation is the
-  reference for using them.
+  reference for using them. Librosa and pyloudnorm are development references, not runtime
+  dependencies; add them to the production with `uv add` if its source imports them.
+- Owned analysis is available through `tactus.analysis` and `tactus analyze`. Optional
+  `tactus.dsp` functions transform arrays inside `render`; see the repository README
+  "Owned DSP" section for gain/fade/pan, explicit-state biquad, and whole-clip
+  duck/delay/lowpass/saturate, LR4 crossover and crossfade_delay contracts.
+  Runnable examples: `examples/dsp-effects/song.py` and `examples/dsp-components/song.py`.
 
 ## Reusing unchanged stages
 

@@ -6,16 +6,18 @@ readme = "README.md"
 authors = [{ name = "Paul", email = "bernie40916@gmail.com" }]
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "librosa>=0.11",
     "mido>=1.3",
+    "numba>=0.67,<0.68",
     "numpy>=1.26",
     "pedalboard>=0.9.25",
-    "pyloudnorm>=0.2",
     "pyqmdsp",
     "pytimestretch",
     "scipy>=1.14",
     "soundfile>=0.13",
 ]
+
+[project.optional-dependencies]
+librosa = ["librosa==1.0.0"]
 
 [project.scripts]
 tactus = "tactus.launcher:main"
@@ -38,6 +40,7 @@ extend-exclude = [".claude/worktrees"]
 testpaths = ["tests"]
 markers = [
     "slow: real uv sync/install integration test; opt-in via TACTUS_SLOW=1",
+    "reference: numerical comparison requiring the optional librosa extra",
 ]
 
 [tool.uv.sources]

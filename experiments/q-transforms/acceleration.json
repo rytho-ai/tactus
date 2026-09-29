@@ -1,0 +1,103 @@
+{
+  "numba": "0.67.0",
+  "numpy": "2.5.3",
+  "fastmath": false,
+  "precision": "float64",
+  "trials": 3,
+  "cases": [
+    {
+      "audio_s": 1,
+      "rate": 22050,
+      "methods": {
+        "scipy_real_fir": {
+          "median_s": 0.019689390435814857,
+          "max_error": 0.0
+        },
+        "numpy": {
+          "median_s": 0.022945668548345566,
+          "max_error": 1.249000902703301e-16
+        },
+        "complex_fir": {
+          "median_s": 0.027369738556444645,
+          "max_error": 1.1102230246251565e-16
+        },
+        "fft": {
+          "median_s": 0.04714672453701496,
+          "max_error": 4.3021142204224816e-16
+        },
+        "numba_1_threads": {
+          "median_s": 0.014619468711316586,
+          "max_error": 4.163336342344337e-16
+        },
+        "numba_4_threads": {
+          "median_s": 0.01257728599011898,
+          "max_error": 4.163336342344337e-16
+        },
+        "numba_8_threads": {
+          "median_s": 0.01098177582025528,
+          "max_error": 4.163336342344337e-16
+        }
+      }
+    },
+    {
+      "audio_s": 30,
+      "rate": 22050,
+      "methods": {
+        "scipy_real_fir": {
+          "median_s": 0.26890307664871216,
+          "max_error": 0.0
+        },
+        "numpy": {
+          "median_s": 0.2592620858922601,
+          "max_error": 3.191891195797325e-16
+        },
+        "complex_fir": {
+          "median_s": 0.5873449770733714,
+          "max_error": 1.1102230246251565e-16
+        },
+        "fft": {
+          "median_s": 1.3347891885787249,
+          "max_error": 6.661338147750939e-16
+        },
+        "numba_1_threads": {
+          "median_s": 0.23491788748651743,
+          "max_error": 7.216449660063518e-16
+        },
+        "numba_4_threads": {
+          "median_s": 0.1717816861346364,
+          "max_error": 7.216449660063518e-16
+        },
+        "numba_8_threads": {
+          "median_s": 0.10832806956022978,
+          "max_error": 7.216449660063518e-16
+        }
+      }
+    }
+  ],
+  "fresh_processes": [
+    {
+      "audio_s": 1,
+      "engine": "scipy",
+      "first_process_s": 0.5453770318999887,
+      "cached_process_median_s": 0.5841737240552902
+    },
+    {
+      "audio_s": 1,
+      "engine": "numba",
+      "first_process_s": 1.162452993914485,
+      "cached_process_median_s": 0.7411141879856586
+    },
+    {
+      "audio_s": 30,
+      "engine": "scipy",
+      "first_process_s": 0.834896151907742,
+      "cached_process_median_s": 0.834559116512537
+    },
+    {
+      "audio_s": 30,
+      "engine": "numba",
+      "first_process_s": 1.3164414977654815,
+      "cached_process_median_s": 0.8915386218577623
+    }
+  ]
+}

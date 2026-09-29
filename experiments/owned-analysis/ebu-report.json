@@ -1,0 +1,1381 @@
+{
+  "versions": {
+    "python": "3.12.11",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "soundfile": "0.14.0"
+  },
+  "source_sha256": {
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/experiments/level-curves/check.py": "2b45cd31d42db1cfc58e669662df06c4aa3b13ca51360c91527524c47db2ec59",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/analysis/_level.py": "3c0bad9ab510c3c5bec9784cc82f17fcbf9d999e3e13bb82d211e7c765330c36",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/analysis/level.py": "52221ea4ca85d5df218f508938c70f6373a2d236448f365529041c3d273789bf",
+    "/home/worzpro/Desktop/dev/rytho-ai/rytho-workspace/tactus/src/tactus/_biquad.py": "b3b0f56df131e0872b06c7d7c676c17ca0331efb53109cb0473d5abcde486b00"
+  },
+  "archive_sha512": "60d022fdac47ad0be2688411be9daecbff85da994d6fa4921bba6cffab841b081d8b15d9ce284ad2253efb686463450a84a0d19cb0bad7a934546cc52dd73771",
+  "archive_sha256": "9cc500b4df83f7c21855c74dce795ef5209a752bf884253ae57d0ce512efb062",
+  "archive_origin": "https://tech.ebu.ch/publications/ebu_loudness_test_set",
+  "download_mirror": "https://mirrors.mit.edu/gentoo-distfiles/distfiles/de/ebu-loudness-test-setv05.zip",
+  "checksum_source": "https://github.com/gentoo/gentoo/blob/master/media-libs/libebur128/Manifest",
+  "scope": "M/S/LRA and optional integrated cases 1-8; not full EBU meter certification.",
+  "integrated": true,
+  "inputs": {
+    "seq-3341-1-16bit.wav": {
+      "sha256": "50dff94bf941756cae2b3e1a67931a28e1605a876be1b7f3707f2ffcf485955c",
+      "rate": 48000,
+      "frames": 960000
+    },
+    "seq-3341-2-16bit.wav": {
+      "sha256": "7c9399188aed09980c76a67adc36b33f2d61c3e0c8457d83f7bf879122534ce3",
+      "rate": 48000,
+      "frames": 960000
+    },
+    "seq-3341-3-16bit-v02.wav": {
+      "sha256": "1fced6ac2397d4337257185908bd49bb18314f441a0daf0ef602f671254d9efb",
+      "rate": 48000,
+      "frames": 3840000
+    },
+    "seq-3341-4-16bit-v02.wav": {
+      "sha256": "514a6edd342d20c999d30062f0371d3f33ca86aa668ed3606484564db8dbdf93",
+      "rate": 48000,
+      "frames": 4800000
+    },
+    "seq-3341-5-16bit-v02.wav": {
+      "sha256": "7acd129ddebb1935980585742075ad4aa82abe1147f7ce8abd28346b49561e61",
+      "rate": 48000,
+      "frames": 2884800
+    },
+    "seq-3341-6-5channels-16bit.wav": {
+      "sha256": "bd6ba138931b7450abf83044b2645fd6ef4c8dafc170758b8a2f32cbaa7ef58b",
+      "rate": 48000,
+      "frames": 960000
+    },
+    "seq-3341-7_seq-3342-5-24bit.wav": {
+      "sha256": "dc48d551d72c8060a4f8ba9e09d247cbd5ba48e3ddebd9ce2f9af0b204fc1293",
+      "rate": 48000,
+      "frames": 1343998
+    },
+    "seq-3341-2011-8_seq-3342-6-24bit-v02.wav": {
+      "sha256": "13cb1c1ca8496c868a768bd1afc5e6a75841235000b68285e895bce62c2bdc6a",
+      "rate": 48000,
+      "frames": 11825152
+    },
+    "seq-3341-9-24bit.wav": {
+      "sha256": "8157f3e794eac577b6007586fe47f51db8bfdc636729e6a773928c72791ef0f2",
+      "rate": 48000,
+      "frames": 720000
+    },
+    "seq-3341-12-24bit.wav": {
+      "sha256": "d7fc88e31003553bb1329e84a8921217ae7c58045dfd620bc6b530d399a6933b",
+      "rate": 48000,
+      "frames": 480000
+    },
+    "seq-3341-10-1-24bit.wav": {
+      "sha256": "d8c3596d1351450229e00afc81299bc128fcb7ccd4eb6e6cc4b7963af0644103",
+      "rate": 48000,
+      "frames": 192000
+    },
+    "seq-3341-10-2-24bit.wav": {
+      "sha256": "4e6a057ee75c1cd6ed4ed5d5b84b9e3d2c709c71eeef818ba6ccd76bafd4f959",
+      "rate": 48000,
+      "frames": 199200
+    },
+    "seq-3341-10-3-24bit.wav": {
+      "sha256": "64005281bb93a6dc25f52441a9bfad52cad9929d7db44dd5f0902a177acd4f06",
+      "rate": 48000,
+      "frames": 206400
+    },
+    "seq-3341-10-4-24bit.wav": {
+      "sha256": "1ddd72e2559dc5fd18b143cdb9037cb0c408af49ef1bff71cce2547356f9c426",
+      "rate": 48000,
+      "frames": 213600
+    },
+    "seq-3341-10-5-24bit.wav": {
+      "sha256": "8fb38288204e70b75c01f3f79d12f636f8291cd96d8edc4b0f4d795b28aecce9",
+      "rate": 48000,
+      "frames": 220800
+    },
+    "seq-3341-10-6-24bit.wav": {
+      "sha256": "64bc54354117d947e09ca6aaa92e4eaa1978786dd14bcd41f300e4d875d13af5",
+      "rate": 48000,
+      "frames": 228000
+    },
+    "seq-3341-10-7-24bit.wav": {
+      "sha256": "66db47cf0f6f94f98e0da60529a55ce3644a7932bde2cd19558ea02db1a6047b",
+      "rate": 48000,
+      "frames": 235200
+    },
+    "seq-3341-10-8-24bit.wav": {
+      "sha256": "e40b68f80fbd312fdd81810dc7a73d642b7830307b5f97e3e0f0ba06b9ed3f5a",
+      "rate": 48000,
+      "frames": 242400
+    },
+    "seq-3341-10-9-24bit.wav": {
+      "sha256": "26aa8668443b8b5176b50ee2bff7ae830747053788da9a1d414956a2d8f7b763",
+      "rate": 48000,
+      "frames": 249600
+    },
+    "seq-3341-10-10-24bit.wav": {
+      "sha256": "0f39a821b9d0275b799154b7466810861065084274f3344b79f8c873c0281fb6",
+      "rate": 48000,
+      "frames": 256800
+    },
+    "seq-3341-10-11-24bit.wav": {
+      "sha256": "7c15c7d6e40ccb57de573aaabcf168761eebf24b7f246cbd4fb7da64decc9776",
+      "rate": 48000,
+      "frames": 264000
+    },
+    "seq-3341-10-12-24bit.wav": {
+      "sha256": "7911ad106257ddb428fe5eb4e98270fd64a82e574540bad70049b2cc24b0faeb",
+      "rate": 48000,
+      "frames": 271200
+    },
+    "seq-3341-10-13-24bit.wav": {
+      "sha256": "2526684a09326f51a2bc69a0391084d05e7c76535182d8216abee3f7acb01d7e",
+      "rate": 48000,
+      "frames": 278400
+    },
+    "seq-3341-10-14-24bit.wav": {
+      "sha256": "6285779d85b9565dca377cc10843a73b522f497bd93b82b570249b806fc5158a",
+      "rate": 48000,
+      "frames": 285600
+    },
+    "seq-3341-10-15-24bit.wav": {
+      "sha256": "621d223f90471edf9487ad4fc3fb7906b2921203db1c6947c676d65d12fcef34",
+      "rate": 48000,
+      "frames": 292800
+    },
+    "seq-3341-10-16-24bit.wav": {
+      "sha256": "7968f978f3de277c5c70c07fe50b7db87278ef6181c70ccda21928560c66e130",
+      "rate": 48000,
+      "frames": 300000
+    },
+    "seq-3341-10-17-24bit.wav": {
+      "sha256": "ee47b73e0a1ec9c6b5ebad0d6eb897f83e3b6e908e1e19b0220ef55c78895e18",
+      "rate": 48000,
+      "frames": 307200
+    },
+    "seq-3341-10-18-24bit.wav": {
+      "sha256": "36e7922bfe93e95973325d6da638bf79b25f82bd17bddc2edc6771e096751d5a",
+      "rate": 48000,
+      "frames": 314400
+    },
+    "seq-3341-10-19-24bit.wav": {
+      "sha256": "0d9645639c17d6102e10bcb45b7b71e6cae9bfe58216cc4dfeda6462163ce524",
+      "rate": 48000,
+      "frames": 321600
+    },
+    "seq-3341-10-20-24bit.wav": {
+      "sha256": "86b78fad8cfbf22a0b0ba9e69d9c8e24160395b89f5abc7ab6f26176afcbada7",
+      "rate": 48000,
+      "frames": 328800
+    },
+    "seq-3341-13-1-24bit.wav": {
+      "sha256": "45cf95c6cd973dab326fae608d98a3ebe2dc702ac80d281ee07e9da47c7d16e0",
+      "rate": 48000,
+      "frames": 67200
+    },
+    "seq-3341-13-2-24bit.wav": {
+      "sha256": "f29ee316201ba8c514fe57be5f4ca3440353a81d1974881836d72631470411a1",
+      "rate": 48000,
+      "frames": 68160
+    },
+    "seq-3341-13-3-24bit.wav.wav": {
+      "sha256": "52e6688b361ae61ec2a2efa636884cbc592485fc539beacfad61e35794bbab64",
+      "rate": 48000,
+      "frames": 69120
+    },
+    "seq-3341-13-4-24bit.wav.wav": {
+      "sha256": "3e1d053545e49119752e013bfdfbf1f0ec22029db040ddd0bba688395788c55a",
+      "rate": 48000,
+      "frames": 70080
+    },
+    "seq-3341-13-5-24bit.wav.wav": {
+      "sha256": "fb5d316fd48510fab62bf395bbebd1874f52030ac00cb9639a9b93a3d18148e8",
+      "rate": 48000,
+      "frames": 71040
+    },
+    "seq-3341-13-6-24bit.wav.wav": {
+      "sha256": "820efc240c7a301e5f50c2a9a9f04003ecb5ec29ddda115192043835ac29f61e",
+      "rate": 48000,
+      "frames": 72000
+    },
+    "seq-3341-13-7-24bit.wav.wav": {
+      "sha256": "ddf6271cf0f73344a60f0a700bb438275b66193b497e6d0e7c83f4a72952dfa5",
+      "rate": 48000,
+      "frames": 72960
+    },
+    "seq-3341-13-8-24bit.wav.wav": {
+      "sha256": "faa7bcbbee1846341821cacc2a3b61348a4ebf759e448722a3f4228d97674df1",
+      "rate": 48000,
+      "frames": 73920
+    },
+    "seq-3341-13-9-24bit.wav.wav": {
+      "sha256": "a382f6884a0fae18ba39cb0774d6cd7774f62f193c75b47ecf4f009eafd2dede",
+      "rate": 48000,
+      "frames": 74880
+    },
+    "seq-3341-13-10-24bit.wav.wav": {
+      "sha256": "1e12c05373595fb6b9674940b8d414a1106d09aa563ee27280b5c44156c6fd4c",
+      "rate": 48000,
+      "frames": 75840
+    },
+    "seq-3341-13-11-24bit.wav.wav": {
+      "sha256": "b242927ac1a7e03ea2ba91a1308f86e3a5e2a348097e9e99a19f90a56d8f036f",
+      "rate": 48000,
+      "frames": 76800
+    },
+    "seq-3341-13-12-24bit.wav.wav": {
+      "sha256": "2c1d07376e2bcb76ec526ee4f86e06ecfdfbe774d2e0ffee0cc40293a0d722e3",
+      "rate": 48000,
+      "frames": 77760
+    },
+    "seq-3341-13-13-24bit.wav.wav": {
+      "sha256": "4a843240403af6c13a234b060e44fa082802f23fe08c0ffd8d57459e64c3f501",
+      "rate": 48000,
+      "frames": 78720
+    },
+    "seq-3341-13-14-24bit.wav.wav": {
+      "sha256": "0c3fb63d647192a148572e09fe7bda321c4e6785b993d5315893061d67460cc0",
+      "rate": 48000,
+      "frames": 79680
+    },
+    "seq-3341-13-15-24bit.wav.wav": {
+      "sha256": "8bd777888183226957e367fc9fe2476f2d46fe5c58c43e9f938e90854dc779d4",
+      "rate": 48000,
+      "frames": 80640
+    },
+    "seq-3341-13-16-24bit.wav.wav": {
+      "sha256": "585ddee873c3b402b18b3750fb7418e9d855071c75c20e8d884ad4b55defd139",
+      "rate": 48000,
+      "frames": 81600
+    },
+    "seq-3341-13-17-24bit.wav.wav": {
+      "sha256": "23ad69f204fa8238a18e2daa5a0cc4710f9002ae3a89ede8a151d7813d7a7d8a",
+      "rate": 48000,
+      "frames": 82560
+    },
+    "seq-3341-13-18-24bit.wav.wav": {
+      "sha256": "1a19299a88d1a0e77dbdb8f8c1f5b02b3682ac85fc35b686d6743654eeed14a8",
+      "rate": 48000,
+      "frames": 83520
+    },
+    "seq-3341-13-19-24bit.wav.wav": {
+      "sha256": "7b9a57cce01dcc35b89de4091db4e35ac9cf8bceb35897c29961f0cc22ec803c",
+      "rate": 48000,
+      "frames": 84480
+    },
+    "seq-3341-13-20-24bit.wav.wav": {
+      "sha256": "c8b7f0dbe9e30a2fddb89a036b6fee88e94e7db73747da70193038576cbec577",
+      "rate": 48000,
+      "frames": 85440
+    },
+    "seq-3341-11-24bit.wav": {
+      "sha256": "a3dedc4a23fd85111f234afc35ca73a9e94b440d0eafa6a78b66b5992b405a99",
+      "rate": 48000,
+      "frames": 5760000
+    },
+    "seq-3341-14-24bit.wav.wav": {
+      "sha256": "7d6a7c9c21590b3376d15f6f8f095083d8898af99daa10dcf520b4a4d56b0ac5",
+      "rate": 48000,
+      "frames": 768000
+    },
+    "seq-3342-1-16bit.wav": {
+      "sha256": "0b31a4813276699b5043e8fe7f93c6d7c4df3a7eacdd1a2436f0c3ee6b00e39b",
+      "rate": 48000,
+      "frames": 1920000
+    },
+    "seq-3342-2-16bit.wav": {
+      "sha256": "e1b3c64e26ffe1c77b60072545ca41b45d0a2b599ec7e3333592f12000fdde0d",
+      "rate": 48000,
+      "frames": 1920000
+    },
+    "seq-3342-3-16bit.wav": {
+      "sha256": "6e759ba7b061f28733a5a5081301f08df94c5447c28742c4f5fe85abe9aac677",
+      "rate": 48000,
+      "frames": 1920000
+    },
+    "seq-3342-4-16bit.wav": {
+      "sha256": "6445a25325fb53fbbf03c0296bdb019962df9254468795b4c6fe46ab00bb4f2b",
+      "rate": 48000,
+      "frames": 4800000
+    }
+  },
+  "checks": [
+    {
+      "name": "3341-1/integrated",
+      "file": "seq-3341-1-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.994964069015616,
+      "observed_max": -22.994964069015616,
+      "maximum_error": 0.0050359309843841515,
+      "passed": true
+    },
+    {
+      "name": "3341-2/integrated",
+      "file": "seq-3341-2-16bit.wav",
+      "expected": -33,
+      "tolerance": 0.1,
+      "observed_min": -33.001268317146526,
+      "observed_max": -33.001268317146526,
+      "maximum_error": 0.0012683171465255327,
+      "passed": true
+    },
+    {
+      "name": "3341-3/integrated",
+      "file": "seq-3341-3-16bit-v02.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.055550869255985,
+      "observed_max": -23.055550869255985,
+      "maximum_error": 0.055550869255984736,
+      "passed": true
+    },
+    {
+      "name": "3341-4/integrated",
+      "file": "seq-3341-4-16bit-v02.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.055550869255985,
+      "observed_max": -23.055550869255985,
+      "maximum_error": 0.055550869255984736,
+      "passed": true
+    },
+    {
+      "name": "3341-5/integrated",
+      "file": "seq-3341-5-16bit-v02.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.020438357752457,
+      "observed_max": -23.020438357752457,
+      "maximum_error": 0.020438357752457392,
+      "passed": true
+    },
+    {
+      "name": "3341-6/integrated",
+      "file": "seq-3341-6-5channels-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.05856549062265,
+      "observed_max": -23.05856549062265,
+      "maximum_error": 0.058565490622651595,
+      "passed": true
+    },
+    {
+      "name": "3341-7/integrated",
+      "file": "seq-3341-7_seq-3342-5-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.034009401170795,
+      "observed_max": -23.034009401170795,
+      "maximum_error": 0.03400940117079543,
+      "passed": true
+    },
+    {
+      "name": "3341-8/integrated",
+      "file": "seq-3341-2011-8_seq-3342-6-24bit-v02.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.039286761042078,
+      "observed_max": -23.039286761042078,
+      "maximum_error": 0.039286761042077956,
+      "passed": true
+    },
+    {
+      "name": "3341-1/momentary_loudness",
+      "file": "seq-3341-1-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.953867658060993,
+      "observed_max": -22.953513717724054,
+      "maximum_error": 0.04648628227594642,
+      "passed": true
+    },
+    {
+      "name": "3341-1/short_term_loudness",
+      "file": "seq-3341-1-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.95359392734249,
+      "observed_max": -22.953539053801798,
+      "maximum_error": 0.04646094619820218,
+      "passed": true
+    },
+    {
+      "name": "3341-2/momentary_loudness",
+      "file": "seq-3341-2-16bit.wav",
+      "expected": -33,
+      "tolerance": 0.1,
+      "observed_min": -32.960168444331494,
+      "observed_max": -32.959703214184245,
+      "maximum_error": 0.04029678581575524,
+      "passed": true
+    },
+    {
+      "name": "3341-2/short_term_loudness",
+      "file": "seq-3341-2-16bit.wav",
+      "expected": -33,
+      "tolerance": 0.1,
+      "observed_min": -32.95991381286626,
+      "observed_max": -32.95982360168366,
+      "maximum_error": 0.04017639831634057,
+      "passed": true
+    },
+    {
+      "name": "3341-6/momentary_loudness",
+      "file": "seq-3341-6-5channels-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.017454492662946,
+      "observed_max": -23.01714572625987,
+      "maximum_error": 0.017454492662945853,
+      "passed": true
+    },
+    {
+      "name": "3341-6/short_term_loudness",
+      "file": "seq-3341-6-5channels-16bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.01719471755848,
+      "observed_max": -23.017154753536893,
+      "maximum_error": 0.017194717558478345,
+      "passed": true
+    },
+    {
+      "name": "3341-9/constant",
+      "file": "seq-3341-9-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.986279529504912,
+      "observed_max": -22.986267768577797,
+      "maximum_error": 0.013732231422203256,
+      "passed": true
+    },
+    {
+      "name": "3341-12/constant",
+      "file": "seq-3341-12-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.960444218751178,
+      "observed_max": -22.96044421875117,
+      "maximum_error": 0.03955578124882919,
+      "passed": true
+    },
+    {
+      "name": "3341-10-1/maximum",
+      "file": "seq-3341-10-1-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99333875994802,
+      "observed_max": -22.99333875994802,
+      "maximum_error": 0.0066612400519794335,
+      "passed": true
+    },
+    {
+      "name": "3341-10-2/maximum",
+      "file": "seq-3341-10-2-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-3/maximum",
+      "file": "seq-3341-10-3-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-4/maximum",
+      "file": "seq-3341-10-4-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-5/maximum",
+      "file": "seq-3341-10-5-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-6/maximum",
+      "file": "seq-3341-10-6-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-7/maximum",
+      "file": "seq-3341-10-7-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-8/maximum",
+      "file": "seq-3341-10-8-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-9/maximum",
+      "file": "seq-3341-10-9-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-10/maximum",
+      "file": "seq-3341-10-10-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-11/maximum",
+      "file": "seq-3341-10-11-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-12/maximum",
+      "file": "seq-3341-10-12-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-13/maximum",
+      "file": "seq-3341-10-13-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-14/maximum",
+      "file": "seq-3341-10-14-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-15/maximum",
+      "file": "seq-3341-10-15-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-16/maximum",
+      "file": "seq-3341-10-16-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-17/maximum",
+      "file": "seq-3341-10-17-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-18/maximum",
+      "file": "seq-3341-10-18-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-10-19/maximum",
+      "file": "seq-3341-10-19-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993338755942634,
+      "observed_max": -22.993338755942634,
+      "maximum_error": 0.006661244057365678,
+      "passed": true
+    },
+    {
+      "name": "3341-10-20/maximum",
+      "file": "seq-3341-10-20-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-13-1/maximum",
+      "file": "seq-3341-13-1-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598509797767,
+      "observed_max": -22.993598509797767,
+      "maximum_error": 0.006401490202232907,
+      "passed": true
+    },
+    {
+      "name": "3341-13-2/maximum",
+      "file": "seq-3341-13-2-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847937799,
+      "observed_max": -22.99359847937799,
+      "maximum_error": 0.006401520622009826,
+      "passed": true
+    },
+    {
+      "name": "3341-13-3/maximum",
+      "file": "seq-3341-13-3-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479744122,
+      "observed_max": -22.993598479744122,
+      "maximum_error": 0.006401520255877813,
+      "passed": true
+    },
+    {
+      "name": "3341-13-4/maximum",
+      "file": "seq-3341-13-4-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479755367,
+      "observed_max": -22.993598479755367,
+      "maximum_error": 0.006401520244633474,
+      "passed": true
+    },
+    {
+      "name": "3341-13-5/maximum",
+      "file": "seq-3341-13-5-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479755526,
+      "observed_max": -22.993598479755526,
+      "maximum_error": 0.006401520244473602,
+      "passed": true
+    },
+    {
+      "name": "3341-13-6/maximum",
+      "file": "seq-3341-13-6-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479755526,
+      "observed_max": -22.993598479755526,
+      "maximum_error": 0.006401520244473602,
+      "passed": true
+    },
+    {
+      "name": "3341-13-7/maximum",
+      "file": "seq-3341-13-7-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479755526,
+      "observed_max": -22.993598479755526,
+      "maximum_error": 0.006401520244473602,
+      "passed": true
+    },
+    {
+      "name": "3341-13-8/maximum",
+      "file": "seq-3341-13-8-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-9/maximum",
+      "file": "seq-3341-13-9-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-10/maximum",
+      "file": "seq-3341-13-10-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-11/maximum",
+      "file": "seq-3341-13-11-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.993598479755526,
+      "observed_max": -22.993598479755526,
+      "maximum_error": 0.006401520244473602,
+      "passed": true
+    },
+    {
+      "name": "3341-13-12/maximum",
+      "file": "seq-3341-13-12-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-13/maximum",
+      "file": "seq-3341-13-13-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-14/maximum",
+      "file": "seq-3341-13-14-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-15/maximum",
+      "file": "seq-3341-13-15-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-16/maximum",
+      "file": "seq-3341-13-16-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-17/maximum",
+      "file": "seq-3341-13-17-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-18/maximum",
+      "file": "seq-3341-13-18-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-19/maximum",
+      "file": "seq-3341-13-19-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-13-20/maximum",
+      "file": "seq-3341-13-20-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-1",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -38,
+      "tolerance": 0.1,
+      "observed_min": -37.99332647119391,
+      "observed_max": -37.99332647119391,
+      "maximum_error": 0.006673528806089735,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-2",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -37,
+      "tolerance": 0.1,
+      "observed_min": -37.066243143498156,
+      "observed_max": -37.066243143498156,
+      "maximum_error": 0.06624314349815563,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-3",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -36,
+      "tolerance": 0.1,
+      "observed_min": -35.99334930069416,
+      "observed_max": -35.99334930069416,
+      "maximum_error": 0.006650699305836838,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-4",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -35,
+      "tolerance": 0.1,
+      "observed_min": -35.06624542277819,
+      "observed_max": -35.06624542277819,
+      "maximum_error": 0.0662454227781879,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-5",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -34,
+      "tolerance": 0.1,
+      "observed_min": -33.993330064673714,
+      "observed_max": -33.993330064673714,
+      "maximum_error": 0.006669935326286236,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-6",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -33,
+      "tolerance": 0.1,
+      "observed_min": -33.06625914411252,
+      "observed_max": -33.06625914411252,
+      "maximum_error": 0.06625914411252154,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-7",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -32,
+      "tolerance": 0.1,
+      "observed_min": -31.993339118267087,
+      "observed_max": -31.993339118267087,
+      "maximum_error": 0.006660881732912571,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-8",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -31,
+      "tolerance": 0.1,
+      "observed_min": -31.066267073083555,
+      "observed_max": -31.066267073083555,
+      "maximum_error": 0.06626707308355506,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-9",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -30,
+      "tolerance": 0.1,
+      "observed_min": -29.993331224839302,
+      "observed_max": -29.993331224839302,
+      "maximum_error": 0.0066687751606977486,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-10",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -29,
+      "tolerance": 0.1,
+      "observed_min": -29.066250358962243,
+      "observed_max": -29.066250358962243,
+      "maximum_error": 0.06625035896224318,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-11",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -28,
+      "tolerance": 0.1,
+      "observed_min": -27.993334921797572,
+      "observed_max": -27.993334921797572,
+      "maximum_error": 0.006665078202427566,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-12",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -27,
+      "tolerance": 0.1,
+      "observed_min": -27.066251332829708,
+      "observed_max": -27.066251332829708,
+      "maximum_error": 0.06625133282970808,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-13",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -26,
+      "tolerance": 0.1,
+      "observed_min": -25.993334884878806,
+      "observed_max": -25.993334884878806,
+      "maximum_error": 0.006665115121194276,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-14",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -25,
+      "tolerance": 0.1,
+      "observed_min": -25.066257868752288,
+      "observed_max": -25.066257868752288,
+      "maximum_error": 0.06625786875228812,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-15",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -24,
+      "tolerance": 0.1,
+      "observed_min": -23.99333652175341,
+      "observed_max": -23.99333652175341,
+      "maximum_error": 0.006663478246590415,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-16",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -23.06625950269207,
+      "observed_max": -23.06625950269207,
+      "maximum_error": 0.06625950269206982,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-17",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -22,
+      "tolerance": 0.1,
+      "observed_min": -21.993337065266832,
+      "observed_max": -21.993337065266832,
+      "maximum_error": 0.0066629347331677025,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-18",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -21,
+      "tolerance": 0.1,
+      "observed_min": -21.06625851941785,
+      "observed_max": -21.06625851941785,
+      "maximum_error": 0.06625851941785044,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-19",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -20,
+      "tolerance": 0.1,
+      "observed_min": -19.993337354208954,
+      "observed_max": -19.993337354208954,
+      "maximum_error": 0.006662645791045918,
+      "passed": true
+    },
+    {
+      "name": "3341-11/segment-20",
+      "file": "seq-3341-11-24bit.wav",
+      "expected": -19,
+      "tolerance": 0.1,
+      "observed_min": -19.066257040299828,
+      "observed_max": -19.066257040299828,
+      "maximum_error": 0.06625704029982771,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-1",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -38,
+      "tolerance": 0.1,
+      "observed_min": -37.993586219416215,
+      "observed_max": -37.993586219416215,
+      "maximum_error": 0.006413780583784501,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-2",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -37,
+      "tolerance": 0.1,
+      "observed_min": -36.99358236738217,
+      "observed_max": -36.99358236738217,
+      "maximum_error": 0.00641763261783268,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-3",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -36,
+      "tolerance": 0.1,
+      "observed_min": -35.993608936256365,
+      "observed_max": -35.993608936256365,
+      "maximum_error": 0.006391063743635073,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-4",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -35,
+      "tolerance": 0.1,
+      "observed_min": -34.99358453988534,
+      "observed_max": -34.99358453988534,
+      "maximum_error": 0.006415460114659766,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-5",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -34,
+      "tolerance": 0.1,
+      "observed_min": -33.99358972320261,
+      "observed_max": -33.99358972320261,
+      "maximum_error": 0.006410276797389258,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-6",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -33,
+      "tolerance": 0.1,
+      "observed_min": -32.99359819759321,
+      "observed_max": -32.99359819759321,
+      "maximum_error": 0.006401802406792001,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-7",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -32,
+      "tolerance": 0.1,
+      "observed_min": -31.99359879320772,
+      "observed_max": -31.99359879320772,
+      "maximum_error": 0.006401206792279623,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-8",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -31,
+      "tolerance": 0.1,
+      "observed_min": -30.993606089291713,
+      "observed_max": -30.993606089291713,
+      "maximum_error": 0.006393910708286654,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-9",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -30,
+      "tolerance": 0.1,
+      "observed_min": -29.99359091727145,
+      "observed_max": -29.99359091727145,
+      "maximum_error": 0.006409082728549009,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-10",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -29,
+      "tolerance": 0.1,
+      "observed_min": -28.993589356367156,
+      "observed_max": -28.993589356367156,
+      "maximum_error": 0.0064106436328437155,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-11",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -28,
+      "tolerance": 0.1,
+      "observed_min": -27.99359462575146,
+      "observed_max": -27.99359462575146,
+      "maximum_error": 0.006405374248540596,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-12",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -27,
+      "tolerance": 0.1,
+      "observed_min": -26.99359031816818,
+      "observed_max": -26.99359031816818,
+      "maximum_error": 0.006409681831819114,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-13",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -26,
+      "tolerance": 0.1,
+      "observed_min": -25.993594598061552,
+      "observed_max": -25.993594598061552,
+      "maximum_error": 0.006405401938447852,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-14",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -25,
+      "tolerance": 0.1,
+      "observed_min": -24.9935968496569,
+      "observed_max": -24.9935968496569,
+      "maximum_error": 0.00640315034310035,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-15",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -24,
+      "tolerance": 0.1,
+      "observed_min": -23.99359624367866,
+      "observed_max": -23.99359624367866,
+      "maximum_error": 0.006403756321340381,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-16",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -23,
+      "tolerance": 0.1,
+      "observed_min": -22.99359847975553,
+      "observed_max": -22.99359847975553,
+      "maximum_error": 0.006401520244470049,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-17",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -22,
+      "tolerance": 0.1,
+      "observed_min": -21.99359679287684,
+      "observed_max": -21.99359679287684,
+      "maximum_error": 0.006403207123160115,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-18",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -21,
+      "tolerance": 0.1,
+      "observed_min": -20.993597497344307,
+      "observed_max": -20.993597497344307,
+      "maximum_error": 0.006402502655692643,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-19",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -20,
+      "tolerance": 0.1,
+      "observed_min": -19.99359708580302,
+      "observed_max": -19.99359708580302,
+      "maximum_error": 0.006402914196979026,
+      "passed": true
+    },
+    {
+      "name": "3341-14/segment-20",
+      "file": "seq-3341-14-24bit.wav.wav",
+      "expected": -19,
+      "tolerance": 0.1,
+      "observed_min": -18.99359601918888,
+      "observed_max": -18.99359601918888,
+      "maximum_error": 0.0064039808111182595,
+      "passed": true
+    },
+    {
+      "name": "3342-1/LRA",
+      "file": "seq-3342-1-16bit.wav",
+      "expected": 10,
+      "tolerance": 1,
+      "observed_min": 10.001105488329738,
+      "observed_max": 10.001105488329738,
+      "maximum_error": 0.0011054883297383356,
+      "passed": true,
+      "result": {
+        "lra_lu": 10.001105488329738,
+        "low_lufs": -29.99430558125689,
+        "high_lufs": -19.99320009292715,
+        "relative_gate_lufs": -42.73845939204203,
+        "gated_blocks": 386,
+        "duration_s": 40.0,
+        "provisional": true
+      }
+    },
+    {
+      "name": "3342-2/LRA",
+      "file": "seq-3342-2-16bit.wav",
+      "expected": 5,
+      "tolerance": 1,
+      "observed_min": 4.9993734051532925,
+      "observed_max": 4.9993734051532925,
+      "maximum_error": 0.0006265948467074622,
+      "passed": true,
+      "result": {
+        "lra_lu": 4.9993734051532925,
+        "low_lufs": -19.99320009292715,
+        "high_lufs": -14.993826687773858,
+        "relative_gate_lufs": -36.791426651380306,
+        "gated_blocks": 386,
+        "duration_s": 40.0,
+        "provisional": true
+      }
+    },
+    {
+      "name": "3342-3/LRA",
+      "file": "seq-3342-3-16bit.wav",
+      "expected": 20,
+      "tolerance": 1,
+      "observed_min": 19.99506406778241,
+      "observed_max": 19.99506406778241,
+      "maximum_error": 0.004935932217591699,
+      "passed": true,
+      "result": {
+        "lra_lu": 19.99506406778241,
+        "low_lufs": -39.98826416070955,
+        "high_lufs": -19.99320009292714,
+        "relative_gate_lufs": -42.88459894063293,
+        "gated_blocks": 386,
+        "duration_s": 40.0,
+        "provisional": true
+      }
+    },
+    {
+      "name": "3342-4/LRA",
+      "file": "seq-3342-4-16bit.wav",
+      "expected": 15,
+      "tolerance": 1,
+      "observed_min": 14.999273937724286,
+      "observed_max": 14.999273937724286,
+      "maximum_error": 0.0007260622757137014,
+      "passed": true,
+      "result": {
+        "lra_lu": 14.999273937724286,
+        "low_lufs": -34.99247403065144,
+        "high_lufs": -19.99320009292715,
+        "relative_gate_lufs": -46.64747746769722,
+        "gated_blocks": 627,
+        "duration_s": 100.0,
+        "provisional": false
+      }
+    },
+    {
+      "name": "3342-5/LRA",
+      "file": "seq-3341-7_seq-3342-5-24bit.wav",
+      "expected": 5,
+      "tolerance": 1,
+      "observed_min": 4.976615762930688,
+      "observed_max": 4.976615762930688,
+      "maximum_error": 0.02338423706931181,
+      "passed": true,
+      "result": {
+        "lra_lu": 4.976615762930688,
+        "low_lufs": -26.221704157981172,
+        "high_lufs": -21.245088395050484,
+        "relative_gate_lufs": -43.019392827928044,
+        "gated_blocks": 265,
+        "duration_s": 27.999958333333332,
+        "provisional": true
+      }
+    },
+    {
+      "name": "3342-6/LRA",
+      "file": "seq-3341-2011-8_seq-3342-6-24bit-v02.wav",
+      "expected": 15,
+      "tolerance": 1,
+      "observed_min": 14.984601852930343,
+      "observed_max": 14.984601852930343,
+      "maximum_error": 0.015398147069657142,
+      "passed": true,
+      "result": {
+        "lra_lu": 14.984601852930343,
+        "low_lufs": -35.19111275476808,
+        "high_lufs": -20.206510901837735,
+        "relative_gate_lufs": -43.99972530826894,
+        "gated_blocks": 2449,
+        "duration_s": 246.35733333333334,
+        "provisional": false
+      }
+    }
+  ],
+  "passed": 102,
+  "total": 102
+}

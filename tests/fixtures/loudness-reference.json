@@ -1,0 +1,581 @@
+{
+  "format_version": 1,
+  "source": {
+    "package": "pyloudnorm",
+    "version": "0.2.0",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "source_sha256": {
+      "__init__.py": "4537fc38e05119abfbd343d9df912cc2ad8bff3117b58465f99b7269eab9e5b2",
+      "iirfilter.py": "4e20bb7c0a1b75eedee0dfefad1f5a238488551a82677fac6f7311d3ccdf56e3",
+      "meter.py": "e3d5da93e44f565fd695b09a8717e04d42f71ad5e9eb19a4b6033debcc48e4f4",
+      "normalize.py": "e0601829d64e665a4763cb3616ac0b2dadbcf21b60d610fc2f4ea140fe752167",
+      "util.py": "38554a8fda0ff773504735d6d5533378a0ab699bf6a7e4f748dd2e10cc32b947"
+    }
+  },
+  "notes": "Captured before removal, without invoking Tactus. Input hashes are provenance, not cross-platform bitwise assertions. Cases match the named synthetic tests; all tolerances remain in tests.",
+  "cases": {
+    "stereo-tone": {
+      "sample_rate": 48000,
+      "shape": [
+        144000,
+        2
+      ],
+      "input_sha256_float64_le": "dc376e9fb72619016d18f1fce3b48202d825ccc9f86558b07c9b98b5a45488be",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -14.231169309211994
+      }
+    },
+    "integrated-8000-1": {
+      "sample_rate": 8000,
+      "shape": [
+        18856,
+        1
+      ],
+      "input_sha256_float64_le": "e8e501f7a2f49f93caaaee7458c9204b7a4fae2a4b459b7d413df6dd34882212",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -21.339078345999354
+      }
+    },
+    "integrated-8000-2": {
+      "sample_rate": 8000,
+      "shape": [
+        18856,
+        2
+      ],
+      "input_sha256_float64_le": "bbe28513a7ec9259f5979a3a3376e167b41a8e0d613121c21caf541e5edba78b",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -18.311675604553624
+      }
+    },
+    "integrated-8000-5": {
+      "sample_rate": 8000,
+      "shape": [
+        18856,
+        5
+      ],
+      "input_sha256_float64_le": "df19ce13fadef73bce255282a984c581b9daca39a664d6e9d06796b5e474ca8b",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -13.696359518172807
+      }
+    },
+    "integrated-22051-1": {
+      "sample_rate": 22051,
+      "shape": [
+        51974,
+        1
+      ],
+      "input_sha256_float64_le": "3f12732abba7488bded0620516d4f0e2a17fd8f469a7f010a27193d7d0aa7559",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -20.493508698772814
+      }
+    },
+    "integrated-22051-2": {
+      "sample_rate": 22051,
+      "shape": [
+        51974,
+        2
+      ],
+      "input_sha256_float64_le": "82c93927debbc6f699e348b6023be1eb5d88cc4b4840763907e274ea3a177095",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -17.470372418837396
+      }
+    },
+    "integrated-22051-5": {
+      "sample_rate": 22051,
+      "shape": [
+        51974,
+        5
+      ],
+      "input_sha256_float64_le": "136bee57d05e89945c5f842e1e29eb70e36ee536565a4312d77c2a4a7e68b7a9",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -12.834303131608818
+      }
+    },
+    "integrated-44100-1": {
+      "sample_rate": 44100,
+      "shape": [
+        103944,
+        1
+      ],
+      "input_sha256_float64_le": "0952eee65e22f3caf1702149b7aa5569fdf53d01b39124c1eccd69f0d4b24402",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -20.248053783463217
+      }
+    },
+    "integrated-44100-2": {
+      "sample_rate": 44100,
+      "shape": [
+        103944,
+        2
+      ],
+      "input_sha256_float64_le": "8de20935407407bf14ed4696de42cf6718b0e3985925bea2aec9bf35917f1dcd",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -17.263981288526995
+      }
+    },
+    "integrated-44100-5": {
+      "sample_rate": 44100,
+      "shape": [
+        103944,
+        5
+      ],
+      "input_sha256_float64_le": "fa75b749696d7aadf771fe82ea0d36bcc4a5da6b409747b63d0f67e309298ac1",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -12.592451353032567
+      }
+    },
+    "integrated-48000-1": {
+      "sample_rate": 48000,
+      "shape": [
+        113136,
+        1
+      ],
+      "input_sha256_float64_le": "f0b006864086988101487d1a3f26ea7cb673f06e3d9eb4aec9a1c72896d5b58c",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -20.2217542792679
+      }
+    },
+    "integrated-48000-2": {
+      "sample_rate": 48000,
+      "shape": [
+        113136,
+        2
+      ],
+      "input_sha256_float64_le": "c24173681c53b5b93708ecd8f74ca1fad6ee1ee765b86c88c1ec7476654058cd",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -17.24284766699959
+      }
+    },
+    "integrated-48000-5": {
+      "sample_rate": 48000,
+      "shape": [
+        113136,
+        5
+      ],
+      "input_sha256_float64_le": "5194e2ed7f46d23ca31f2b08c906b1efc39fb0756b6a62245b7760ee21a053ed",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": -12.575965814994097
+      }
+    },
+    "silence-8000-0.399": {
+      "sample_rate": 8000,
+      "shape": [
+        3192
+      ],
+      "input_sha256_float64_le": "cd3c94b1fc72ed19e5e2c5e75a6c5e7ab3a0f45076daa35dc04b5be0520871b9",
+      "meter_params": {},
+      "expected": {
+        "error": "ValueError",
+        "integrated_lufs": null
+      }
+    },
+    "silence-8000-0.4": {
+      "sample_rate": 8000,
+      "shape": [
+        3200
+      ],
+      "input_sha256_float64_le": "c65206769723a13afe80c0d925531639ceef9c2eb97eee3b1b542739ec40597f",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-8000-0.449": {
+      "sample_rate": 8000,
+      "shape": [
+        3592
+      ],
+      "input_sha256_float64_le": "dd8e955ebc32b9e156100227d310e51eb5d655f080fcea4d395f5e236579516a",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-8000-0.45": {
+      "sample_rate": 8000,
+      "shape": [
+        3600
+      ],
+      "input_sha256_float64_le": "19a9b0eb3572bcbee480f15089a756416b5ec8619f8f95fc78658f727be4fbf9",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-8000-0.451": {
+      "sample_rate": 8000,
+      "shape": [
+        3608
+      ],
+      "input_sha256_float64_le": "33a4779f53fde24a13f8737ef864244e6a209dff0946bd247bde3ae57f116f00",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-8000-1.05": {
+      "sample_rate": 8000,
+      "shape": [
+        8400
+      ],
+      "input_sha256_float64_le": "d603ff7c620bd463dd9308de84e6513cec587d750dd3669b418491c7709a76e8",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-0.399": {
+      "sample_rate": 44100,
+      "shape": [
+        17596
+      ],
+      "input_sha256_float64_le": "c13f00ab9ac8235977cddac15eceef661244c1e4a9c0fce383b12528fff8c11b",
+      "meter_params": {},
+      "expected": {
+        "error": "ValueError",
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-0.4": {
+      "sample_rate": 44100,
+      "shape": [
+        17640
+      ],
+      "input_sha256_float64_le": "06b6886d04524aee9e3fbfb25b6d1e8edae6f842a7bdc6039913b377c1fbd230",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-0.449": {
+      "sample_rate": 44100,
+      "shape": [
+        19801
+      ],
+      "input_sha256_float64_le": "b144561f7a47202f6ac676d489f4f2adc112f78144234e26a96de67cd396ab37",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-0.45": {
+      "sample_rate": 44100,
+      "shape": [
+        19845
+      ],
+      "input_sha256_float64_le": "95e5aa951734c8a21203ed146f901c593c6286cc2d4f8af6b2278856b99ff38e",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-0.451": {
+      "sample_rate": 44100,
+      "shape": [
+        19889
+      ],
+      "input_sha256_float64_le": "2574742a1a2d4364564747361829493d520902ce10c706a712c742593e426ddc",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "silence-44100-1.05": {
+      "sample_rate": 44100,
+      "shape": [
+        46305
+      ],
+      "input_sha256_float64_le": "115e277e3fb2ed4c3f48ba9cfffaff1f4460f70a1a8d263e8341856a71300602",
+      "meter_params": {},
+      "expected": {
+        "integrated_lufs": null
+      }
+    },
+    "curve-22050-0.4": {
+      "sample_rate": 22050,
+      "shape": [
+        132300,
+        2
+      ],
+      "input_sha256_float64_le": "ca8cb99dea1d4ed4d58a5f8e7163179692552da72b4eff5878661b8108ee4584",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 0.4,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.51448477815,
+        "blockwise_lufs": [
+          -24.554316378791118,
+          -24.580235505774457,
+          -24.52880130464755,
+          -24.567351141568288,
+          -24.549077538589522,
+          -24.503939351446757,
+          -24.479813817289692,
+          -24.483105120499598,
+          -24.47731690142778,
+          -24.492759343926974,
+          -24.574838182440335,
+          -24.588872079142572,
+          -24.52552268017606,
+          -24.443504971028784,
+          -24.46738234156309,
+          -24.47839302421473,
+          -24.527118482962987,
+          -24.577590872322755,
+          -24.489707460313152,
+          -24.45155135447857,
+          -24.47828458012079,
+          -24.535912606454982,
+          -24.515135324172018,
+          -24.474525182833215,
+          -24.518045039057572,
+          -24.532629367534472,
+          -24.509919084724753,
+          -24.501908482148114,
+          -24.517647039464965
+        ]
+      }
+    },
+    "curve-22050-3": {
+      "sample_rate": 22050,
+      "shape": [
+        132300,
+        2
+      ],
+      "input_sha256_float64_le": "ca8cb99dea1d4ed4d58a5f8e7163179692552da72b4eff5878661b8108ee4584",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 3,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.511325624650674,
+        "blockwise_lufs": [
+          -24.51897366751049,
+          -24.505801912615304,
+          -24.50921205271086
+        ]
+      }
+    },
+    "curve-44100-0.4": {
+      "sample_rate": 44100,
+      "shape": [
+        264600,
+        2
+      ],
+      "input_sha256_float64_le": "03f115694855bed9c7efa7e10938971d53691d1c19288b4f5dba59fc7eeb2911",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 0.4,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.31861068499933,
+        "blockwise_lufs": [
+          -24.34760723689521,
+          -24.347937986376365,
+          -24.32422546538841,
+          -24.285130347799118,
+          -24.33546644689014,
+          -24.362957839065057,
+          -24.307681437398557,
+          -24.306024700977893,
+          -24.319254179542657,
+          -24.30012203231603,
+          -24.312422163290762,
+          -24.33224034961303,
+          -24.326560602980162,
+          -24.32316193559381,
+          -24.3217497582826,
+          -24.339317917377596,
+          -24.322392166082604,
+          -24.271031431296866,
+          -24.28382998647181,
+          -24.34763537298453,
+          -24.3369896041962,
+          -24.264886111869988,
+          -24.29648731267898,
+          -24.34348691382466,
+          -24.35712656920594,
+          -24.363034068534805,
+          -24.36377115316398,
+          -24.278019813783093,
+          -24.222788624749338
+        ]
+      }
+    },
+    "curve-44100-3": {
+      "sample_rate": 44100,
+      "shape": [
+        264600,
+        2
+      ],
+      "input_sha256_float64_le": "03f115694855bed9c7efa7e10938971d53691d1c19288b4f5dba59fc7eeb2911",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 3,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.317055483554675,
+        "blockwise_lufs": [
+          -24.32497621687757,
+          -24.314302761702283,
+          -24.311898626114807
+        ]
+      }
+    },
+    "curve-48000-0.4": {
+      "sample_rate": 48000,
+      "shape": [
+        288000,
+        2
+      ],
+      "input_sha256_float64_le": "0e69cc3187917a8edef239034065cae32daaf950e8e72f3e377e0c93ea0a6e9f",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 0.4,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.302582726132417,
+        "blockwise_lufs": [
+          -24.335196181921635,
+          -24.335886657420684,
+          -24.306692844102578,
+          -24.265178872226667,
+          -24.32433422971631,
+          -24.327818299618972,
+          -24.268236798086615,
+          -24.303165365713156,
+          -24.31171583688738,
+          -24.288982210511218,
+          -24.31914097460978,
+          -24.309608121277023,
+          -24.303315685610617,
+          -24.325258015798372,
+          -24.324338557710103,
+          -24.267659331981733,
+          -24.247843355829463,
+          -24.327403701235195,
+          -24.330846370913648,
+          -24.252787634811998,
+          -24.27021404306311,
+          -24.331669886984972,
+          -24.34331284280872,
+          -24.336303601543705,
+          -24.314812737964708,
+          -24.27062258040849,
+          -24.22578799770609,
+          -24.269719150521947,
+          -24.340488724779778
+        ]
+      }
+    },
+    "curve-48000-3": {
+      "sample_rate": 48000,
+      "shape": [
+        288000,
+        2
+      ],
+      "input_sha256_float64_le": "0e69cc3187917a8edef239034065cae32daaf950e8e72f3e377e0c93ea0a6e9f",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 3,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.302838168564104,
+        "blockwise_lufs": [
+          -24.310979443321262,
+          -24.299948309361252,
+          -24.29759850278359
+        ]
+      }
+    },
+    "curve-96000-0.4": {
+      "sample_rate": 96000,
+      "shape": [
+        576000,
+        2
+      ],
+      "input_sha256_float64_le": "f0e7947788f810a8ba3c9e6df51f5658bae24d1dee1d332e147bed6d2adf2000",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 0.4,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.226539220262854,
+        "blockwise_lufs": [
+          -24.234349993417847,
+          -24.22992653356493,
+          -24.209438857944296,
+          -24.20202533136556,
+          -24.231159001510704,
+          -24.22820451519331,
+          -24.227214311358747,
+          -24.200146238116538,
+          -24.20534753213639,
+          -24.215688432541647,
+          -24.222321978871047,
+          -24.244374553963695,
+          -24.18456932887161,
+          -24.19739916680942,
+          -24.22515456128858,
+          -24.216743951400844,
+          -24.23142979063446,
+          -24.2137709641658,
+          -24.214881239860997,
+          -24.230014785445487,
+          -24.228514388200175,
+          -24.215551961038603,
+          -24.254042259490856,
+          -24.270010928234445,
+          -24.225840149980808,
+          -24.255310278991413,
+          -24.298800431590408,
+          -24.26064266029334,
+          -24.198647499232663
+        ]
+      }
+    },
+    "curve-96000-3": {
+      "sample_rate": 96000,
+      "shape": [
+        576000,
+        2
+      ],
+      "input_sha256_float64_le": "f0e7947788f810a8ba3c9e6df51f5658bae24d1dee1d332e147bed6d2adf2000",
+      "meter_params": {
+        "filter_class": "DeMan",
+        "block_size": 3,
+        "overlap": 0.5
+      },
+      "expected": {
+        "integrated_lufs": -24.223247617742903,
+        "blockwise_lufs": [
+          -24.218826263426916,
+          -24.21766589425035,
+          -24.23326808658677
+        ]
+      }
+    }
+  }
+}

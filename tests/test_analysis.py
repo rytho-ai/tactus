@@ -8,7 +8,6 @@ import math
 import re
 
 import numpy as np
-import pyloudnorm as pyln
 import pytest
 
 from tactus import analysis
@@ -73,10 +72,9 @@ def test_true_peak_never_below_sample_peak():
 # -- level.loudness -------------------------------------------------------------------------
 
 
-def test_loudness_matches_pyloudnorm_directly():
+def test_loudness_matches_frozen_reference(loudness_reference):
     x = stereo(sine(1000, SR, 3.0, amp=0.2), scale_r=0.95)
-    meter = pyln.Meter(SR)
-    want = meter.integrated_loudness(x)
+    want = loudness_reference("stereo-tone", x, SR)["integrated_lufs"]
     got = level.loudness(x, SR)["integrated_lufs"]
     assert got == pytest.approx(want, abs=1e-9)
 

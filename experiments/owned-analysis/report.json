@@ -1,0 +1,547 @@
+{
+  "versions": {
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "librosa": "1.0.0",
+    "pyloudnorm": "0.2.0"
+  },
+  "sources": {
+    "src/tactus/_biquad.py": "b3b0f56df131e0872b06c7d7c676c17ca0331efb53109cb0473d5abcde486b00",
+    "src/tactus/analysis/_features.py": "dc7459efa1db57aba1a31d8d540194c63318b05568d3a967837601eff8aecf21",
+    "src/tactus/analysis/_level.py": "3c0bad9ab510c3c5bec9784cc82f17fcbf9d999e3e13bb82d211e7c765330c36",
+    "src/tactus/analysis/_onset.py": "0f5c17d2f236275c394cecb1133421f6cefb6ad315436d7df6601c33f16a3f6c",
+    "src/tactus/analysis/level.py": "52221ea4ca85d5df218f508938c70f6373a2d236448f365529041c3d273789bf",
+    "src/tactus/analysis/rhythm.py": "31e5a4bbf4e6c36735250f927de02238da7cffa23eb6753cd601e401d6f19435",
+    "src/tactus/analysis/spectral.py": "963e70655b198cbd8d60460a9512eb95894214fb57f65803584ad55979eb3c81"
+  },
+  "inputs": [
+    {
+      "path": "dogfood/2026-09-25-full-song-3/work/runs/c4/mix-32222836.wav",
+      "sha256": "32222836141353be4973175d26d2b7c600394d96dc68b89c2cf97362e486e4d1",
+      "sample_rate": 44100,
+      "frames": 6579243,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 4.547473508864641e-13
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 5.684341886080802e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 4.440892098500626e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 5.329070518200751e-15
+        }
+      },
+      "timings_s": {
+        "loudness": 0.1449242690578103,
+        "rms_curve": 0.036518256179988384,
+        "peak_curve": 0.03591979667544365,
+        "momentary_loudness": 0.11392867751419544,
+        "short_term_loudness": 0.10526771005243063,
+        "loudness_range": 0.13379414938390255,
+        "mel": 0.21450044307857752,
+        "mfcc": 0.2269792938604951,
+        "chroma": 0.3100193189457059,
+        "onsets": 0.3087250255048275
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_01_basic_ghost.wav",
+      "sha256": "8a7760f2fa31a28702e63de28bebbf13ce4f301cc641472685a09eae9e9c1c13",
+      "sample_rate": 44100,
+      "frames": 176400,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 2.2737367544323206e-13
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 1.1102230246251565e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0062995050102472305,
+        "rms_curve": 0.00046831369400024414,
+        "peak_curve": 0.00045670755207538605,
+        "momentary_loudness": 0.005583674646914005,
+        "short_term_loudness": 0.005377357825636864,
+        "loudness_range": 0.0143494987860322,
+        "mel": 0.027719461359083652,
+        "mfcc": 0.01199311763048172,
+        "chroma": 0.017986834980547428,
+        "onsets": 0.014872451312839985
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_02_flams_overlap.wav",
+      "sha256": "77179661fdb45af5312e615936705b47a7c0f3a589d3a5b9368956a33061d500",
+      "sample_rate": 44100,
+      "frames": 176400,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 2.7755575615628914e-17
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 5.551115123125783e-17
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.012919417582452297,
+        "rms_curve": 0.00032776501029729843,
+        "peak_curve": 0.0003168778494000435,
+        "momentary_loudness": 0.012320502661168575,
+        "short_term_loudness": 0.012170668691396713,
+        "loudness_range": 0.022439317777752876,
+        "mel": 0.005999370478093624,
+        "mfcc": 0.0059926435351371765,
+        "chroma": 0.008996332064270973,
+        "onsets": 0.008982022292912006
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_03_hat_roll.wav",
+      "sha256": "ed19c2d161cebcf54e4de44d5f3884b71a44bd8077eb41ec11180730c9c9f863",
+      "sample_rate": 44100,
+      "frames": 137436,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 1.7763568394002505e-15
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 5.684341886080802e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 8.881784197001252e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.001180431805551052,
+        "rms_curve": 0.00036803819239139557,
+        "peak_curve": 0.0003573354333639145,
+        "momentary_loudness": 0.0012419726699590683,
+        "short_term_loudness": 0.001067223958671093,
+        "loudness_range": 0.010803913697600365,
+        "mel": 0.00589364767074585,
+        "mfcc": 0.005987946875393391,
+        "chroma": 0.005997808650135994,
+        "onsets": 0.005998571403324604
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_04_reverb.wav",
+      "sha256": "1cf4bbfd4dadddcf5130ed1ba567f37854fbef71df22b7729f10e1c3e70627a9",
+      "sample_rate": 48000,
+      "frames": 192000,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 9.094947017729282e-13
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 5.684341886080802e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 2.220446049250313e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0016294904053211212,
+        "rms_curve": 0.00048587843775749207,
+        "peak_curve": 0.00048179831355810165,
+        "momentary_loudness": 0.0017124824225902557,
+        "short_term_loudness": 0.0014440668746829033,
+        "loudness_range": 0.01072678342461586,
+        "mel": 0.005999600514769554,
+        "mfcc": 0.0059897396713495255,
+        "chroma": 0.008996034041047096,
+        "onsets": 0.008194885216653347
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_05_bass_bed.wav",
+      "sha256": "7ff36d0189810b811a7ccdbe058e10abc76a50097afc2e5108f88e8022aa551c",
+      "sample_rate": 44100,
+      "frames": 198450,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 2.220446049250313e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0016937050968408585,
+        "rms_curve": 0.0005308398976922035,
+        "peak_curve": 0.0005187885835766792,
+        "momentary_loudness": 0.001801198348402977,
+        "short_term_loudness": 0.0014862772077322006,
+        "loudness_range": 0.009842323139309883,
+        "mel": 0.006020219065248966,
+        "mfcc": 0.00786206778138876,
+        "chroma": 0.011063708923757076,
+        "onsets": 0.008913224563002586
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_06_combo.wav",
+      "sha256": "a3198a108b6642fc488dddb2fb592201a8cbd49a4d199a3c5dba8f579a97fe2b",
+      "sample_rate": 44100,
+      "frames": 141120,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.007757414132356644,
+        "rms_curve": 0.00037235021591186523,
+        "peak_curve": 0.0003668060526251793,
+        "momentary_loudness": 0.006791586056351662,
+        "short_term_loudness": 0.0066353920847177505,
+        "loudness_range": 0.015658540651202202,
+        "mel": 0.005976799875497818,
+        "mfcc": 0.0048837810754776,
+        "chroma": 0.006990537047386169,
+        "onsets": 0.005543363280594349
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_07_perc_pad_reverb.wav",
+      "sha256": "70a924114d7304b187652d3816dc76e9e3d188be1a2c05609209249d7b8be5df",
+      "sample_rate": 44100,
+      "frames": 176400,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 4.547473508864641e-13
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 8.881784197001252e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0015043579041957855,
+        "rms_curve": 0.00046921707689762115,
+        "peak_curve": 0.00046164263039827347,
+        "momentary_loudness": 0.0015760930255055428,
+        "short_term_loudness": 0.0013179751113057137,
+        "loudness_range": 0.010641560889780521,
+        "mel": 0.006004150956869125,
+        "mfcc": 0.005995280109345913,
+        "chroma": 0.009002471342682838,
+        "onsets": 0.005978396162390709
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_08_tight_flam_deep_ghost.wav",
+      "sha256": "80b14974907ba6d7a70d91ce55605a801ee0ce19eb4886d63531ce9a6c6968ff",
+      "sample_rate": 44100,
+      "frames": 141120,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 6.938893903907228e-18
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 3.552713678800501e-15
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 1.1102230246251565e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 1.7763568394002505e-15
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0012153321877121925,
+        "rms_curve": 0.00037654023617506027,
+        "peak_curve": 0.00037259142845869064,
+        "momentary_loudness": 0.001269862987101078,
+        "short_term_loudness": 0.0010616062209010124,
+        "loudness_range": 0.010787036269903183,
+        "mel": 0.012926951050758362,
+        "mfcc": 0.012038030661642551,
+        "chroma": 0.013410701416432858,
+        "onsets": 0.011982182040810585
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-librosa-analysis/corpus/loops/loop_09_mixed_bass_reverb.wav",
+      "sha256": "23f77a64e04141b9b3ec603b528c4af498febc9fd4f9e0d3ac2de47cabe4b2cc",
+      "sample_rate": 44100,
+      "frames": 185220,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 7.105427357601002e-15
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 1.4210854715202004e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 1.1102230246251565e-16
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 3.552713678800501e-15
+        }
+      },
+      "timings_s": {
+        "loudness": 0.001582578755915165,
+        "rms_curve": 0.0004934677854180336,
+        "peak_curve": 0.00048507004976272583,
+        "momentary_loudness": 0.001656663604080677,
+        "short_term_loudness": 0.001387481577694416,
+        "loudness_range": 0.009601007215678692,
+        "mel": 0.005989738740026951,
+        "mfcc": 0.005989241413772106,
+        "chroma": 0.008999804966151714,
+        "onsets": 0.008840749971568584
+      }
+    },
+    {
+      "path": "dogfood/2026-09-29-owned-analysis/short.wav",
+      "sha256": "1773360813eababb50afcbd7fe38ebe95358f79c459d40eb44590ff843bcd966",
+      "sample_rate": 44100,
+      "frames": 220500,
+      "checks": {
+        "mel": {
+          "passed": true,
+          "max_abs_error": 2.2737367544323206e-13
+        },
+        "mfcc": {
+          "passed": true,
+          "max_abs_error": 4.263256414560601e-14
+        },
+        "chroma": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onset_strength": {
+          "passed": true,
+          "max_abs_error": 5.551115123125783e-17
+        },
+        "onsets": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "onsets_backtracked": {
+          "passed": true,
+          "max_abs_error": 0.0
+        },
+        "loudness": {
+          "passed": true,
+          "max_abs_error": 0.0
+        }
+      },
+      "timings_s": {
+        "loudness": 0.0038502197712659836,
+        "rms_curve": 0.0007894253358244896,
+        "peak_curve": 0.0007573515176773071,
+        "momentary_loudness": 0.0026297355070710182,
+        "short_term_loudness": 0.002299991436302662,
+        "loudness_range": 0.02624247781932354,
+        "mel": 0.008173584938049316,
+        "mfcc": 0.009012101218104362,
+        "chroma": 0.011994508095085621,
+        "onsets": 0.012006900273263454
+      }
+    }
+  ]
+}

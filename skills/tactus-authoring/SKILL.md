@@ -71,7 +71,8 @@ one by merging.
 - **Creating a work**, **Listening to part of a run**, **Keeping a candidate**: the full
   commands and checks behind steps 0, 5 and 6.
 - **Inputs**: folder materials, `tool()` on plugin bundles, and the packages installed with
-  Tactus (NumPy, SciPy, SoundFile, pyloudnorm, librosa, Pedalboard, pytimestretch, pyqmdsp, `mido`).
+  Tactus (NumPy, SciPy, SoundFile, Pedalboard, pytimestretch, pyqmdsp, `mido`).
+  Use `uv add` for other packages your production imports, including librosa or pyloudnorm.
 - **Measuring audio**: discover level, spectral and rhythm analyses through `tactus analyze`,
   including beat times and tempo; freeze accepted estimates before using them in `render`.
 - **Project commands and export**: register custom analysis/export functions, deliver a saved

@@ -153,16 +153,16 @@ Python 環境仍需另外準備。Pool 是本機持久素材庫，需備份；st
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
-## 套件與工具邊界：直接採用既有能力
+## 套件與工具邊界：自有算法與專門引擎
 
-Base environment 選用 NumPy、SciPy、SoundFile、pyloudnorm 與 librosa，讓 production code 可以直接使用。Pedalboard、pytimestretch、pyqmdsp 與 Mido 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
+Base environment 選用 NumPy、SciPy、SoundFile，讓 production code 可以直接使用。Librosa 以 `tactus[librosa]` optional extra 提供，預設安裝不包含它；內建分析也不呼叫它。需要的作品以 `uv add "tactus[librosa]"` 選裝，開發比對用 `uv run --extra librosa pytest -m reference`；dev 額外安裝 pytest／Ruff。Global CLI 與作品環境分開，extra 不自動帶入新作品。Pyloudnorm 已從所有 dependency groups 移除，loudness 改以保存的獨立參考答案、數學測試與 EBU 素材驗證。Pedalboard、pytimestretch、pyqmdsp 與 Mido 也是 base dependency。Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 內含未經 CPU 檢查的 AVX-512 指令（在模組初始化時執行 `vinserti64x2`），在不支援 AVX-512 的 CPU（例如 i5-13600K）上會以 illegal instruction 崩潰；0.9.23 的 cp313 與 0.9.25 的 cp312 都正常，3.12 的全新環境也完整通過。上游已在 2026-09-23 合併修正（spotify/pedalboard PR #511），但尚未發佈新版；等包含該修正的版本發佈並在這台機器驗證後再放寬。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代。套件選定也不代表正式 runtime 已完成整合。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |
 | Arrays 與 DSP | NumPy、SciPy | 支援普通 Python 的數值與訊號處理，保留 Agent 自寫算法的空間。 |
-| 自有 stateful DSP | 有需要時採用 Python／Numba | 保留 Python authoring，以 Faust 演算法作為參考與比對；不要求另一套創作語言。 |
+| 自有 stateful DSP | Python／Numba | Duck envelope、小數 delay 與逐 frame SVF 的迴圈使用 cached Numba kernel；驗證與 NumPy／SciPy 外層保留。Faust 可作為演算法參考，不要求另一套創作語言。 |
 | Audio file I/O | SoundFile | 採用既有編解碼能力；Tactus 處理必要的資料與工具銜接。 |
-| Loudness 與音訊分析 | pyloudnorm、librosa | 提供現成量測與分析，避免每份作品重做；不因安裝套件而引入強制分析 schema。 |
+| Loudness 與音訊分析 | 自有 NumPy／SciPy 算法 | 維護既有數值定義、API 與比對測試；librosa 以 optional extra 選裝，亦可用於比對；pyloudnorm 的參考答案已固定為一般測試，不再需要安裝套件。 |
 | 拍點與速度估計 | `pyqmdsp`（base dependency，固定 Git revision `09b36d6`）+ `tactus.analysis.rhythm.beats` | 直接使用 qm-dsp，不依賴 Vamp。Tactus 只轉換 JSON 格式，沿用原型的空結果 `bpm: null`；聲道平均、分幀、參數與時間換算都由套件負責。只提供 beats，不提供 downbeats。 |
 | 效果與 VST3 | Pedalboard（base dependency）+ `tactus.fx` | `set_param` 依單位對到最近的合法值，`process_automated` 以分段處理 automation、tail 與延遲，`render_instrument` 以暖機消除起始雜訊並回傳 Tactus layout。曲線與音色由作品決定。盲聽中內建 reverb 勝過自寫。External sidechain 是已知缺口，不宣稱普遍 plugin 相容；部分 VST（如 OB-Xf）不可逐 sample 重現。 |
 | Standard MIDI File 交換 | Mido（base dependency） | 例如 `sfizz_render` 需要 `.mid` 檔；三次完整歌曲 dogfood 的 Agent 都因為沒有 MIDI 套件而各自手寫 SMF writer，因此改為預設安裝。Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 composition model。 |
@@ -175,6 +175,41 @@ Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差�
 逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。Paul 初步試聽回饋「我覺得有好一點」；
 來源拍點與最終候選尚待確認，不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
 詳見 [製作驗證](blueprints/thoughts/2026-09-28-beat-alignment-production.md)。
+
+**內建 DSP（2026-09-29）：** `tactus.dsp` 提供普通函式 `gain`、`fade`、`pan`、
+`biquad`，並公開既有 `fx.varispeed`／`fx.fit_rms`。前四項使用 NumPy／SciPy、保留
+headroom，回傳新 float64 陣列，不修改輸入。Gain/pan 支援 scalar 或逐 frame 控制；
+fade 是整段素材的線性淡入淡出；pan 只把 mono 轉為等功率 stereo。
+Biquad 支援 lowpass、highpass、peak、low_shelf、high_shelf，回傳 `(audio, state)`；
+state 是 `(2, channels)` 的 direct-form-II-transposed 記憶值，由作品明確接續。
+`None` 從零開始；空 block 保留 state；尾音由作品明確送入零訊號取得。
+固定參數下分塊與整段結果相同；參數切換沒有自動平滑，不保證無雜音。
+這些函式直接在 `render` 使用，VST host 與自訂 Python 路徑維持獨立可用。
+
+另提供四個每次呼叫從零開始、處理完整素材的效果：`duck` 用外部 detector 的跨 channel
+最大峰值產生共同 gain，能回傳曲線供其他聲部重用；`delay` 支援逐 frame 小數延遲，
+只回傳 wet，尾音長度由呼叫端指定；`lowpass` 支援逐 frame cutoff；`saturate` 用
+tanh 與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。這四項不提供跨呼叫
+state，不承諾分塊等價；delay 時間變動會改變音高，控制曲線不會自動平滑。
+完整參數契約由 README 的 Owned DSP 段落維護。
+整合理由是減少跨作品重寫與重測；[fresh-agent 實驗](blueprints/thoughts/2026-09-29-dsp-reuse-value-probe.md)
+另提供 delay 插值與 wet-only 錯誤的直接證據，但沒有量測節省的時間或 token。
+
+這三個逐 sample 迴圈已抽成 private Numba kernel，使用 `cache=True`、不開 fastmath。
+Numba 因實測加速而成為 runtime dependency；analysis 的 librosa 仍是
+選用參考，pyloudnorm 已移除。公開 API 與 whole-clip 行為相同；首次使用需要編譯，新 process 可載入
+磁碟快取，不能把穩態處理時間當作完整 CLI 啟動時間。固定 cutoff 與 saturation
+維持 NumPy／SciPy 路徑。驗證與量測見 [加速計畫](blueprints/plans/2026-09-29-dsp-numba.md)。
+
+**分頻與 delay 切換（2026-09-29）：** Paul 試聽接受後，整合 `crossover` 與
+`crossfade_delay`。前者以 SciPy 提供固定 cutoff 的雙路 LR4，回傳 low／high；
+相加幅頻平坦但相位改變。後者以 Numba 實作兩個固定小數讀取位置的線性
+crossfade，回傳 wet-only，保留 feedback 與指定尾音；過渡途中不追逐每個控制值，
+完成後採用最新要求。既有 `delay` 維持會改變音高的移動讀取位置行為。
+兩者每次呼叫重設，不提供 streaming state。Crossfade 可能干涉或抵消；新增介面
+明定起始位置與過渡端點，不宣稱與 Faust `sdelay` 逐 sample 相同。見
+[整合計畫](blueprints/plans/2026-09-29-crossover-crossfade-delay.md) 與
+[先前 probe](blueprints/thoughts/2026-09-29-faust-components-probe.md)。
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 
@@ -218,17 +253,86 @@ Runtime 檢查宣告的 shape、dtype、finite values、sample rate、時間關�
 `tactus.analysis` 按分類（category）組織，一個 category 是一個模組，用 progressive disclosure 的
 三層 `--help` 自我描述：`tactus analyze --help` 列出 category，`tactus analyze CATEGORY --help`
 列出該 category 的分析，`tactus analyze CATEGORY NAME --help` 給參數、欄位、單位與定義。已出貨三個
-category：`level`（`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`，whole-file 振幅量測）、
-`spectral`（`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`，頻域量測，都是有明確定義的計算，
-不是估計器），以及 `rhythm`（`beats`，拍點時間、BPM 與速度曲線估計）。每個分析都是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳
-JSON-ready dict，帶一個 `revision` int；CLI 從這個結構自動產生子命令，沒有手寫的 per-analysis CLI
+category：`level`（整段音量 `loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`，
+以及 `momentary_loudness`、`short_term_loudness`、`loudness_range`、`rms_curve`、`peak_curve`）、
+`spectral`（`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`，以及自有的
+`mel`、`chroma`、`mfcc` 特徵），以及 `rhythm`（`beats` 的拍點／速度估計、
+`onset_strength` 曲線與 `onsets` 起音候選點）。每個分析都是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳
+dict（可含 NumPy arrays），帶一個 `revision` int；CLI 從這個結構自動產生子命令，沒有手寫的 per-analysis CLI
 程式碼。這些都只回報數值，從不判斷通過或失敗——門檻由 work 或 Agent 自己套。
+
+**音量曲線與 LRA（2026-09-29）：** 參考 pymixtool 的功能範圍，演算法直接由 Tactus
+以 NumPy／SciPy 實作，不依賴 pymixtool。新 LUFS 曲線用 De Man K-weighting 係數；
+Integrated LUFS 也已改成自有實作，保留原 pyloudnorm 的 RBJ 濾波器、區塊取整、
+尾端分母與 gating 規則；與曲線的 De Man 濾波器定義仍不同。
+Momentary／short-term 分別使用 400 ms／3 s 完整時間窗，時間戳標在窗的結尾，
+預設 hop 為 10 ms／100 ms。LUFS 加總加權聲道能量、RMS 平均聲道能量、peak 取所有
+聲道最大值，都不先混成 mono。曲線不補零，不足一窗回傳空值列，零能量用 null 表達。
+LRA 獨立在輸入尾端補 1.5 s 靜音，依 EBU 定義計算閘控後的響度分布；
+原音訊短於 3 s 或沒有有效區塊時回傳 null，短於 60 s 標成 provisional。
+這些是量測值，沒有自動混音、品質評分或門檻裁決。驗證見
+[level curves](../experiments/level-curves/README.md)。
+
+**動態與頻譜分布（2026-09-29）：** 新增 `level.crest_factor`／`crest_factor_curve`、
+`spectral.bandwidth`／`rolloff`／`flatness`，都是自有 NumPy／SciPy 計算，沿用函式與
+自動產生 CLI 的同一份 registry。Crest 使用跨聲道最大 sample peak 除以全樣本 RMS；
+曲線採完整視窗與窗末時間，沒有 downmix。它不等於 true peak 減 LUFS 的 PLR，也不等於 LRA。
+三項頻譜描述沿用 Mel/MFCC 的 centered Hann 與 frame-center 時間，聲道相加；bandwidth
+是 power 加權的頻率標準差，rolloff 是累積 power 達指定比例的第一個 bin，flatness 是
+power 的幾何／算術平均比。Flatness 先按各 frame 的 peak power 設相對 floor，避免絕對
+floor 讓單純 gain 改變數值。靜音與聲道抵消後的零 power frame 回傳 null。
+全部回傳 JSON lists/scalars，不是品質判斷。數值定義、參考比對和實際處理比較見
+[驗證紀錄](../experiments/analysis-descriptors/README.md)。既有 stereo／DC／dropout 延後決定不變。
 
 **沒有 `pitch` category**：頻率驗證（見
 `docs/blueprints/thoughts/2026-09-27-frequency-analysis-probes.md`）顯示 `fundamental` 在未見素材上
 只有 47.5% 落在 ±50 cents 內——兩個 SFZ bass patch 帶有比 fundamental 更大聲的低八度層，讓每種方法
 （harmonic-sum、librosa pyin/yin、autocorrelation）都失準；`f0_over_time` 的表現更差（62%，FM tone 上
-只有 7%）。在有更可靠的 pitch 估計方法之前，這部分不出貨。Onsets 在未見素材上未通過驗證，仍不出貨。
+只有 7%）。在有更可靠的 pitch 估計方法之前，這部分不出貨。
+
+**自有特徵與 onset（2026-09-29）：** 初版以 librosa 建立非 NN 基準，後續改由 Tactus
+以 NumPy／SciPy 維護相同的 Mel、chroma、MFCC 與 onset 算法。
+`onset_strength`／`onsets` 採官方範例的 Mel-based SuperFlux 做法，公開 framing、
+threshold、間隔與 backtracking 參數，並記錄實際 hop 與頻率上界。先前 2 ms 精準起音
+契約失敗的結論仍成立；這次提供可供選擇的候選點，不宣稱取代人工確認或達成 sample-accurate 切片。
+`chroma` 是十二音級特徵，不推定調性／和弦；`mfcc` 是 log-Mel 的 DCT 特徵，不決定音色相似度。
+三種 spectral 特徵在 Python 回傳 feature-by-time NumPy arrays，CLI 用既有 `--out`
+附件機制保存，不另建檔案協定。新特徵有各自單位，不沿用舊 spectral 的 full-scale-sine dB 定義。
+聲道政策延續分類：spectral 相加、rhythm 平均；時間窗與 padding 都在函式／CLI help 說明。
+內建分析是可選工具，作品自己的 Python 與註冊分析仍是正式途徑。
+原始準確度與限制見 [librosa analysis](../experiments/librosa-analysis/README.md)，
+自有實作的比對與效能見 [owned analysis](../experiments/owned-analysis/README.md)。
+沒有事件時開啟 backtrack 回傳空清單，修正原先上游會拋錯的邊界情形。
+
+**SuperFlux 雙前端（2026-09-29）：** `onset_strength`／`onsets` 新增
+`filterbank="mel" | "log"`，Mel 維持預設。Mel 使用 `n_mels` 控制的 Slaney power／dB；
+log 使用 `bands_per_octave`（預設 24）控制的 A440 對齊三角頻帶、magnitude 與
+`log10(1+x)`。另一種密度參數不參與計算，但兩者皆驗證為正整數。Log 的 `fmin` 必須大於
+零；頻帶邊界取到 FFT bins 並去重，保留範圍內的中心、排除 Nyquist；解析度不足以建立
+任何頻帶時報錯。這不是 CQT，兩版 strength 單位也不同。
+兩者沿用 Tactus 的 centered periodic Hann、整數 hop、lag 補償與 peak picking，
+不宣稱與原版 SuperFlux 應用程式完全相同。既有結果欄位與 revision 1 保留，CLI params
+記錄選擇的前端；既有 Mel 事件時間須保持一致。共同的稀疏頻帶投影與分塊 FFT 減少
+計算與暫存配置。精確率比較及效能證據見
+[驗證紀錄](../experiments/superflux-frontends/README.md)。
+
+
+**Q transforms、tempogram 與矩陣圖片（2026-09-29）：** 內建 `spectral.cqt`、
+`spectral.vqt` 與 `rhythm.tempogram`，由 NumPy／SciPy 計算，DTW 不納入。
+CQT／VQT 共用幾何頻率格與可變長度 Hann 濾波器；VQT 的 gamma 增加頻寬並縮短低頻
+時間窗，gamma=0 與 CQT 相同。spectral 聲道相加、置中的零填補、明確整數 hop；
+回傳 magnitude、頻率／時間軸、各頻帶的窗長與解析後的 gamma。
+這是直接濾波器定義，幅度正規化與 librosa 的遞迴重採樣近似版本不同，不承諾逐值相同。
+Tempogram 由現有 Mel SuperFlux onset strength 做局部線性自相關，除以零 lag 能量，
+回傳正整數 lag 對應的 BPM／時間矩陣；rhythm 聲道平均。保留半速／倍速候選，不推定唯一 BPM。
+
+`analysis.image(result, ...)` 從既有矩陣產生帶座標與色階的 SVG，內嵌 PNG heatmap，
+不增加繪圖依賴。新三項及既有 Mel／chroma／MFCC 共用這個呈現層。
+CLI `--out DIR --image` 同時保存數值、圖片與 artifact hashes；`--image-min/max`
+控制顯示範圍並與分析 params 分開記錄。Python 始終能直接取得完整矩陣。
+圖片最多 1200 個時間欄，先取數值區塊平均再轉色彩；列等距呈現並標示實際中心頻率／BPM，
+不假裝是不規則 BPM 的線性座標。Q magnitude 的 dB 與 Mel power 的 dB 都是特徵單位、非 dBFS。
+規格、限制與效能測試見 [驗證](../experiments/q-transforms/README.md)。
 
 **Beat tracking 已整合**：`tactus analyze rhythm beats FILE` 與 Python 使用同一函式。
 72 個驗證音檔經 CLI 的三個結果欄位與直接呼叫 pyqmdsp 完全一致；對原 Vamp 參考的平均
@@ -246,6 +350,6 @@ F-measure 差 0.000492，小於 0.005 門檻。這是特定素材的驗證，不
 回傳 JSON dict。紀錄包括輸入、callable、作品 source／config／lock、參數與實際環境，
 不追蹤任意外部 I/O，也不隔離 Python 副作用。契約與操作見 [project commands](project-commands.md)。
 
-**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；onsets／
+**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；
 pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察
 值得標準化。

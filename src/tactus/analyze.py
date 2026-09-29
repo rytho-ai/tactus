@@ -61,7 +61,7 @@ def _attachments(value, directory: Path | None, arrays: dict):
     return value
 
 
-def _measure(path, output, audio, rate, command, params, out, input_hash):
+def _measure(path, output, audio, rate, command, params, out, input_hash, visualization=None):
     directory = None
     created = False
     try:
@@ -69,11 +69,10 @@ def _measure(path, output, audio, rate, command, params, out, input_hash):
         before = begin(command, out.resolve() if out else None)
         kwargs = dict(params)
         if out is not None:
-            token = hashlib.sha256(
-                json.dumps(
-                    [str(path.resolve()), input_hash, params, before["callable"]], sort_keys=True
-                ).encode()
-            ).hexdigest()[:16]
+            identity = [str(path.resolve()), input_hash, params, before["callable"]]
+            if visualization is not None:
+                identity.append({"visualization": visualization})
+            token = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
             directory = out / f"{path.stem}.{command.name}.{token}"
             directory.mkdir(parents=True, exist_ok=False)
             created = True
@@ -83,6 +82,13 @@ def _measure(path, output, audio, rate, command, params, out, input_hash):
             result = fn(audio, rate, **kwargs)
         if not isinstance(result, dict):
             raise TypeError("analysis must return a dict")
+        if visualization is not None:
+            from .analysis import image
+
+            if directory is None:
+                raise ValueError("image output requires --out DIR")
+            svg = image(result, title=command.name, **visualization)
+            (directory / "image.svg").write_text(svg, encoding="utf-8")
         arrays = {}
         result = json_safe(_attachments(result, directory, arrays))
         json.dumps(result, allow_nan=False)
@@ -100,6 +106,8 @@ def _measure(path, output, audio, rate, command, params, out, input_hash):
             "input_sha256": input_hash,
             "provenance": finish(command, out.resolve() if out else None, before),
         }
+        if visualization is not None:
+            report["visualization"] = {**visualization, "file": str(directory / "image.svg")}
         if output is not None:
             report["output"] = output
         if directory:
@@ -130,7 +138,14 @@ def _measure(path, output, audio, rate, command, params, out, input_hash):
         raise RunError("analysis_failed", "execute", f"{type(exc).__name__}: {exc}") from exc
 
 
-def measure(paths: list[Path], command: Command, params: dict, out: Path | None) -> list[dict]:
+def measure(
+    paths: list[Path],
+    command: Command,
+    params: dict,
+    out: Path | None,
+    *,
+    visualization: dict | None = None,
+) -> list[dict]:
     results = []
     for path in paths:
         if path.is_dir():
@@ -149,6 +164,7 @@ def measure(paths: list[Path], command: Command, params: dict, out: Path | None)
                         params,
                         out,
                         refs[name]["sha256"],
+                        visualization,
                     )
                 )
         elif path.is_file():
@@ -159,7 +175,9 @@ def measure(paths: list[Path], command: Command, params: dict, out: Path | None)
                 raise RunError(
                     "invalid_request", "request", f"could not read {path}: {exc}"
                 ) from exc
-            results.append(_measure(path, None, audio, rate, command, params, out, input_hash))
+            results.append(
+                _measure(path, None, audio, rate, command, params, out, input_hash, visualization)
+            )
         else:
             raise RunError("invalid_request", "request", f"path does not exist: {path}")
     return results

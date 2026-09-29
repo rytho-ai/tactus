@@ -14,6 +14,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from . import analysis
+from .analysis._image import SUPPORTED as IMAGE_ANALYSES
 from .analyze import measure
 from .commands import add_flags, registry
 from .excerpt import excerpt, parse_outputs, parse_range
@@ -138,9 +139,25 @@ def _main(argv: Sequence[str] | None = None) -> int:
             name_parser.add_argument(
                 "--out", type=Path, help="Save result JSON and array attachments"
             )
+            image_flags = set()
+            if key in IMAGE_ANALYSES and command.project is None:
+                name_parser.add_argument(
+                    "--image",
+                    action="store_true",
+                    help="Save a labeled SVG alongside numeric arrays; requires --out",
+                )
+                name_parser.add_argument(
+                    "--image-min", type=float, help="Fixed color scale lower bound"
+                )
+                name_parser.add_argument(
+                    "--image-max", type=float, help="Fixed color scale upper bound"
+                )
+                image_flags = {"image", "image_min", "image_max"}
             if selected:
                 names = add_flags(
-                    name_parser, fn, {"paths", "out", "help", "command", "category", "name"}
+                    name_parser,
+                    fn,
+                    {"paths", "out", "help", "command", "category", "name"} | image_flags,
                 )
                 name_parser.set_defaults(callable_command=command, param_names=names)
     export_command = commands.add_parser(
@@ -220,7 +237,23 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 )
                 print(json.dumps(result, sort_keys=True))
             else:
-                for result in measure(args.paths, args.callable_command, params, args.out):
+                visualization = None
+                supports_image = (
+                    args.callable_command.name in IMAGE_ANALYSES
+                    and args.callable_command.project is None
+                )
+                wants_image = getattr(args, "image", False) if supports_image else False
+                image_min = getattr(args, "image_min", None) if supports_image else None
+                image_max = getattr(args, "image_max", None) if supports_image else None
+                if wants_image:
+                    if args.out is None:
+                        raise RunError("invalid_request", "request", "--image requires --out DIR")
+                    visualization = {"vmin": image_min, "vmax": image_max}
+                elif image_min is not None or image_max is not None:
+                    raise RunError("invalid_request", "request", "--image-min/max require --image")
+                for result in measure(
+                    args.paths, args.callable_command, params, args.out, visualization=visualization
+                ):
                     print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:
