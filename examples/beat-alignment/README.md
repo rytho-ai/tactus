@@ -4,9 +4,11 @@ This work turns a variable-tempo recording into two 27-second, 160 BPM candidate
 fixed-ratio stretch and beat-marker warp, with identical authored percussion. It uses the
 existing `pytimestretch.time_warp` through ordinary Python; no new Tactus runtime API is needed.
 
-**Status:** rendered and measured; Paul reports a modest improvement in the A/B comparison.
-Final grid/candidate acceptance remains open; the listening feedback was preliminary.
-The frozen beat map is provisional, not ground truth or a downbeat grid.
+**Status:** accepted by Paul on 2026-09-29 (「那很ok啊，直接用」).
+Use the existing beat-marker warp candidate (`runs/final/warp`) and its frozen beat map
+for this production. The accepted map is not ground truth or a downbeat grid.
+The pending-review labels in the saved provenance and measurements describe the original
+technical checkpoint; this dated acceptance supersedes them.
 
 ## Source and frozen decisions
 
@@ -78,13 +80,14 @@ of the chosen source positions, not a claim that the estimated beats are musical
 
 Both modes process the whole phrase continuously; there are no per-beat cuts to crossfade.
 Boundary statistics look for isolated sample differences near markers relative to nearby
-signal derivatives. A zero flag count cannot certify no audible artifacts. There was no
-available subjective listening instrument in this session: the page supports the required
-human audition of beat interpretation, transient softness, flutter and phrase feel.
+signal derivatives. A zero flag count cannot certify no audible artifacts. These automated
+checks do not assess beat interpretation, transient softness, flutter or phrase feel;
+the page supports human audition of those qualities.
 
 ## What this demonstrates
 
 For this production, existing Tactus + pyqmdsp + pytimestretch cover the workflow. The missing
 step was composing a frozen marker map with the existing engine, not adding another warp
-implementation. Human acceptance remains open, as does whether repeated works justify a
-shared authoring helper. No candidate has been chosen or presented as a finished musical verdict.
+implementation. Paul accepted the current warp candidate and map for this production;
+whether repeated works justify a shared authoring helper remains open. This acceptance
+does not establish a general beat-accuracy or audio-quality verdict.

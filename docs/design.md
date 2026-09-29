@@ -171,12 +171,20 @@ Base environment 選用 NumPy、SciPy、SoundFile，讓 production code 可以�
 | Standard MIDI File 交換 | Mido（base dependency） | 例如 `sfizz_render` 需要 `.mid` 檔；三次完整歌曲 dogfood 的 Agent 都因為沒有 MIDI 套件而各自手寫 SMF writer，因此改為預設安裝。Notes、controllers 與 transformations 仍由 Python 決定；Mido 不成為 composition model。 |
 | Time stretch／pitch shift | `pytimestretch`（base dependency，固定 git revision `e43cc6d`，GPL-2.0-only） | 直接接受與回傳 NumPy，提供 Rubber Band 4.0（R3）與 Signalsmith 兩個 backend，由作品明確選擇；不自動限幅，headroom 由作品負責。取代 `pyrubberband` 加系統 `rubberband` 的做法，因此不再需要外部執行檔。整首長短與節拍、音高控制測試通過，Paul 試聽未發現問題。不另加 `tactus.stretch` 包裝。`extreme_stretch`（PaulStretch）是可選的創作處理：長度只是近似值，每個 process 內依呼叫順序固定亂數。這個 revision 因為 libpaulstretch 而改成 GPL-2.0-only，和 Pedalboard 的 GPLv3 不能一起對外發佈；目前只在內部使用，公開發佈前必須解決（見 plan 的 Future）。 |
 
-**Marker warp 的實際製作驗證（2026-09-28）：** 已安裝的 `pytimestretch.time_warp` 接受
+**VST 固定延遲與連續處理（2026-09-29）：** `fx.process_automated` 先以靜音讓外掛
+穩定回報延遲，再明確重設一次；正式區塊全部以 `reset=False` 連續處理，最後補出
+緩衝中的音訊。起始延遲由 Pedalboard 補償，不再手動位移。未修改的 LSP 1.2.35
+Limiter 已驗證 mono／stereo、44.1／48 kHz、兩個外掛串接與短區塊，透明設定下
+輸出逐 sample 相同。Automation 若改變外掛回報的延遲會明確報錯；未回報的延遲
+與其他外掛仍需個別驗證。詳見 [真實 VST 驗證](../experiments/vst-latency/README.md)。
+
+**Marker warp 的實際製作驗證與採用（2026-09-29）：** 已安裝的 `pytimestretch.time_warp` 接受
 `(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。
 作品先在 `render` 外取得拍點，把採用的 map 固定成素材，再由一次連續的引擎呼叫完成伸縮。
 Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差由固定伸縮的 600.49 ms 降到
-逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。Paul 初步試聽回饋「我覺得有好一點」；
-來源拍點與最終候選尚待確認，不將這個數字當作拍點正確率。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
+逐拍對齊的 7.79 ms；兩版鼓完全相同、沒有輸出削頂。Paul 已同意直接採用既有的
+`runs/final/warp` 候選與凍結拍點，這份作品的驗收完成。數字表示選定來源位置的
+對齊改善，不代表拍點正確率或通用音質結論。目前普通作品函式已足夠，尚無新增 Tactus wrapper 的證據。
 詳見 [製作範例與驗證](../examples/beat-alignment/README.md)。
 
 **內建 DSP（2026-09-29）：** `tactus.dsp` 提供普通函式 `gain`、`fade`、`pan`、
@@ -194,7 +202,7 @@ state 是 `(2, channels)` 的 direct-form-II-transposed 記憶值，由作品明
 只回傳 wet，尾音長度由呼叫端指定；`lowpass` 支援逐 frame cutoff；`saturate` 用
 tanh 與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。這四項不提供跨呼叫
 state，不承諾分塊等價；delay 時間變動會改變音高，控制曲線不會自動平滑。
-完整參數契約由 README 的 Owned DSP 段落維護。
+完整參數契約由 [DSP reference](../plugins/tactus/references/dsp.md) 維護。
 整合理由是減少跨作品重寫與重測；先前 fresh-agent 實驗觀察到 delay 插值與 wet-only 錯誤，
 但沒有量測節省的時間或 token。這些邊界已納入 [DSP 回歸測試](../tests/test_dsp_effects.py)。
 
@@ -226,7 +234,7 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 
 自有 DSP 的有限實驗支持 Python／Numba 實作與 native／WASM 輸出的可行性，但尚未形成產品的通用 export pipeline。驗證移植算法時要涵蓋時變參數、state 與 block boundaries；參考輸出本身也可能有錯，不能只因符合單一 golden 就宣稱正確。
 
-**尚未定案：**是否有跨作品共用 marker-map authoring helper 的必要；效果鏈的 latency、tail、automation 與具體 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
+**尚未定案：**是否有跨作品共用 marker-map authoring helper 的必要；外掛的動態／未回報延遲、external sidechain 與更廣泛的 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈。Rubber Band baseline 不代表所有素材與比例下的品質排名已定案。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
 
 ## 試聽：Offline、stateful、候選隔離
 
