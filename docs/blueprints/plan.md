@@ -243,6 +243,14 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   passed. Source refs own selection; regeneration remains explicit. See the
   [plan](plans/2026-09-29-saved-takes.md) and [evidence](../../experiments/saved-takes/README.md).
 
+- **Project analysis/export commands and global CLI** — install `tactus` once with uv; work
+  commands select the work's locked environment. Explicit `pyproject.toml` registrations expose
+  local Python as `tactus analyze CATEGORY NAME` and `tactus export NAME`, with shared flags,
+  help, artifacts and provenance. Runs checkpoint original arrays before PCM24 audition;
+  independent WAV/FLAC/stems/custom delivery can retry without regeneration. See the
+  [plan and verification](plans/2026-09-29-project-commands.md),
+  [contract](../project-commands.md) and [runnable example](../../examples/project-commands/README.md).
+
 ## 🚧 In progress
 
 - **Real-performance beat alignment — preliminary positive listening feedback.** Brahms/US Army Strings, 72 estimated

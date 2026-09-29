@@ -4,6 +4,8 @@ Optional render `takes` preserves exact intermediate arrays with source and rece
 run-local candidate bundles (manifest version 3). `takes.py` owns their format and
 explicit promotion to materials; ordinary runs keep manifest version 2.
 
+Original returned arrays are committed to render.json before WAV delivery. Delivery
+failure preserves that checkpoint for export; earlier failures remove the run directory.
 The public runner owns request validation, process lifetime and failed-run cleanup.
 The private worker calls _execute for source binding, attribution and OutputStore
 publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
@@ -54,7 +56,7 @@ from urllib.request import url2pathname
 
 import numpy as np
 
-from . import revision, stage, takes
+from . import render_store, revision, stage, takes
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .store import OutputStore, validate_name
 
@@ -257,7 +259,13 @@ def run(
         if not completed:
             if process is not None:
                 _stop(process)
-            shutil.rmtree(out, ignore_errors=True)
+            if (out / "render.json").is_file():
+                # Keep the complete original arrays/receipt/takes, remove partial default WAVs.
+                for path in out.glob("*.wav"):
+                    path.unlink(missing_ok=True)
+                (out / "manifest.json").unlink(missing_ok=True)
+            else:
+                shutil.rmtree(out, ignore_errors=True)
 
 
 def _find_lock(start: Path) -> Path | None:
@@ -471,13 +479,6 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
-        store = OutputStore(out, rate)
-        references = {}
-        levels = {}
-        for name, audio in outputs.items():
-            ref, output_levels = store.add(name, audio)
-            references[name] = {**ref.to_dict(), **output_levels}
-            levels[name] = output_levels
         if _inventory(source.parent, out) != before:
             raise RunError(
                 "source_changed", phase, "source or nearest uv.lock changed during execution"
@@ -508,6 +509,20 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "Not traced: undeclared files or executables, network access and randomness.",
         }
         _write_json(out / "receipt.json", receipt)
+        take_refs = (
+            takes.publish_candidates(out, result["takes"], rate, snapshot)
+            if "takes" in result
+            else {}
+        )
+        render_store.publish(out, rate, outputs, take_refs)
+        # A completed render is durable before the optional default delivery can fail.
+        store = OutputStore(out, rate)
+        references = {}
+        levels = {}
+        for name, audio in outputs.items():
+            ref, output_levels = store.add(name, audio)
+            references[name] = {**ref.to_dict(), **output_levels}
+            levels[name] = output_levels
         manifest = {
             **identity,
             "format_version": 2,
@@ -515,7 +530,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": references,
         }
         if "takes" in result:
-            manifest["takes"] = takes.publish_candidates(out, result["takes"], rate, snapshot)
+            manifest["takes"] = take_refs
             manifest["format_version"] = 3
         _write_json(out / "manifest.json", manifest)
         return {
@@ -524,6 +539,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
             "manifest": str(out / "manifest.json"),
             "receipt": str(out / "receipt.json"),
+            "render": str(out / "render.json"),
             "levels": levels,
         }
     except (MaterialError, ToolError) as exc:
@@ -539,4 +555,10 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "validate": "invalid_output",
             "publish": "publication_failed",
         }
-        raise RunError(codes[phase], phase, f"{type(exc).__name__}: {exc}") from exc
+        message = f"{type(exc).__name__}: {exc}"
+        if (out / "render.json").is_file():
+            message += (
+                f"; completed render retained at {out}; retry delivery with "
+                f"tactus export wav {out} --out NEW_DIR"
+            )
+        raise RunError(codes[phase], phase, message) from exc

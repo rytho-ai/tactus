@@ -65,7 +65,7 @@ Pattern functions 用於可命名、組合與重用的規律，例如 cycle、ph
 
 Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照、receipt 與其他執行資料都是衍生物。Receipt 用來辨識這次執行的 source、素材、參數、dependencies 與 runtime／processor 身分，讓結果能追溯到輸入。
 
-第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕；可處理的執行失敗會清除該次新建的輸出。
+第一版已提供 `tactus.run(source, out=..., params=...)` 與 `tactus run SOURCE --out NEW_DIRECTORY --params JSON`。每次呼叫使用新的 Python process，避開既有 bytecode cache，從 entry 所在資料夾解析 sibling imports 與相對素材路徑。作品的 log 走 stderr，CLI stdout 只交付一份 JSON 結果。已存在的輸出位置會被拒絕。`run` 先把原始 arrays、receipt 與 take refs 保存為 `render/` 和 `render.json`，再寫預設試聽 WAV；checkpoint 完成前的失敗會清除該次目錄，完成後的交付失敗則保留原始結果，只清除不完整的 WAV。
 
 Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels；WAV 由 OutputStore 直接寫在 `--out` 底下，檔名為 `<name>-<sha256 前 8 碼>.wav`，manifest 記錄完整 sha256。Manifest 最後發布，作為完成標記。`receipt.json`（format_version 4）保存以下內容：
 - 實際參數（含預設值）
@@ -77,8 +77,8 @@ Functional run 的 `manifest.json` 保存 sample rate 與具名音訊的內容 h
 - Python／Tactus／NumPy／SoundFile 版本
 - `environment`：實際執行的 interpreter，`{prefix, lock}`——`prefix` 是 `sys.prefix`，`lock` 是該
   environment 所屬 project（`.venv` prefix 的上一層目錄）裡 `uv.lock` 的 `{path, sha256}`，沒有則為
-  null。作品通常在 Tactus checkout 之外以 `uv run --project <tactus>` 執行，這時 `dependency_lock`
-  是 null，`environment.lock` 才指到實際鎖定 Tactus 本身版本的 lock。
+  null。舊作品借用 Tactus checkout 的環境執行時，`dependency_lock` 可能為 null，
+  `environment.lock` 則指向 Tactus 的 lock；新作品使用自己的 locked environment。
 - `package_sources`：`python_packages` 裡每個非 index 安裝的套件，依其安裝 metadata（PEP 610
   `direct_url.json`）記錄來源——VCS 安裝為 `{url, vcs, commit}`；目錄安裝（例如 editable 的 Tactus
   本身）為 `{url, editable}`，若該目錄同時是 Git checkout 再加上 `git: {commit, dirty}`（沿用
@@ -99,9 +99,21 @@ Tactus 自己的 metadata、`dependencies = ["tactus"]`、`[tool.uv.sources]` �
 commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`，但只在該 checkout
 乾淨且 `HEAD` 已經在 remote 上時才允許，否則 `init` 會失敗並提示先 push 或改用
 `--tactus-path`。`--tactus-path PATH` 明確釘住一個 editable 本地路徑；`--tactus URL@REV` 明確釘
-住一個來源。之後在作品內以 `uv run tactus run song.py --out DIR` 執行，receipt 的
+住一個來源。全域以 uv 安裝 CLI 一次，之後在作品內直接以 `tactus run song.py --out DIR` 執行，receipt 的
 `dependency_lock` 就是作品自己的 `uv.lock`（同時鎖住 Tactus 與其他每個套件）；`uv add PACKAGE`
 只替該作品加套件。沒有 `pyproject.toml` 的舊作品維持原本的執行方式，不會被拒絕。
+
+**全域 CLI 與作品環境：** console launcher 尋找目前或父目錄最近的 `pyproject.toml`，
+在作品內使用 `uv run --project DIR --locked -- python -m tactus.cli`，讓作品自己的 Tactus
+版本與 dependencies 生效；缺少或過期的 lock 會失敗，不退回全域版本。`init` 使用全域安裝；
+作品外使用全域環境。`tactus --project DIR ...` 可明確選擇作品，路徑參數仍相對於呼叫位置。
+
+**獨立 export：** `tactus export wav|flac|stems RUN --out NEW_DIR` 讀取已驗證的原始 checkpoint，
+不呼叫 render，可在試聽交付失敗後重試，也能交付 FLOAT／DOUBLE WAV 保留 headroom。
+`run` 維持一次命令完成生成與預設 PCM24 試聽；另存原始 arrays 會增加磁碟用量。
+舊 run 沒有 checkpoint 時使用已保存的 PCM，明確記為 `published-pcm`，不能恢復先前丟失的精度。
+每次 export 有自己的目錄與 `export.json`；失敗只清除該次新目錄。`take export` 則持續負責
+單一演奏素材包的轉移。驗證依據見 [export probe](blueprints/thoughts/2026-09-29-export-boundary-probe.md)。
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
@@ -224,6 +236,15 @@ F-measure 差 0.000492，小於 0.005 門檻。這是特定素材的驗證，不
 約 7.45 秒以下的有效音訊或全靜音會回傳空陣列與 `bpm: null`，不猜測小節或第一拍。
 分析結果採用後仍依 frozen-analysis 規則固定成素材或 source 常數。詳見
 [`整合計畫`](blueprints/plans/2026-09-28-pyqmdsp-integration.md)。
+
+**作品自訂分析與交付：** 常用或難實作的能力由 Tactus 內建；其他分析與交付邏輯由作品
+自己的 Python 定義，在 `pyproject.toml` 明確註冊：`[tool.tactus.analysis]` 的 `category.name`
+對應 `module:function`，`[tool.tactus.export]` 的 name 對應相同形式。CLI 以
+`tactus analyze category name`／`tactus export name` 呼叫，只 import 被選中的函式。
+函式仍可直接由 Python 使用；keyword-only 參數形成 typed flags，內建與自訂共用紀錄流程。
+分析回傳 dict，NumPy arrays 隨 `--out` 成為附件；export 接受具名 arrays 與 out 目錄，
+回傳 JSON dict。紀錄包括輸入、callable、作品 source／config／lock、參數與實際環境，
+不追蹤任意外部 I/O，也不隔離 Python 副作用。契約與操作見 [project commands](project-commands.md)。
 
 **尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；onsets／
 pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察

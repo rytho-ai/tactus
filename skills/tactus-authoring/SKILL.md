@@ -7,14 +7,14 @@ description: Write, revise, or run a Tactus music production — a Python file d
 
 A Tactus work is ordinary Python and NumPy. You decide the material, notes, processing order,
 routing, automation, and mix; this skill covers only how Tactus runs and records the work.
-Tactus runs it in a fresh process, checks the audio it returns, writes PCM24 WAVs, and records
+Tactus runs it in a fresh process, checks the audio it returns, saves original audio and PCM24 WAVs, and records
 what produced them. Any structure you find helpful is allowed; none is required.
 
 ## Steps
 
 0. **Create the work** once, before writing source: `tactus init DIR` makes it its own uv
-   project and Git repository. From then on, run everything from inside `DIR` with
-   `uv run tactus ...`.
+   project and Git repository. Install the CLI once with uv (see Creating a work), then
+   use `tactus ...` directly inside `DIR`; it selects the work's locked environment.
 1. **Pin every input.** Add each sample, soundfont or other file the sound depends on with
    `tactus material add FILE...` and resolve its printed `sha256:…` ref, kept as a named
    constant, with `material(REF)`. Declare each external executable or native library with
@@ -74,6 +74,8 @@ one by merging.
   Tactus (NumPy, SciPy, SoundFile, pyloudnorm, librosa, Pedalboard, pytimestretch, pyqmdsp, `mido`).
 - **Measuring audio**: discover level, spectral and rhythm analyses through `tactus analyze`,
   including beat times and tempo; freeze accepted estimates before using them in `render`.
+- **Project commands and export**: register custom analysis/export functions, deliver a saved
+  render without regenerating it, and retry failed delivery.
 - **Saved takes**: retain a chosen performance across source edits, cache deletion or machine
   changes; regenerate explicitly when MIDI or patch settings change.
 - **Reusing unchanged stages**: `@stage` with `--reuse`, so an approved part does not re-roll

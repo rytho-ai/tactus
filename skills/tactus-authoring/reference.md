@@ -36,8 +36,11 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
 
 `tactus init DIR` scaffolds `DIR` as its own uv project depending on a pinned Tactus (a
 `pyproject.toml` with `[tool.uv.sources]` and its own `uv.lock`, inside a new Git repository
-unless `DIR` is already in one); run it with whatever Tactus you already have, e.g.
-`uv run --project TACTUS_CHECKOUT tactus init DIR`. `uv add PACKAGE` adds a package to the work
+unless `DIR` is already in one). Install once with
+`uv tool install --python 3.12 --editable TACTUS_CHECKOUT`; use
+`tactus init DIR --tactus-path TACTUS_CHECKOUT` during local development, or pin a published
+revision with `--tactus URL@REV`. Inside the work, plain `tactus ...` uses its locked environment.
+`tactus --project DIR ...` selects it explicitly; file arguments keep their cwd meaning. `uv add PACKAGE` adds a package to the work
 only; the work's Python is pinned to what `init` copied from the running Tactus, not chosen by
 the work.
 
@@ -208,6 +211,23 @@ limits and the distinction between estimated beats and bar/downbeat positions.
 Values are measured on whatever array you pass, or on the saved WAV for a resolved run/excerpt
 output — not on some other stage of your signal chain.
 
+## Project commands and export
+
+Register work-owned Python callables in `pyproject.toml`:
+`[tool.tactus.analysis]` maps `"category.name"` to `"module:function"`;
+`[tool.tactus.export]` maps `"delivery-name"` to `"module:function"`.
+They appear as `tactus analyze category name` and `tactus export delivery-name`.
+Read [the project command contract](../../docs/project-commands.md) before writing one: it
+owns signatures, flags, array attachments, provenance and trusted-code limits.
+
+`tactus export wav RUN --subtype DOUBLE --out NEW_DIR` delivers original float64 audio;
+`FLOAT` casts to float32, the default `PCM_24` matches run's audition conversion.
+`flac` writes PCM24 FLAC; `stems` writes a ZIP of named outputs (default excludes `mix`,
+`--names '["bass", "drums"]'` selects explicitly). All export from saved audio without
+rerunning instruments. Custom exporters receive verified named arrays, sample rate and an
+`out` Path, write files there, and return a JSON dict. `export.json` inventories those files.
+A failed export removes only its new directory, so retrying leaves the render intact.
+
 ## Musical time (optional)
 
 `from tactus.timing import Clock, swing, Groove` resolves musical position to seconds and
@@ -260,7 +280,14 @@ has the full API and precision notes.
 ## Run results
 
 Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, "receipt":
-path, "levels": {name: {peak_dbfs, clipped_samples}}}`.
+path, "render": render_checkpoint_path, "levels": {name: {peak_dbfs, clipped_samples}}}`.
+
+`render.json` (`kind` `tactus.render`, `format_version` 1) is written before audition
+encoding. It records `sample_rate`, original `outputs` (`file`, `sha256`, `shape`, `dtype`),
+`receipt_sha256` and optional `takes`. The CLI result's `render` points to it. Keep it with
+`render/` and `receipt.json`; exports verify them. Raw arrays add 4 bytes per float32 sample
+value or 8 per float64 value, alongside the PCM24 files. Legacy runs without a checkpoint
+export from their saved PCM only, explicitly recorded as `published-pcm`.
 
 `manifest.json` (`format_version` 2) identifies the saved audio: `kind`, `sample_rate`, and
 `outputs` as `{name: {sha256, frames, channels, file, peak_dbfs, clipped_samples}}`. Each
@@ -297,9 +324,9 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 - `materials`: the refs resolved, in order.
 - `tools`: `{name, path, sha256, kind}` for each declared tool; `kind` is `"file"` or `"tree"`.
 - `python_packages`: each imported distribution name and its version.
-- `environment`: the interpreter that ran this, since a work usually runs with
-  `uv run --project <tactus>` from outside that checkout, so `dependency_lock` above is
-  usually null. `prefix` is the interpreter's `sys.prefix`; `lock` is `{path, sha256}` of the
+- `environment`: the interpreter that ran this. The global launcher selects the work's
+  locked environment; older works that borrowed the Tactus checkout may have a null
+  `dependency_lock`. `prefix` is the interpreter's `sys.prefix`; `lock` is `{path, sha256}` of the
   `uv.lock` in the project that owns that environment (a `.venv` prefix's parent directory),
   or null.
 - `package_sources`: for every `python_packages` distribution not installed from an index
@@ -330,5 +357,7 @@ its hash must match); then restore materials and run as above.
 
 Errors print `{"status": "error", "error": {code, phase, message}}`. `phase` is one of
 `request`, `load`, `bind`, `execute`, `validate`, or `publish`. The exit code is 2 for
-request, load, and bind errors, 1 otherwise, and 130 when cancelled. A failed run leaves no
-output directory.
+request, load, and bind errors, 1 otherwise, and 130 when cancelled. A failure before
+`render.json` removes the new run directory. After that checkpoint, the original render and
+candidate takes survive while partial audition WAVs are removed. Retry delivery with
+`tactus export wav RUN --out NEW_DIR`; `take save` also accepts these completed checkpoints.

@@ -90,6 +90,11 @@ def test_cli_on_saved_stereo_audio(tmp_path, capsys):
     assert main(["analyze", "rhythm", "beats", str(wav)]) == 0
     report = json.loads(capsys.readouterr().out)
     decoded, rate = sf.read(wav, dtype="float64")
+    from tactus.inputs.pool import hash_file
+
+    assert report.pop("input_sha256") == hash_file(wav)
+    provenance = report.pop("provenance")
+    assert provenance["callable"]["callable"] == "tactus.analysis.rhythm:beats"
     assert report == {
         "analysis": "rhythm.beats",
         "revision": 1,

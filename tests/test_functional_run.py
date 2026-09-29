@@ -252,7 +252,7 @@ def render():
     assert not (tmp_path / "out").exists()
 
 
-def test_partial_publication_is_cleaned(tmp_path):
+def test_partial_delivery_is_cleaned_but_completed_render_survives(tmp_path):
     entry = source(
         tmp_path,
         """import numpy as np
@@ -273,7 +273,9 @@ def render():
     with pytest.raises(RunError) as failure:
         run(entry, out=tmp_path / "out")
     assert failure.value.code == "publication_failed"
-    assert not (tmp_path / "out").exists()
+    assert (tmp_path / "out" / "render.json").is_file()
+    assert not (tmp_path / "out" / "manifest.json").exists()
+    assert not list((tmp_path / "out").glob("*.wav"))
 
 
 def test_output_files_are_named_at_the_run_root(tmp_path):

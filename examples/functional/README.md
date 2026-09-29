@@ -31,11 +31,14 @@ different lengths without a mix. `song.py` uses an authored nonlinear mix; the
 runtime never sums the declared outputs. `parts.py` uses seconds with no global BPM.
 This synthetic study tests the execution boundary, not real-source musical quality.
 
-CLI stdout is one JSON result with output WAV paths, `manifest` and `receipt`.
+CLI stdout is one JSON result with output WAV paths, `manifest`, `receipt` and `render`.
 Author logs and tracebacks go to stderr. Failures return an error code/phase/message
 and a nonzero exit status. Existing destinations are rejected before loading source.
-Handled failures remove the new run directory. A manifest marks completed delivery;
-uncatchable crashes can leave an incomplete directory.
+Failures before `render.json` remove the new run directory. After that checkpoint, original
+arrays and candidate takes survive a delivery failure; retry with
+`tactus export wav RUN --out NEW_DIR`. A manifest marks completed audition delivery;
+uncatchable crashes can leave an incomplete directory. Original arrays add storage alongside
+WAVs. See [export and project commands](../../docs/project-commands.md).
 
 The Python equivalent is:
 

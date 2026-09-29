@@ -1,0 +1,14 @@
+[project]
+name = "tactus-project-commands-example"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = ["tactus"]
+
+[tool.uv.sources]
+tactus = { path = "../..", editable = true }
+
+[tool.tactus.analysis]
+"stereo.width" = "measurements:width"
+
+[tool.tactus.export]
+"my-delivery" = "delivery:bundle"

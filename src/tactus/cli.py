@@ -5,152 +5,25 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
-import math
+import os
 import sys
-import types as _types
-import typing
+import tempfile
 from collections.abc import Sequence
+from contextlib import contextmanager
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
-
-import soundfile as sf
 
 from . import analysis
-from .excerpt import excerpt, parse_outputs, parse_range, read_published
+from .analyze import measure
+from .commands import add_flags, registry
+from .excerpt import excerpt, parse_outputs, parse_range
+from .export import BUILTINS as EXPORTERS
+from .export import deliver
 from .init import init
 from .inputs import pool, tree
+from .project import discover
 from .run import RunError, parse_params, run
 from .takes import export_take, save_take
-
-
-def _json_safe(value: Any) -> Any:
-    """Non-finite floats become `null`, as the manifest reports digital silence."""
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, dict):
-        return {key: _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    return value
-
-
-def _analysis_params(fn: Any) -> tuple[list[str], bool]:
-    """An analysis function's CLI-facing parameter names (every keyword parameter except
-    `audio`/`sample_rate`/`out`) and whether it accepts `out` (large-result file delivery)."""
-    names = []
-    accepts_out = False
-    for name in inspect.signature(fn).parameters:
-        if name in ("audio", "sample_rate"):
-            continue
-        if name == "out":
-            accepts_out = True
-            continue
-        names.append(name)
-    return names, accepts_out
-
-
-def _help_text(text: str) -> str:
-    """Escape `%` for `argparse`, which always `%`-expands `help=` strings (e.g. for
-    `%(default)s`) — a docstring's own `%` (as in "50% overlap") would otherwise crash
-    `--help` with a cryptic `TypeError`."""
-    return text.replace("%", "%%")
-
-
-def _flag_type(annotation: Any) -> Any:
-    """An `argparse` `type=` callable for a parameter's type hint: `int`/`float`/`str` map
-    directly, `X | None` unwraps to `X`'s type, and anything else (e.g. `band_levels`' tuple of
-    bands) falls back to `json.loads`, so a new analysis needs no hand-written CLI code."""
-    if annotation is inspect.Parameter.empty:
-        return str
-    origin = typing.get_origin(annotation)
-    if origin in (typing.Union, _types.UnionType):
-        args = [a for a in typing.get_args(annotation) if a is not type(None)]
-        if len(args) == 1:
-            return _flag_type(args[0])
-        return json.loads
-    if annotation in (int, float, str):
-        return annotation
-    return json.loads
-
-
-def _measure(
-    path: Path,
-    output: str | None,
-    audio: Any,
-    rate: int,
-    category: str,
-    name: str,
-    fn: Any,
-    params: dict[str, Any],
-    accepts_out: bool,
-    out_dir: Path | None,
-) -> dict[str, Any]:
-    call_kwargs = dict(params)
-    if accepts_out:
-        call_kwargs["out"] = None
-        if out_dir is not None:
-            identifier = output if output is not None else path.stem
-            out_dir.mkdir(parents=True, exist_ok=True)
-            call_kwargs["out"] = str(out_dir / f"{identifier}.{category}.{name}.npz")
-    result = fn(audio, rate, **call_kwargs)
-    header: dict[str, Any] = {"path": str(path)}
-    if output is not None:
-        header["output"] = output
-    header["sample_rate"] = rate
-    header["analysis"] = f"{category}.{name}"
-    header["revision"] = fn.revision
-    header["params"] = params
-    header["result"] = result
-    return _json_safe(header)
-
-
-def _analyze_paths(
-    paths: list[Path],
-    category: str,
-    name: str,
-    fn: Any,
-    params: dict[str, Any],
-    accepts_out: bool,
-    out_dir: Path | None,
-) -> list[dict[str, Any]]:
-    """Measure every path: a WAV file directly, or every output of a run/excerpt directory
-    (read and verified by `read_published`). The chosen `tactus.analysis` function does the
-    measuring."""
-    results = []
-    for path in paths:
-        if path.is_dir():
-            if not (path / "manifest.json").is_file():
-                raise RunError("invalid_request", "request", f"no manifest.json in {path}")
-            _, rate, outputs, files = read_published(path)
-            for out_name in sorted(outputs):
-                results.append(
-                    _measure(
-                        path / files[out_name],
-                        out_name,
-                        outputs[out_name],
-                        rate,
-                        category,
-                        name,
-                        fn,
-                        params,
-                        accepts_out,
-                        out_dir,
-                    )
-                )
-        elif path.is_file():
-            try:
-                audio, rate = sf.read(str(path), dtype="float64")
-            except Exception as exc:
-                raise RunError(
-                    "invalid_request", "request", f"could not read {path}: {exc}"
-                ) from exc
-            results.append(
-                _measure(path, None, audio, rate, category, name, fn, params, accepts_out, out_dir)
-            )
-        else:
-            raise RunError("invalid_request", "request", f"path does not exist: {path}")
-    return results
 
 
 class _RunParser(argparse.ArgumentParser):
@@ -160,18 +33,23 @@ class _RunParser(argparse.ArgumentParser):
         raise RunError("invalid_request", "request", message)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def _main(argv: Sequence[str] | None = None) -> int:
     """Execute a command; functional runs reserve stdout for one JSON result."""
     arguments = list(sys.argv[1:] if argv is None else argv)
+    project = discover(
+        Path(os.environ["TACTUS_PROJECT_ROOT"]) if os.environ.get("TACTUS_PROJECT_ROOT") else None
+    )
     package_version = version("tactus")
     parser_type = (
         _RunParser
-        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"], ["take"])
+        if arguments[:1]
+        in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"], ["take"], ["export"])
         else argparse.ArgumentParser
     )
     parser = parser_type(
         prog="tactus",
         description="Experimental code-first music production framework.",
+        epilog="The installed launcher accepts: tactus --project DIR COMMAND ...",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version}")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -223,46 +101,68 @@ def main(argv: Sequence[str] | None = None) -> int:
         "add", help="Import files into the pool, printing their sha256 refs"
     )
     add_command.add_argument("paths", nargs="+", type=Path, help="Files or folders to import")
-    analyze_command = commands.add_parser(
-        "analyze",
-        help="Measure audio (level, spectral, ...); see `tactus analyze CATEGORY --help`",
+    builtin_analysis = {
+        f"{category}.{fn.__name__}": fn
+        for category, module in analysis.CATEGORIES.items()
+        for fn in module.ANALYSES
+    }
+    # Registrations for the other command family do not affect this invocation.
+    analyses = registry(
+        project if arguments[:1] == ["analyze"] else None, "analysis", builtin_analysis
     )
+    exporters = registry(project if arguments[:1] == ["export"] else None, "export", EXPORTERS)
+    analyze_command = commands.add_parser("analyze", help="Built-in and project audio analyses")
     category_commands = analyze_command.add_subparsers(dest="category", required=True)
-    for category_name, category_module in analysis.CATEGORIES.items():
-        category_summary = (category_module.__doc__ or category_name).strip().splitlines()[0]
-        category_parser = category_commands.add_parser(
-            category_name,
-            help=_help_text(category_summary),
-            description=category_module.__doc__,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
+    for category in sorted({name.split(".")[0] for name in analyses}):
+        module = analysis.CATEGORIES.get(category)
+        description = module.__doc__ if module else f"Project analyses: {category}"
+        cat_parser = category_commands.add_parser(
+            category, help=description.splitlines()[0].replace("%", "%%"), description=description
         )
-        name_commands = category_parser.add_subparsers(dest="name", required=True)
-        for fn in category_module.ANALYSES:
-            fn_summary = (fn.__doc__ or fn.__name__).strip().splitlines()[0]
+        name_commands = cat_parser.add_subparsers(dest="name", required=True)
+        for key, command in analyses.items():
+            if key.split(".")[0] != category:
+                continue
+            name = key.split(".")[1]
+            selected = arguments[:3] == ["analyze", category, name]
+            fn = command.load() if selected else command.function
             name_parser = name_commands.add_parser(
-                fn.__name__,
-                help=_help_text(fn_summary),
-                description=fn.__doc__,
+                name,
+                help=command.summary.replace("%", "%%"),
+                description=inspect.getdoc(fn) if fn else command.summary,
                 formatter_class=argparse.RawDescriptionHelpFormatter,
             )
             name_parser.add_argument(
-                "paths", nargs="+", type=Path, help="WAV file(s), or run/excerpt directory(-ies)"
+                "paths", nargs="+", type=Path, help="Audio files or completed run directories"
             )
-            param_names, accepts_out = _analysis_params(fn)
-            if accepts_out:
-                name_parser.add_argument(
-                    "--out", type=Path, help="Directory to write large results (e.g. STFT .npz)"
+            name_parser.add_argument(
+                "--out", type=Path, help="Save result JSON and array attachments"
+            )
+            if selected:
+                names = add_flags(
+                    name_parser, fn, {"paths", "out", "help", "command", "category", "name"}
                 )
-            sig = inspect.signature(fn)
-            for param_name in param_names:
-                param = sig.parameters[param_name]
-                name_parser.add_argument(
-                    "--" + param_name.replace("_", "-"),
-                    dest=param_name,
-                    type=_flag_type(param.annotation),
-                    default=param.default,
-                    help=_help_text(f"default: {param.default!r}"),
-                )
+                name_parser.set_defaults(callable_command=command, param_names=names)
+    export_command = commands.add_parser(
+        "export", help="Deliver a saved render without regenerating"
+    )
+    export_commands = export_command.add_subparsers(dest="export_name", required=True)
+    for name, command in exporters.items():
+        selected = arguments[:2] == ["export", name]
+        fn = command.load() if selected else command.function
+        sub = export_commands.add_parser(
+            name,
+            help=command.summary.replace("%", "%%"),
+            description=inspect.getdoc(fn) if fn else command.summary,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        sub.add_argument(
+            "run_dir", type=Path, help="Source run (render.json, or legacy published WAVs)"
+        )
+        sub.add_argument("--out", required=True, type=Path, help="New delivery directory")
+        if selected:
+            names = add_flags(sub, fn, {"out", "run_dir", "help", "command", "export_name"})
+            sub.set_defaults(callable_command=command, param_names=names)
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
@@ -310,17 +210,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise RunError("invalid_request", "request", str(exc)) from exc
             print(json.dumps({"status": "ok", "materials": materials}, sort_keys=True))
             return 0
-        if args.command == "analyze":
-            fn = next(
-                f for f in analysis.CATEGORIES[args.category].ANALYSES if f.__name__ == args.name
-            )
-            param_names, accepts_out = _analysis_params(fn)
-            params = {name: getattr(args, name) for name in param_names}
-            out_dir = getattr(args, "out", None) if accepts_out else None
-            for result in _analyze_paths(
-                args.paths, args.category, args.name, fn, params, accepts_out, out_dir
-            ):
+        if args.command in ("analyze", "export"):
+            params = {name: getattr(args, name) for name in args.param_names}
+            # Reuse the finite JSON parameter boundary of render().
+            params = parse_params(json.dumps(params))
+            if args.command == "export":
+                result = deliver(
+                    args.run_dir, out=args.out, command=args.callable_command, params=params
+                )
                 print(json.dumps(result, sort_keys=True))
+            else:
+                for result in measure(args.paths, args.callable_command, params, args.out):
+                    print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:
         print(json.dumps(exc.to_dict(), sort_keys=True))
@@ -333,6 +234,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "package": "tactus",
                     "version": package_version,
                     "python": sys.version.split()[0],
+                    "environment": sys.prefix,
+                    "project": str(project.root) if project else None,
                     "status": "ok",
                 },
                 sort_keys=True,
@@ -341,6 +244,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     parser.error(f"unknown command: {args.command}")
+
+
+@contextmanager
+def _project_imports(root):
+    before = set(sys.modules)
+    original = sys.path[:]
+    old_cache_prefix, old_dont_write = sys.pycache_prefix, sys.dont_write_bytecode
+    cache = tempfile.TemporaryDirectory(prefix="tactus-import-")
+    sys.pycache_prefix, sys.dont_write_bytecode = cache.name, True
+    if root:
+        sys.path.insert(0, str(root))
+    try:
+        yield
+    finally:
+        sys.path[:] = original
+        sys.pycache_prefix, sys.dont_write_bytecode = old_cache_prefix, old_dont_write
+        cache.cleanup()
+        # Keep repeated in-process CLI calls from reusing another work's local modules.
+        if root:
+            for name in set(sys.modules) - before:
+                file = getattr(sys.modules[name], "__file__", None)
+                if file and Path(file).resolve().is_relative_to(root):
+                    sys.modules.pop(name, None)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    try:
+        project = discover(
+            Path(os.environ["TACTUS_PROJECT_ROOT"])
+            if os.environ.get("TACTUS_PROJECT_ROOT")
+            else None
+        )
+        with _project_imports(project.root if project else None):
+            return _main(argv)
+    except RunError as exc:
+        print(json.dumps(exc.to_dict(), sort_keys=True))
+        return exc.exit_code
+    except (ValueError, TypeError, OSError, ImportError, AttributeError) as exc:
+        error = RunError("invalid_request", "request", f"{type(exc).__name__}: {exc}")
+        print(json.dumps(error.to_dict(), sort_keys=True))
+        return error.exit_code
 
 
 if __name__ == "__main__":

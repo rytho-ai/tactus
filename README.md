@@ -28,8 +28,8 @@ estimated beats and tempo remain observations for the author to evaluate.
 ## Current status
 
 Functional `render()` productions can now run through a shared Python/CLI entry without a
-required BPM, track model or arrangement. Each run produces named PCM24 WAVs, a manifest and
-an execution receipt. See [functional examples and contract](examples/functional/README.md).
+required BPM, track model or arrangement. Each run saves original arrays, named PCM24 WAVs,
+a manifest and an execution receipt. See [functional examples and contract](examples/functional/README.md).
 The interface is an initial offline mono/stereo delivery boundary, not a universal work model.
 
 The [real-source chop-flip study](examples/real-chop-flip/README.md) exercises sampling,
@@ -49,6 +49,22 @@ uv run pytest
 uv run ruff check .
 ```
 
+## Install the CLI once
+
+From this checkout:
+
+```bash
+uv tool install --python 3.12 --editable .
+tactus init my-work --tactus-path "$PWD"
+cd my-work
+tactus doctor
+```
+
+Use `tactus ...` directly inside the work. The launcher selects its locked uv environment;
+`uv add PACKAGE` adds work-specific dependencies. For portable works, pin a published
+revision with `tactus init DIR --tactus URL@REV`. See the
+[project command contract](docs/project-commands.md) for environment selection.
+
 ## Functional production entry
 
 ```python
@@ -67,10 +83,10 @@ def render(*, gain=0.2):
 Use the included modular production or clip bank:
 
 ```bash
-uv run tactus run examples/functional/song.py --out /tmp/tactus-take-a
-uv run tactus run examples/functional/song.py --out /tmp/tactus-take-b \
+tactus run examples/functional/song.py --out /tmp/tactus-take-a
+tactus run examples/functional/song.py --out /tmp/tactus-take-b \
   --params '{"bass_gain": 0.4}'
-uv run tactus run examples/functional/clips.py --out /tmp/tactus-clips
+tactus run examples/functional/clips.py --out /tmp/tactus-clips
 ```
 
 Each destination must be new. The command returns one JSON result containing playable WAV
@@ -90,6 +106,32 @@ Saved WAVs are replayable, but arbitrary source rebuilds are not guaranteed dete
 To hear part of a run, `tactus excerpt RUN_DIR --range START:END --out NEW_DIR` cuts it from the
 saved audio without rendering again. Accepting a candidate is a source edit committed with Git.
 
+## Your analysis and delivery commands
+
+Keep custom Python in the work and register it in `pyproject.toml`:
+
+```toml
+[tool.tactus.analysis]
+"stereo.width" = "measurements:width"
+
+[tool.tactus.export]
+"my-delivery" = "delivery:bundle"
+```
+
+```bash
+tactus analyze stereo width mix.wav --window-ms 100
+tactus export my-delivery runs/a --out delivery/label
+tactus export wav runs/a --subtype DOUBLE --out delivery/original
+tactus export stems runs/a --out delivery/stems
+```
+
+`run` saves original audio before its default audition delivery. `export` creates another
+format from that saved render, including after an encoding failure, without regenerating
+instruments. Built-ins are `wav`, `flac`, and `stems`; custom functions use the same parameter,
+result and provenance machinery. Original arrays cost additional storage alongside audition
+WAVs. See the [runnable example](examples/project-commands/README.md) and
+[function contracts](docs/project-commands.md).
+
 ## Preserve an instrument performance
 
 Use original VST3/SFZ instruments. When a performance should stay fixed, have `render()`
@@ -104,7 +146,7 @@ def render(*, gain=0.25):
 After listening to that run, save the selected take:
 
 ```bash
-uv run tactus take save runs/take-a pad
+tactus take save runs/take-a pad
 ```
 
 Paste its printed ref into the work and use `load_take` before further processing:
@@ -135,7 +177,7 @@ provenance limits.
 The CLI provides `init` (with `--tactus-path`/`--tactus`), `run` (with `--reuse`), `excerpt`,
 `analyze CATEGORY NAME` (categories `level`, `spectral` and `rhythm`; `tactus analyze --help` lists
 categories, `tactus analyze CATEGORY --help` lists analyses, `tactus analyze CATEGORY NAME
---help` gives parameters and definitions), `material add`, `take save`, `take export`, `doctor`, help and version.
+--help` gives parameters and definitions), `export NAME`, `material add`, `take save`, `take export`, `doctor`, help and version.
 The public Python exports are `run`, `excerpt`, `RunError`, `AudioRef`, `material`, `tool`,
 `load_audio`, `load_take`, `MaterialError`, `ToolError`, `stage`, the `fx` module, the `timing` module and
 the `analysis` module.
@@ -152,8 +194,8 @@ The distribution, Python import, and command are all `tactus` (version `0.1.0`).
 ### Beat analysis
 
 ```bash
-uv run tactus analyze rhythm beats loop.wav > beats.json
-uv run tactus material add beats.json
+tactus analyze rhythm beats loop.wav > beats.json
+tactus material add beats.json
 ```
 
 Each stdout line is one JSON object; its `result` contains `beats_s` (seconds), `bpm` (median tempo), and `tempo_curve`
