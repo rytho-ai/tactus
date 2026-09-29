@@ -22,7 +22,9 @@ dB reference for the original five measurements: 0 dB = the power of a full-scal
 arrays for Python; STFT also returns its matrix directly. The CLI saves matrix arrays
 as attachments with `--out DIR`; analysis.image adds an optional SVG view.
 
-Reads: numpy · scipy.signal/fft · _features
+Large STFT inputs use bounded SciPy chunks; STFT/Mel share a native FFT worker policy.
+
+Reads: numpy · scipy.signal/fft · _features · _acceleration
 """
 
 from __future__ import annotations
@@ -32,14 +34,16 @@ from itertools import pairwise
 from typing import Any
 
 import numpy as np
-from scipy.fft import dct
+from scipy.fft import dct, set_workers
 from scipy.signal import find_peaks, welch
 from scipy.signal import stft as _scipy_stft
 
 from . import _features
+from ._acceleration import fft_workers
 from ._revision import revision as _revision
 
 _FS_SINE_MEAN_SQUARE = 0.5
+_STFT_CHUNK_WORK = 1 << 20
 
 # Default `band_levels` bands (Hz): a coarse, commonly-used split from sub-bass through air.
 _DEFAULT_BANDS: tuple[tuple[float, float], ...] = (
@@ -112,15 +116,50 @@ def _stft(
     audio: np.ndarray, rate: int, n_fft: int, hop: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     x = _to_mono(audio)
+    if len(x) >= n_fft and (1 + len(x) // hop) * n_fft >= _STFT_CHUNK_WORK:
+        return _chunked_stft(x, rate, n_fft, hop)
     noverlap = n_fft - hop
-    freqs, times_s, zxx = _scipy_stft(
-        x, fs=rate, window="hann", nperseg=n_fft, noverlap=noverlap, boundary="zeros"
-    )
+    with set_workers(fft_workers((1 + len(x) // hop) * n_fft)):
+        freqs, times_s, zxx = _scipy_stft(
+            x, fs=rate, window="hann", nperseg=n_fft, noverlap=noverlap, boundary="zeros"
+        )
     # scipy's stft normalizes so a full-scale sine's peak bin magnitude is 0.5 (half the
     # window-summed amplitude, matching a one-sided spectrum convention); power = |X|^2, and
     # dividing by _FS_SINE_MEAN_SQUARE (0.5) puts a full-scale sine at ~0 dB, matching `spectrum`.
     power = np.abs(zxx) ** 2
     level_db = _power_to_db(power * 2.0)
+    return times_s, freqs, level_db
+
+
+def _chunked_stft(x, rate, n_fft, hop):
+    """Bound SciPy FFT temporaries while retaining its exact scaling and time grid."""
+    half = n_fft // 2
+    extended = len(x) + 2 * half
+    tail = (-(extended - n_fft) % hop) % n_fft
+    count = 1 + (extended + tail - n_fft) // hop
+    level_db = np.empty((n_fft // 2 + 1, count), order="F")
+    chunk = max(1, (1 << 20) // n_fft)
+    with set_workers(fft_workers(count * n_fft)):
+        for first in range(0, count, chunk):
+            stop = min(count, first + chunk)
+            left = first * hop - half
+            right = (stop - 1) * hop - half + n_fft
+            segment = x[max(0, left) : min(len(x), right)]
+            if left < 0 or right > len(x):
+                segment = np.pad(segment, (max(0, -left), max(0, right - len(x))))
+            freqs, _, zxx = _scipy_stft(
+                segment,
+                fs=rate,
+                window="hann",
+                nperseg=n_fft,
+                noverlap=n_fft - hop,
+                boundary=None,
+                padded=False,
+            )
+            level_db[:, first:stop] = _power_to_db(np.abs(zxx) ** 2 * 2.0)
+    # Preserve SciPy's order of floating-point operations (also for odd FFT sizes).
+    times_s = np.arange(n_fft / 2, extended + tail - n_fft / 2 + 1, hop) / rate
+    times_s -= (n_fft / 2) / rate
     return times_s, freqs, level_db
 
 

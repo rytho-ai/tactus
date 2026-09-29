@@ -1,7 +1,8 @@
 """Owned NumPy/SciPy spectral frontend shared by features and onset analysis.
 
 Owns validation, centered Hann framing, Slaney Mel/log-power and fixed-tuning chroma.
-Sparse band projection bounds FFT temporaries; log-frequency magnitude bands adapt
+Sparse band projection bounds FFT temporaries, with native workers for large inputs;
+log-frequency magnitude bands adapt
 CPJKU/SuperFlux's A440-aligned triangles (see LICENSE.SuperFlux).
 Filter formulas adapted from librosa (ISC); see LICENSE.librosa. Retains established
 float32 filter coefficients, float64 power and channel conventions without importing it.
@@ -15,6 +16,8 @@ import numpy as np
 from scipy.fft import rfft
 from scipy.signal import get_window
 from scipy.sparse import csr_matrix
+
+from ._acceleration import fft_workers
 
 
 def positive_int(name: str, value: int) -> None:
@@ -84,7 +87,7 @@ def _project_bands(x, n_fft, hop, weights, *, power):
         if left < 0 or right > len(x):
             segment = np.pad(segment, (max(0, -left), max(0, right - len(x))))
         frames = np.lib.stride_tricks.sliding_window_view(segment, n_fft)[::hop]
-        magnitudes = np.abs(rfft(frames * window, axis=1))
+        magnitudes = np.abs(rfft(frames * window, axis=1, workers=fft_workers(count * n_fft)))
         if power:
             np.square(magnitudes, out=magnitudes)
         # Check all bins, including those outside the selected frequency range.

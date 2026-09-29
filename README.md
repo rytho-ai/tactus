@@ -54,7 +54,7 @@ uv run ruff check .
 ```
 
 Default development adds pytest/Ruff; librosa is optional and pyloudnorm is removed.
-Numba remains a runtime dependency for accelerated DSP.
+Numba remains a runtime dependency for accelerated DSP and long CQT/VQT analyses.
 Individual external-reference comparisons skip with an installation hint when their
 reference package is absent; independent math, edge-case and CLI tests still run.
 Run the reference comparisons explicitly, or include them with the full suite:
@@ -357,7 +357,7 @@ Sparse projection and bounded FFT chunks reduce work and memory; see
 
 #### STFT, Mel spectrogram, CQT, VQT, tempogram and images
 
-These built-ins use owned NumPy/SciPy implementations and require no librosa:
+These built-ins use owned implementations and require no librosa:
 
 | Analysis | Numeric result | Definition |
 | --- | --- | --- |
@@ -376,6 +376,16 @@ uv run tactus analyze rhythm tempogram loop.wav --window-s 4 --out analysis --im
 # Fix the color range when comparing Q-transform images:
 uv run tactus analyze spectral cqt loop.wav --out comparisons --image --image-min -80 --image-max 0
 ```
+
+CQT/VQT automatically use cached Numba kernels for large workloads (at least one
+billion estimated filter taps, with packed filters capped at 64 MiB), using up to
+eight threads without fastmath. Short calls retain SciPy FIRs and do not load Numba.
+The first accelerated call compiles; later processes can load the disk cache.
+STFT bounds FFT temporaries in chunks; STFT and Mel retain native SciPy FFTs,
+using four workers for at least 2**20 frame
+samples; an enclosing nondefault `scipy.fft.set_workers(...)` setting takes precedence.
+Mel keeps sparse native projection. Thread settings are restored after calls; results,
+frame conventions and units are preserved. See [measurements and startup costs](experiments/analysis-acceleration/README.md).
 
 `--out` saves the full numeric arrays as NPZ and the analysis/provenance record as JSON.
 `--image` additionally saves a standalone labeled `image.svg` (with an embedded PNG

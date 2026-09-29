@@ -1,7 +1,8 @@
 # Owned CQT, VQT, tempogram and image verification
 
-The public analyses use NumPy/SciPy; librosa is an optional test oracle. DTW is
-excluded. The shared image renderer uses NumPy and Python's standard library,
+The initial implementation and measurements below use NumPy/SciPy; librosa is an
+optional test oracle. Long CQT/VQT calls now select a cached Numba path: see the
+[adoption measurements](../analysis-acceleration/README.md). DTW is excluded. The shared image renderer uses NumPy and Python's standard library,
 producing a standalone SVG with a PNG heatmap, labeled axes and color bounds.
 
 ## Definitions and independent checks
@@ -60,7 +61,7 @@ Its 36–56 second excerpt supplies the visual trial; a separate synthetic
 `dogfood/2026-09-29-q-transforms/`. The session preview is served by the existing
 port 4187 server at `/q-analysis/`.
 
-## Acceleration experiments
+## Initial acceleration experiments (before automatic JIT adoption)
 
 All methods implement the same double-precision Q-filter definition. No fastmath,
 resampling or coefficient pruning. Timings include filter construction and output

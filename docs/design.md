@@ -202,6 +202,14 @@ Numba 因實測加速而成為 runtime dependency；analysis 的 librosa 仍是
 磁碟快取，不能把穩態處理時間當作完整 CLI 啟動時間。固定 cutoff 與 saturation
 維持 NumPy／SciPy 路徑。數值一致性驗證見 [Numba DSP 測試](../tests/test_dsp_numba.py)。
 
+**頻譜分析加速（2026-09-29）：** CQT／VQT 達十億次估計 filter tap 運算、且
+packed filters 不超過 64 MiB 時，採用 private cached Numba kernel，最多八個執行緒；
+短輸入維持 SciPy FIR，不載入 compiler。STFT 分批運算以限制暫存記憶體；
+STFT／Mel 保留原生 FFT，較大矩陣使用四個
+worker；Mel 保留 sparse projection。Numba 不開 fastmath，不更動分析的定義、時間格點
+或單位，呼叫結束恢復執行緒設定。首次編譯與快取載入分開記錄，不能以 warm timing
+推論每次 CLI 都同樣快。見 [量測與驗證](../experiments/analysis-acceleration/README.md)。
+
 **分頻與 delay 切換（2026-09-29）：** Paul 試聽接受後，整合 `crossover` 與
 `crossfade_delay`。前者以 SciPy 提供固定 cutoff 的雙路 LR4，回傳 low／high；
 相加幅頻平坦但相位改變。後者以 Numba 實作兩個固定小數讀取位置的線性

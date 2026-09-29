@@ -25,10 +25,16 @@ def direct(audio, rate, *, hop, fmin, n_bins, bins_per_octave=12, filter_scale=1
     return np.array(out)
 
 
+@pytest.mark.parametrize("compiled", [False, True])
 @pytest.mark.parametrize("rate", [8000, 22050, 48000])
 @pytest.mark.parametrize("gamma", [0, 13.7, 90])
 @pytest.mark.parametrize("length,hop", [(1, 64), (128, 64), (503, 71)])
-def test_every_frame_matches_direct_sum_including_boundaries(rate, gamma, length, hop):
+def test_every_frame_matches_direct_sum_including_boundaries(
+    rate, gamma, length, hop, compiled, monkeypatch
+):
+    from tactus.analysis import _qtransform
+
+    monkeypatch.setattr(_qtransform, "_JIT_MIN_WORK", 0 if compiled else float("inf"))
     x = np.random.default_rng(72).normal(size=length * 2)[::2]
     before = x.copy()
     params = {"hop": hop, "fmin": 220, "n_bins": 6, "gamma": gamma}
@@ -114,7 +120,7 @@ def test_lengths_match_reference_convention(librosa, gamma):
     np.testing.assert_array_equal(actual["window_samples"], np.ceil(lengths))
 
 
-def test_q_analysis_never_imports_numba_or_reference_packages(monkeypatch):
+def test_short_q_analysis_never_imports_numba_or_reference_packages(monkeypatch):
     import builtins
 
     original = builtins.__import__
