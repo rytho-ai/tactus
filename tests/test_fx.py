@@ -388,7 +388,7 @@ def test_process_automated_tiny_remainder_merged_exact_length():
 
 
 # ---------------------------------------------------------------------------
-# internal helpers: latency sum/shift, testable without a real VST
+# internal helpers: latency reports and block framing
 # ---------------------------------------------------------------------------
 
 
@@ -401,13 +401,13 @@ class _StubChain(list):
     """A list-like stand-in for pedalboard.Pedalboard, iterable over stub plugins."""
 
 
-def test_total_latency_sums_over_chain():
+def test_latency_reports_collect_external_plugins():
     chain = _StubChain([_StubPluginWithLatency(128), _StubPluginWithLatency(64), pedalboard.Gain()])
-    assert fx._total_latency(chain) == 192
+    assert fx._latencies(chain) == (128, 64)
 
 
-def test_total_latency_single_plugin_no_attribute_is_zero():
-    assert fx._total_latency(pedalboard.Gain()) == 0
+def test_latency_reports_omit_native_plugins():
+    assert fx._latencies(pedalboard.Gain()) == ()
 
 
 def test_block_bounds_merges_tiny_remainder():

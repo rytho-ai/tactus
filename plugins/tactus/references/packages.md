@@ -42,10 +42,11 @@ Private Tactus kernels are references, not stable imports for a portable work.
   infer channels-first layout. Make layout explicit at the seam and check the returned shape,
   especially with very short blocks. A direct MIDI instrument call returns channels-first;
   `fx.render_instrument` returns frames-first. Avoid applying one blanket transpose rule to both.
-- **State and tails:** create/reset instances for independent candidates. To continue the same
-  processing across blocks, preserve state (`reset=False` after the first block) and feed
-  silence for the tail you want. A truncated input length does not promise a complete tail.
-  `fx.process_automated` handles the block loop and explicit tail for its supported contract.
+- **State and tails:** create/reset instances for independent candidates. For continuous
+  processing, reset explicitly before the stream and use `reset=False` on every audio block;
+  `reset=True` makes Pedalboard flush that call as a complete input. Feed silence for the
+  tail you want. Use [fx.process_automated](runtime.md#helpers-from-tactus-import-fx) for
+  the supported block loop, fixed-latency negotiation and explicit tail.
 - **Parameters:** use `fx.describe`/`format_table` before setting a plugin parameter and
   `fx.set_param` for units and supported values. A plugin's 0–100 range is not 0–1. Record
   the value actually set. VST hosting still depends on the particular installed plugin.

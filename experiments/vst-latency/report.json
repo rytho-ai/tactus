@@ -1,0 +1,68 @@
+{
+  "plugin": "LSP Limiter 1.2.35",
+  "pedalboard": "0.9.25",
+  "binary_sha256": "8edd0ddf791a09b98b418145b56b55da95a286aaebce6d87409e4606a99a6f3f",
+  "cases": [
+    {
+      "sample_rate": 44100,
+      "channels": 1,
+      "plugins": 1,
+      "block_seconds": 0.02,
+      "tail_seconds": 0,
+      "latencies": [
+        442
+      ],
+      "frames": 44100,
+      "array_equal": true,
+      "repeat_equal": true,
+      "max_error": 0.0,
+      "update_calls": 50
+    },
+    {
+      "sample_rate": 48000,
+      "channels": 2,
+      "plugins": 1,
+      "block_seconds": 0.02,
+      "tail_seconds": 0.03,
+      "latencies": [
+        442
+      ],
+      "frames": 49440,
+      "array_equal": true,
+      "repeat_equal": true,
+      "max_error": 0.0,
+      "update_calls": 52
+    },
+    {
+      "sample_rate": 48000,
+      "channels": 2,
+      "plugins": 2,
+      "block_seconds": 0.01,
+      "tail_seconds": 0,
+      "latencies": [
+        442,
+        220
+      ],
+      "frames": 48000,
+      "array_equal": true,
+      "repeat_equal": true,
+      "max_error": 0.0,
+      "update_calls": 100
+    },
+    {
+      "sample_rate": 44100,
+      "channels": 2,
+      "plugins": 1,
+      "block_seconds": 0.003,
+      "tail_seconds": 0,
+      "latencies": [
+        442
+      ],
+      "frames": 44100,
+      "array_equal": true,
+      "repeat_equal": true,
+      "max_error": 0.0,
+      "update_calls": 335
+    }
+  ]
+}

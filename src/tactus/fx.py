@@ -446,13 +446,34 @@ def format_table(rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _total_latency(chain: Any) -> int:
-    """Sum `reported_latency_samples` over every plugin in `chain` (0 for built-ins)."""
-    if isinstance(chain, Iterable):
-        plugins = list(chain)
-    else:
-        plugins = [chain]
-    return sum(int(getattr(plugin, "reported_latency_samples", 0) or 0) for plugin in plugins)
+def _latencies(chain: Any) -> tuple[int, ...]:
+    """Reported latency of external plugins, omitting native effects without it."""
+    plugins = list(chain) if isinstance(chain, Iterable) else [chain]
+    return tuple(
+        int(plugin.reported_latency_samples or 0)
+        for plugin in plugins
+        if hasattr(plugin, "reported_latency_samples")
+    )
+
+
+def _settle_latency(chain, sample_rate, block_frames, source):
+    """Negotiate external-plugin latency on silence before starting the stream."""
+    previous = _latencies(chain)
+    if previous:
+        shape = (max(3, block_frames), *source.shape[1:])
+        silence = np.zeros(shape, dtype=np.float32)
+        # External plugins can publish their initial latency only after processing.
+        # Require two processing calls at minimum, and never loop without a bound.
+        for attempt in range(5):
+            chain(silence, sample_rate, reset=True)
+            current = _latencies(chain)
+            if attempt >= 1 and current == previous:
+                break
+            previous = current
+        else:
+            raise ValueError("effect latency did not stabilize during initialization")
+    chain.reset()
+    return _latencies(chain)
 
 
 def _pad_frames(audio: np.ndarray, n_frames: int) -> np.ndarray:
@@ -508,39 +529,50 @@ def process_automated(
     `chain` is a `pedalboard.Pedalboard` or a single plugin; `audio` is Tactus layout
     `(frames, channels)` or `(frames,)`. The author mutates plugin parameters inside
     `update` (typically via `set_param`) to automate a curve over time. Output is the
-    same layout, `tail_seconds` of silence appended, and plugin-reported latency shifted
-    out so the result aligns with the input.
+    same layout and `tail_seconds` of silence appended. External-plugin latency is
+    settled on silence first, then Pedalboard compensates a continuous stream and
+    buffered output is flushed at the end. Requires a callable Pedalboard plugin or
+    chain with reset(). Keep lookahead/oversampling and other latency-changing
+    settings fixed during this call; changing reported latency raises ValueError.
     """
     raw = np.asarray(audio)
     _validate_process_args(sample_rate, block_seconds, tail_seconds, raw)
 
     source = raw.astype(np.float32, copy=False)
-    frames_in = source.shape[0]
     tail_frames = round(tail_seconds * sample_rate)
-    latency = _total_latency(chain)
-
     padded = _pad_frames(source, tail_frames)
-    padded = _pad_frames(padded, latency)
+    target_frames = len(padded)
+    if not target_frames:
+        return padded.copy()
 
     block_frames = max(1, round(block_seconds * sample_rate))
-    bounds = _block_bounds(padded.shape[0], block_frames)
+    bounds = _block_bounds(target_frames, block_frames)
+    update(0.0)
+    latencies = _settle_latency(chain, sample_rate, block_frames, source)
 
     chunks = []
     for i, (start, end) in enumerate(bounds):
-        update(start / sample_rate)
-        chunks.append(chain(padded[start:end], sample_rate, reset=(i == 0)))
+        if i:
+            update(start / sample_rate)
+        # reset=True means a complete call to Pedalboard, including end flushing.
+        # Reset explicitly once, then stream every block with reset=False.
+        chunks.append(chain(padded[start:end], sample_rate, reset=False))
+        if _latencies(chain) != latencies:
+            raise ValueError("effect latency changed during automation; keep latency fixed")
 
-    if chunks:
-        output = np.concatenate(chunks, axis=0)
-    else:
-        output = padded[:0].astype(np.float32, copy=False)
-
-    if latency > 0:
-        output = output[latency:]
-
-    target_frames = frames_in + tail_frames
-    output = output[:target_frames]
-    return output.astype(np.float32, copy=False)
+    received = sum(len(chunk) for chunk in chunks)
+    if received < target_frames:
+        # Pedalboard already removes initial delay. Feed silence to retrieve the
+        # buffered end; shifting again would discard the start of the actual audio.
+        count = max(3, target_frames - received, sum(latencies))
+        silence = np.zeros((count, *source.shape[1:]), dtype=np.float32)
+        chunks.append(chain(silence, sample_rate, reset=False))
+        if _latencies(chain) != latencies:
+            raise ValueError("effect latency changed while flushing")
+    output = np.concatenate(chunks, axis=0)
+    if len(output) < target_frames:
+        raise ValueError("effect chain did not return the requested audio after flushing")
+    return output[:target_frames].astype(np.float32, copy=False)
 
 
 def _validate_render_instrument_args(

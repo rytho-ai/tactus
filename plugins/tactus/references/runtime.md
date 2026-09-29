@@ -189,7 +189,10 @@ environment variable keeps its old result when that input changes, so read input
   in 64-frame blocks (`buffer_size`) because plugins apply pitch bend and CC at block starts.
 - `fx.process_automated(chain, audio, rate, update, block_seconds=0.02, tail_seconds=…)`
   processes in blocks, calling `update(t)` with each block's start time so you can set
-  parameters over time; it handles reset, tail silence and reported latency.
+  parameters over time. It settles external-plugin latency on silence, resets once, streams
+  all production blocks continuously and flushes buffered output at the end. Keep lookahead,
+  oversampling and other latency-changing settings fixed during the call; a changed report
+  raises ValueError. Plugin compatibility still requires testing the actual plugin.
 - `fx.varispeed(audio, rate, speed)` plays audio at a per-output-frame speed (pitch follows
   speed; `0.0` holds, negative is not supported).
 - `fx.fit_rms(audio, rate, target_dbfs, ceiling_dbfs=-1.0)` returns audio at a target
