@@ -6,6 +6,19 @@ for built-in and custom operations.
 
 ## Install and select a work
 
+For a fixed installation, replace `FULL_COMMIT` with the chosen published commit SHA:
+
+```bash
+uv tool install --python 3.12 "tactus @ git+https://github.com/rytho-ai/tactus.git@FULL_COMMIT"
+tactus init my-work
+cd my-work
+```
+
+The tool is installed from Git, so editing or switching a development checkout cannot
+change it. `init` pins the same commit in the work. Use `--force` when replacing an existing
+tool installation. This fixes the Tactus source revision; the work's `uv.lock` fixes its
+full dependency environment.
+
 For a development checkout:
 
 ```bash

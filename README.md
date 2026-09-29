@@ -51,14 +51,18 @@ uv run ruff check .
 
 ## Install the CLI once
 
-From this checkout:
+Install a fixed Git revision (replace `FULL_COMMIT` with the chosen commit SHA):
 
 ```bash
-uv tool install --python 3.12 --editable .
-tactus init my-work --tactus-path "$PWD"
+uv tool install --python 3.12 "tactus @ git+https://github.com/rytho-ai/tactus.git@FULL_COMMIT"
+tactus init my-work
 cd my-work
 tactus doctor
 ```
+
+`init` pins that same revision in the new work. To develop Tactus itself, install the
+checkout with `uv tool install --python 3.12 --editable .` and create a work with
+`tactus init my-work --tactus-path "$PWD"`. Use `--force` when replacing an existing tool install.
 
 Use `tactus ...` directly inside the work. The launcher selects its locked uv environment;
 `uv add PACKAGE` adds work-specific dependencies. For portable works, pin a published

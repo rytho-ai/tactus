@@ -3,10 +3,12 @@
 Exports own their new directory and completion record. Failure removes that directory,
 never the source render. Built-ins and custom exporters receive the same named arrays,
 rate and keyword-only out directory. Generated files are inventoried after execution.
+store.encode_pcm24 owns quantization; FLAC transcodes its integer samples losslessly.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import sys
@@ -21,7 +23,7 @@ from . import render_store
 from .commands import Command, identity
 from .inputs.pool import hash_file
 from .run import RunError, _write_json
-from .store import OutputStore
+from .store import OutputStore, encode_pcm24
 
 
 def wav(outputs, sample_rate, *, out: Path, subtype: str = "PCM_24") -> dict:
@@ -48,9 +50,12 @@ def flac(outputs, sample_rate, *, out: Path) -> dict:
     """Write PCM24 FLACs, clipping to full scale with the default WAV conversion policy."""
     clipped = {}
     for name, audio in outputs.items():
-        samples = np.asarray(audio, dtype=np.float32)
-        clipped[name] = int(np.count_nonzero(np.abs(samples) > 1))
-        sf.write(out / f"{name}.flac", np.clip(samples, -1, 1), sample_rate, subtype="PCM_24")
+        payload, levels = encode_pcm24(audio, sample_rate)
+        clipped[name] = levels["clipped_samples"]
+        # Float-to-FLAC conversion can round differently from float-to-WAV by one LSB.
+        # Feed the WAV's already-quantized integers to the lossless FLAC encoder.
+        samples, _ = sf.read(io.BytesIO(payload), dtype="int32")
+        sf.write(out / f"{name}.flac", samples, sample_rate, subtype="PCM_24")
     return {"subtype": "PCM_24", "clipped_samples": clipped}
 
 
@@ -65,16 +70,12 @@ def stems(outputs, sample_rate, *, out: Path, names: list[str] | None = None) ->
         raise ValueError("names must be a nonempty list of existing output names")
     if len(set(selected)) != len(selected):
         raise ValueError("names must be unique")
-    import io
-
     levels = {}
     with zipfile.ZipFile(out / "stems.zip", "w", compression=zipfile.ZIP_STORED) as archive:
         for name in selected:
-            samples = np.asarray(outputs[name], dtype=np.float32)
-            levels[name] = int(np.count_nonzero(np.abs(samples) > 1))
-            buffer = io.BytesIO()
-            sf.write(buffer, np.clip(samples, -1, 1), sample_rate, format="WAV", subtype="PCM_24")
-            archive.writestr(zipfile.ZipInfo(f"{name}.wav"), buffer.getvalue())
+            payload, measured = encode_pcm24(outputs[name], sample_rate)
+            levels[name] = measured["clipped_samples"]
+            archive.writestr(zipfile.ZipInfo(f"{name}.wav"), payload)
     return {"names": selected, "clipped_samples": levels}
 
 

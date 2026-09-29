@@ -84,10 +84,10 @@ command families, sandboxing arbitrary extension code, and sample-rate conversio
 
 ## Outcome
 
-Implemented on `feat/project-commands`. The installed global `~/.local/bin/tactus` now
-points to this editable checkout at 0.1.0 via uv; daily commands select the work's environment.
-The previous installation receipt is retained in ignored trial evidence. No remote publication
-or branch merge is part of this implementation.
+Implemented on `feat/project-commands`. At implementation completion the global
+`~/.local/bin/tactus` pointed to this editable checkout at 0.1.0 via uv; daily commands
+selected the work's environment. The subsequent fixed-install rollout is recorded below.
+The previous installation receipt is retained in ignored trial evidence. The implementation commit was initially local.
 
 Actual isolated-console verification passed 12 checks: outside-project global environment,
 work environment, lazy custom help, render, scalar/array analysis, a dependency installed only
@@ -123,3 +123,32 @@ After final dtype/annotation-error handling adjustments, the focused project-com
 suite passed all 24 cases, including four additional numeric-dtype cases. `uv run ruff check .`
 and `git diff --check` passed. The actual global CLI was also verified outside a work and in
 the example's own locked environment.
+
+## Rollout and FLAC correction — 2026-09-29
+
+Paul authorized merge, push and installation from a fixed Git revision. `main` was
+fast-forwarded to `9674dbb` and the remote SHA read back. This also carries the earlier
+saved-take implementation and source-only beat/handoff/native-determinism experiments;
+native patches remain research, not runtime requirements. No audio or compiled instruments
+were committed, and the separate `qmdsp-beats` branch was not pushed.
+
+Installing from GitHub succeeded with the intended pinned pyqmdsp/pytimestretch sources.
+A fresh work created by that installation inherited the exact Tactus commit, used its own
+locked environment, and loaded a work-only dependency. Custom stereo-window analysis ran
+on the 149.189-second song, producing 1,492 windows; the custom FLOAT mix delivery matched
+original saved samples exactly.
+
+This real-song pass exposed format-dependent rounding: direct float-to-FLAC encoding differed
+from default PCM24 WAV by up to one PCM24 step (2^-23). The runtime now reuses one
+`store.encode_pcm24` implementation for WAV, FLAC and stems. FLAC consumes already-quantized
+integer samples, preserving the WAV's values. Mono/stereo threshold tests failed before the
+fix and pass after it; the six real-song FLAC outputs now exactly match the original audition
+samples. The original six WAV hashes also remain unchanged. New run renders are unnecessary
+for either conversion.
+
+Installation and real CLI evidence is retained under ignored
+`dogfood/2026-09-29-pinned-cli/`. The global installation is a fixed Git source; new works
+inherit that source, while existing works keep their own chosen Tactus dependency.
+
+Correction gates: full `uv run pytest -q` — 442 passed, 1 existing opt-in test skipped
+(250.63 s); Ruff and whitespace checks passed. The focused export suite passed all 13 cases.

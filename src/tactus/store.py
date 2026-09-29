@@ -1,9 +1,8 @@
 """Named, hash-verified PCM output at the production boundary.
 
-`OutputStore.add` is the only place audio is clipped and measured: it clips to full scale
-before the PCM24 write (soundfile already clips; this makes it the store's stated behavior)
-and returns the pre-clip peak and clipped-sample count alongside the saved `AudioRef`, so
-callers can report level without a second pass over the audio.
+`encode_pcm24` owns clipping, measurement and WAV quantization for run delivery and
+export formats. `OutputStore.add` names and stores those bytes with an `AudioRef`.
+FLAC exporters consume the quantized integers so encoder rounding cannot change samples.
 
 Reads: numpy · soundfile
 """
@@ -48,6 +47,27 @@ class AudioRef:
         }
 
 
+def encode_pcm24(audio: np.ndarray, sample_rate: int) -> tuple[bytes, dict]:
+    """Return default delivery WAV bytes and pre-clip levels, with one PCM24 policy."""
+    samples = np.asarray(audio, dtype=np.float32)
+    if samples.ndim == 1:
+        samples = samples[:, None]
+    if samples.ndim != 2 or samples.shape[1] not in (1, 2) or not len(samples):
+        raise ValueError("audio must have nonempty mono or stereo frames")
+    if not np.isfinite(samples).all():
+        raise ValueError("audio contains NaN or infinity")
+    peak = float(np.max(np.abs(samples)))
+    levels: dict[str, float | int | None] = {
+        "peak_dbfs": round(20 * math.log10(peak), 2) if peak > 0 else None,
+        "clipped_samples": int(np.count_nonzero(np.abs(samples) > 1.0)),
+    }
+    clipped = np.clip(samples, -1.0, 1.0)
+    buffer = io.BytesIO()
+    sf.write(buffer, clipped, sample_rate, format="WAV", subtype="PCM_24")
+    payload = buffer.getvalue()
+    return payload, levels
+
+
 class OutputStore:
     def __init__(self, root: Path, sample_rate: int) -> None:
         self.root = root
@@ -62,29 +82,16 @@ class OutputStore:
         clipped.
         """
         validate_name(name)
-        samples = np.asarray(audio, dtype=np.float32)
-        if samples.ndim == 1:
-            samples = samples[:, None]
-        if samples.ndim != 2 or samples.shape[1] not in (1, 2) or not len(samples):
-            raise ValueError("audio must have nonempty mono or stereo frames")
-        if not np.isfinite(samples).all():
-            raise ValueError("audio contains NaN or infinity")
-        peak = float(np.max(np.abs(samples)))
-        levels: dict[str, float | int | None] = {
-            "peak_dbfs": round(20 * math.log10(peak), 2) if peak > 0 else None,
-            "clipped_samples": int(np.count_nonzero(np.abs(samples) > 1.0)),
-        }
-        clipped = np.clip(samples, -1.0, 1.0)
-        buffer = io.BytesIO()
-        sf.write(buffer, clipped, self.sample_rate, format="WAV", subtype="PCM_24")
-        payload = buffer.getvalue()
+        samples = np.asarray(audio)
+        payload, levels = encode_pcm24(samples, self.sample_rate)
         digest = hashlib.sha256(payload).hexdigest()
         filename = f"{name}-{digest[:8]}.wav"
         path = self.root / filename
         self.root.mkdir(parents=True, exist_ok=True)
         if not path.exists():
             path.write_bytes(payload)
-        return AudioRef(digest, len(samples), samples.shape[1], filename), levels
+        channels = 1 if samples.ndim == 1 else samples.shape[1]
+        return AudioRef(digest, len(samples), channels, filename), levels
 
     def read(self, ref: AudioRef) -> np.ndarray:
         stem, _, suffix = ref.file.rpartition("-")

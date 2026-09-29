@@ -247,7 +247,8 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   commands select the work's locked environment. Explicit `pyproject.toml` registrations expose
   local Python as `tactus analyze CATEGORY NAME` and `tactus export NAME`, with shared flags,
   help, artifacts and provenance. Runs checkpoint original arrays before PCM24 audition;
-  independent WAV/FLAC/stems/custom delivery can retry without regeneration. See the
+  independent WAV/FLAC/stems/custom delivery can retry without regeneration. Rollout included
+  fixed Git installation and a real-song FLAC quantization correction. See the
   [plan and verification](plans/2026-09-29-project-commands.md),
   [contract](../project-commands.md) and [runnable example](../../examples/project-commands/README.md).
 

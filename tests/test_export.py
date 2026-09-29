@@ -153,3 +153,26 @@ def test_floating_export_casts_every_supported_numeric_dtype(tmp_path, dtype, su
     wav({"mix": audio}, 8000, out=tmp_path, subtype=subtype)
     decoded, _ = sf.read(tmp_path / "mix.wav")
     np.testing.assert_array_equal(decoded, audio.astype(np.float64))
+
+
+@pytest.mark.parametrize("stereo", [False, True])
+def test_flac_and_stems_preserve_default_pcm24_rounding(tmp_path, stereo):
+    from tactus.export import flac, stems
+    from tactus.store import OutputStore
+
+    # Exercise both sides of PCM24 rounding thresholds, plus clipping and exact values.
+    fractions = np.array([-1.7, -0.51, -0.49, 0.49, 0.51, 1.7]) / 2**23
+    audio = np.concatenate((fractions, [-1.5, -1, 0, 1, 1.5])).astype(np.float32)
+    if stereo:
+        audio = np.column_stack((audio, -audio))
+    reference, levels = OutputStore(tmp_path / "wav", 48000).add("part", audio)
+    expected, _ = sf.read(tmp_path / "wav" / reference.file, dtype="int32")
+    delivery = tmp_path / "delivery"
+    delivery.mkdir()
+    result = flac({"part": audio}, 48000, out=delivery)
+    decoded, _ = sf.read(delivery / "part.flac", dtype="int32")
+    np.testing.assert_array_equal(decoded, expected)
+    assert result["clipped_samples"]["part"] == levels["clipped_samples"]
+    stems({"part": audio}, 48000, out=delivery)
+    with zipfile.ZipFile(delivery / "stems.zip") as archive:
+        assert archive.read("part.wav") == (tmp_path / "wav" / reference.file).read_bytes()
