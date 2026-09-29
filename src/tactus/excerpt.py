@@ -6,7 +6,7 @@ outputs — no padding, fade, re-normalization or re-render — so it is sample-
 same frames of the source run even when the work's render is nondeterministic (e.g. a VST3
 instrument whose oscillator phases differ every render). Provenance is the source run itself:
 an excerpt keeps no receipt, only a `source` pointer (run path + manifest hash). Accepts a
-source manifest of `format_version` 1 or 2. Excerpt outputs are already-clipped published
+source manifest of `format_version` 1, 2 or 3. Excerpt outputs are already-clipped published
 audio, so each carries `peak_dbfs`/`clipped_samples` for the published slice (`clipped_samples`
 is always 0 there); its own manifest is `format_version` 2, following the run manifest.
 
@@ -152,7 +152,7 @@ def read_published(
     manifest_bytes = manifest_path.read_bytes()
     try:
         manifest = json.loads(manifest_bytes)
-        if manifest.get("format_version") not in (1, 2):
+        if manifest.get("format_version") not in (1, 2, 3):
             raise ValueError(
                 f"unsupported manifest format_version: {manifest.get('format_version')!r}"
             )

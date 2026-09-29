@@ -35,7 +35,9 @@ what produced them. Any structure you find helpful is allowed; none is required.
    the work, cut it from a run you already have with `tactus excerpt`; never window `render`
    yourself — tails, loop phase and whole-mix processing depend on what came before, so a
    self-windowed render differs from the same span of the full song.
-6. **Keep one candidate**: edit its parameter values into `render`'s defaults, run again, and
+6. **Keep one candidate**: for instruments that change on each render, first follow
+   **Saved takes** in the reference to preserve and adopt the exact performance. Then edit
+   its parameter values into `render`'s defaults, run again, and
    commit once the result is the version you chose; discard the rest with `git checkout`. If
    the source moved since the candidate was rendered, the version the listener chose no longer
    exists: tell them what changed, render it again as a new candidate, and keep it only after
@@ -72,6 +74,8 @@ one by merging.
   Tactus (NumPy, SciPy, SoundFile, pyloudnorm, librosa, Pedalboard, pytimestretch, pyqmdsp, `mido`).
 - **Measuring audio**: discover level, spectral and rhythm analyses through `tactus analyze`,
   including beat times and tempo; freeze accepted estimates before using them in `render`.
+- **Saved takes**: retain a chosen performance across source edits, cache deletion or machine
+  changes; regenerate explicitly when MIDI or patch settings change.
 - **Reusing unchanged stages**: `@stage` with `--reuse`, so an approved part does not re-roll
   while you audition another parameter.
 - **Helpers** (`tactus.fx`) for plugin parameters, VST3 instruments and automation, and

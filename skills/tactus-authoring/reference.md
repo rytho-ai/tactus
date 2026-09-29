@@ -21,7 +21,7 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
 
 - `render` is a synchronous function, and every parameter is keyword-only. Defaults are JSON
   values: numbers, strings, booleans, null, lists, or objects.
-- It returns exactly `sample_rate` and `outputs`:
+- It returns `sample_rate` and `outputs`, with an optional `takes` mapping (see Saved takes):
   - `sample_rate` is a positive int shared by all outputs.
   - `outputs` maps names matching `[A-Za-z0-9][A-Za-z0-9._-]*` (the name becomes part of
     the saved WAV's filename) to real NumPy arrays of shape `(frames,)` or `(frames, 1|2)`.
@@ -66,6 +66,56 @@ Approved from runs/c2-recheck (mix sha256 ff0b54d…)
 
 Give runs made inside a `git worktree` an `--out` in the main checkout's `runs/`, because
 removing the worktree deletes everything inside it.
+
+## Saved takes
+
+Use a saved take when a performance must survive source edits, cache deletion or moving to
+another machine. A take is an immutable folder material with original samples, sample rate,
+and generation provenance. Playback uses the saved audio; it never calls the generator.
+
+1. **Generate and audition once.** Return a nonempty `takes` mapping alongside `outputs`,
+   using the same arrays that feed this run's mix. Names and audio validation match outputs;
+   all takes share `sample_rate`. Keep processing you want to revise after the take boundary.
+
+   ```python
+   def render(*, gain=0.25):
+       raw = synthesize()  # original instrument; declare tools inside this function's call path
+       return {"sample_rate": 44100, "outputs": {"mix": raw * gain}, "takes": {"pad": raw}}
+   ```
+
+   `tactus run generate.py --out runs/take-a` publishes audition WAVs plus candidate bundles
+   under `takes/NAME/`. `audio.npy` preserves the original numeric dtype, shape and headroom;
+   it is neither clipped nor converted to PCM24. Mutating a returned array also changes what
+   is captured, so keep the raw array unchanged while processing the mix.
+2. **Save the chosen candidate.** `tactus take save runs/take-a pad` verifies the candidate
+   against the completed manifest, imports it into the material pool and prints `ref`.
+   Saving does not edit source or imply listener approval. Save before deleting the run.
+3. **Adopt explicitly in source.** Keep the printed `tree:sha256:…` ref as a constant, load it
+   with `from tactus import load_take; raw = load_take(PAD_TAKE, sample_rate=44100)`, then
+   apply gain/effects/placement. This returns the exact saved dtype and mono/stereo shape.
+   A rate mismatch fails; explicit resampling is a source decision. Generator `tool()` calls
+   belong only on the generation path, so playback works without the instrument installed.
+   Re-render and compare every delivered output hash with the chosen candidate before
+   claiming the adoption preserved it; commit the ref change with Git.
+4. **Revise or revert.** To change MIDI/patch settings, edit the generation source and create
+   another run. Save its take, compare it, and switch the source ref only when selected.
+   Editing generator code does not change a pinned take. Keep the old ref for rollback.
+5. **Transfer.** `tactus take export REF --out take-bundle` copies audio and provenance to a
+   new folder. On the other machine, `tactus material add take-bundle` returns the same ref.
+   Carry the work's source/lock and other materials too. The pool is local storage: back it
+   up or export chosen takes before removing it.
+
+A take's `take.json` (`kind`: `tactus.take`, `format_version` 1) records `name`, `sample_rate`,
+`shape`, `dtype`, `audio_sha256`, `receipt_sha256`, and `source_sha256`. The bundle includes
+`receipt.json`, `source.zip` (inventoried Python under `source/`, nearest `uv.lock`, and local
+`pyproject.toml` when present), and `source.patch` when the run recorded one. These describe
+how it was generated; generator materials, binaries and the Python environment are not
+bundled. The whole folder is content-addressed and checked on loading. Original run/source
+paths in the receipt are historical; playback has no dependency on those paths.
+
+`@stage`/`--reuse` remains temporary reuse under unchanged source. Saving a take makes it a
+material independent of that cache. Load selected takes outside cached stages when you want
+the material checked on every run (a cache hit otherwise replays its earlier input record).
 
 ## Inputs
 
@@ -201,8 +251,8 @@ has the full API and precision notes.
   different audio on every run; a re-render's hashes then do not match, even with unchanged
   source. `pytimestretch.extreme_stretch` is different: each run repeats the same result
   while the `extreme_stretch` calls before it stay the same, and changes when one is added,
-  removed or moved. Keep an approved part with `@stage` and `--reuse`, or pin it as a
-  material; archive approved audio.
+  removed or moved. Use **Saved takes** to retain a chosen performance across revisions and machines;
+  archive approved audio. Stage reuse only preserves it while that cache entry is reused.
 - **Clipping the report cannot see.** `clipped_samples` counts only what the work returns
   outside ±1. Audio already clipped inside the work, by `np.clip` or by Pedalboard's `Limiter`
   (a loudness maximizer that hard-clips at 0 dBFS), reports 0.
@@ -219,6 +269,11 @@ manifest is what verifies it. `peak_dbfs` is the peak of the audio the work retu
 clipping (0.01 dB; above 0 when it overflowed; `null` for digital silence), and
 `clipped_samples` counts the sample values (all channels) outside ±1 that were clipped before
 the write. `levels` in the run result repeats both numbers per output.
+
+Runs returning `takes` use manifest `format_version` 3 and add `takes: {name: tree_ref}`
+to both manifest and CLI result. These are candidate identities; `take save` imports them
+before `load_take` can use them. Runs without takes retain version 2. Excerpts and analyses
+read all three run manifest versions and operate on the audition `outputs`.
 
 An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) has `kind`
 `tactus.excerpt` and carries:

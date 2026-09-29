@@ -1,5 +1,8 @@
 # OB-Xf 與 sfizz 可以固定重新合成的結果嗎？
 
+> 2026-09-29 後續決定：正式流程採用原版樂器與[保存 take](../plans/2026-09-29-saved-takes.md)。
+> 下列修補保留為實驗證據，不作為產品安裝前提。
+
 > 2026-09-28 · 接續 [完整交接驗收](2026-09-28-clean-production-handoff.md) ·
 > [計畫](../plans/2026-09-28-deterministic-instruments.md) ·
 > [patch、腳本與證據](../../../experiments/deterministic-instruments/README.md)

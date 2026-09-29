@@ -8,7 +8,8 @@ Production 以普通 Python modules、functions、NumPy arrays 與資料結構�
 
 我們目前採用的分解方式是：選擇素材身分、產生或處理音訊、組合完成的訊號、交付作品宣告的 outputs。這讓 runtime 能在必要處提供可靠執行，又不接管 Agent 的分組、角色、routing 與音樂算法。
 
-第一版執行介面採用 Python 檔案中的同步 `render(*, ...)` 函式。具名 keyword-only 參數及其預設值供候選試聽使用；回傳 `{"sample_rate": 整數, "outputs": {名稱: NumPy陣列}}`。Tactus 負責呼叫、音訊驗證與寫檔。這個約定讓同一個工具能執行不同作品，作品內部的結構仍由 Agent 決定。
+第一版執行介面採用 Python 檔案中的同步 `render(*, ...)` 函式。具名 keyword-only 參數及其預設值供候選試聽使用；回傳 `{"sample_rate": 整數, "outputs": {名稱: NumPy陣列}}`，可加上
+`"takes": {名稱: NumPy陣列}` 保存這次生成的中間音訊。Tactus 負責呼叫、音訊驗證與寫檔。這個約定讓同一個工具能執行不同作品，作品內部的結構仍由 Agent 決定。
 
 Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems 或 clips，沒有必要的 output 名稱。交付格式先採用非空 mono／stereo、有限的實數音訊，經 float32 轉成 PCM24 WAV；不自動混音、正規化或重採樣。這是輸出邊界的約定，並不限制中間 DSP 的 headroom。超過 ±1 全幅不會被拒絕：寫檔前裁切到全幅，manifest 與 run 結果回報每個 output 的 `peak_dbfs`（裁切前的峰值）與 `clipped_samples`，由 Agent 自行判斷要不要調整 gain。
 
@@ -117,10 +118,26 @@ Agent 取得這些契約與 functional 寫作紀律的來源，是 repository �
 它不應只存在 cache，也不能宣稱這證明 generator 本身可重現。這是同主機 Linux 的驗收，
 尚未形成通用交接 CLI。見 [`完整交接驗收`](blueprints/thoughts/2026-09-28-clean-production-handoff.md)。
 
-後續本機原生修補實驗，讓 OB-Xf 的 voice／oscillator／LFO 使用固定的局部 seeds，
-並修正 sfizz 離線渲染等待背景載入的缺口；三個新容器直接重新合成，六個 WAV 全部一致。
-這證明該作品與修補版的可行性。正式依賴、seed 的作品介面與跨平台保證仍未交付，
-既有安裝未替換。見 [`固定合成實驗`](blueprints/thoughts/2026-09-28-deterministic-instruments.md)。
+**保存 take 是正式重現方式（2026-09-29）：** Paul 決定使用原版樂器。原生修補實驗保留為
+原因調查與可行性證據，不作為安裝或重現的前提。作品要保留某次演奏時，在同一次 `render`
+回傳 `takes` mapping，讓試聽成品與被保存的中間音訊來自同一個演奏。
+
+候選先保存在 run 的 `takes/NAME/`；`audio.npy` 保留原始 numeric dtype、shape 與 headroom，
+不裁切、不重採樣、不轉 PCM24。`take.json` 記錄 sample rate 與檔案身分，並附上生成 receipt、
+執行前的 Python source／nearest lock snapshot，以及既有的 source patch。含 takes 的 run 使用
+manifest version 3，增加 `{name: tree_ref}` 的 `takes`；其他 run 維持 version 2。
+
+`tactus take save RUN NAME` 驗證候選並存入 material pool。採用由 source 裡的 ref 決定：
+`load_take(REF, sample_rate=...)` 讀回原始陣列，後續音量、效果、placement 仍是普通 Python。
+它記錄這個 material，不執行 generator，也不要求安裝 provenance 裡的 tools。Sample rate
+不符或素材遺失／損壞會失敗。更改 MIDI 或 patch 時，另開生成 run，選擇後才換 ref；舊 ref
+可退回，source 不會自動偵測或重新生成 pinned take。
+
+`tactus take export REF --out DIR` 匯出音訊與 provenance；另一台電腦以 `tactus material add DIR`
+匯入，得到相同 ref。這個 bundle 足以讀回演奏；重新生成所需的 sample libraries、binaries 與
+Python 環境仍需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用
+演奏的唯一保存處。完整契約見 [Saved takes](../skills/tactus-authoring/reference.md#saved-takes)，
+實作與驗證見 [計畫](blueprints/plans/2026-09-29-saved-takes.md)。
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 

@@ -1,5 +1,8 @@
 # Deterministic instrument regeneration — investigation
 
+> Product decision, 2026-09-29: use original instruments and [saved takes](2026-09-29-saved-takes.md).
+> Native patches below remain research evidence, not an installation requirement.
+
 ## Context
 
 Paul asks whether OB-Xf and SFZ regeneration can be made repeatable, following the clean

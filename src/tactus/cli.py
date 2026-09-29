@@ -21,6 +21,7 @@ from .excerpt import excerpt, parse_outputs, parse_range, read_published
 from .init import init
 from .inputs import pool, tree
 from .run import RunError, parse_params, run
+from .takes import export_take, save_take
 
 
 def _json_safe(value: Any) -> Any:
@@ -165,7 +166,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     package_version = version("tactus")
     parser_type = (
         _RunParser
-        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"])
+        if arguments[:1] in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"], ["take"])
         else argparse.ArgumentParser
     )
     parser = parser_type(
@@ -184,6 +185,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Reuse unchanged @stage results from prior runs on unchanged source",
     )
+    take_command = commands.add_parser("take", help="Save and transfer immutable performances")
+    take_commands = take_command.add_subparsers(dest="take_command", required=True)
+    save_command = take_commands.add_parser(
+        "save", help="Save a completed run's named take to the pool"
+    )
+    save_command.add_argument("run_dir", type=Path)
+    save_command.add_argument("name", help="Name in render's takes mapping")
+    export_command = take_commands.add_parser("export", help="Export a saved take for transfer")
+    export_command.add_argument("ref", help="Saved tree:sha256: reference")
+    export_command.add_argument("--out", type=Path, required=True, help="New bundle directory")
     excerpt_command = commands.add_parser(
         "excerpt", help="Slice an existing run's outputs into a new run directory"
     )
@@ -257,6 +268,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "run":
             result = run(
                 args.source, out=args.out, params=parse_params(args.params), reuse=args.reuse
+            )
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.command == "take":
+            result = (
+                save_take(args.run_dir, args.name)
+                if args.take_command == "save"
+                else export_take(args.ref, out=args.out)
             )
             print(json.dumps(result, sort_keys=True))
             return 0

@@ -1,0 +1,72 @@
+{
+  "refs": {
+    "pads": "tree:sha256:13c20446d5b0b477a5b453fa90535696ebd2491f5b46cb46a9f316448bcded12",
+    "bass": "tree:sha256:fac86ab21c0f466d6fa8ff647715f77c42faa94c02c5c190b168e96b18143e27"
+  },
+  "alternative_pad": "tree:sha256:5849c6c2f242c38e9a170b9627e614f6a95d7b10c40996163d51b649e71e057b",
+  "runs": {
+    "baseline": {
+      "hashes": {
+        "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+        "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+        "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+        "mix": "f4ca308533857dcd3487921dcfa92446ef1182e95e855c982a83ec9358cf3be5",
+        "pads": "1024fd499d6c7ca6417305349085f3d33341f22fa185aab1d207e718e92c8b97",
+        "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+      },
+      "seconds": 6.933,
+      "tools": [],
+      "reuse": false
+    },
+    "bass-minus-3db": {
+      "hashes": {
+        "bass": "bad092807b929c515ce9d0a9076c206843853e76c446a0219c42871bb4cf7ed4",
+        "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+        "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+        "mix": "71baa5931c8d6763b625c8024dfd30f6e0c35f45b19bd4e6857e8ad4058daee6",
+        "pads": "1024fd499d6c7ca6417305349085f3d33341f22fa185aab1d207e718e92c8b97",
+        "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+      },
+      "seconds": 7.265,
+      "tools": [],
+      "reuse": false
+    },
+    "alternative": {
+      "hashes": {
+        "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+        "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+        "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+        "mix": "b3ab455653cdc4c18b22bbb4c5f7308d38e12966923526abf534d3897b60de62",
+        "pads": "c7a0f3647b3827b1c833d9eec36ae161d6363641f2a4165a0d202adb9ff220f8",
+        "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+      },
+      "seconds": 7.371,
+      "tools": [],
+      "reuse": false
+    },
+    "restored": {
+      "hashes": {
+        "bass": "d3e20e978f542c464322ee3996fb2d2e338421b1e6b1d59ad3819393662daaeb",
+        "drums": "90e95683af4b22d4717aa54b92ef7942659fcd7474e4a05bd2dd3fcb69f82198",
+        "keys": "8b86cde037390669cd64f2cec2329fd63a3d4a286d31bdeedc84b61f42075be5",
+        "mix": "f4ca308533857dcd3487921dcfa92446ef1182e95e855c982a83ec9358cf3be5",
+        "pads": "1024fd499d6c7ca6417305349085f3d33341f22fa185aab1d207e718e92c8b97",
+        "textures": "384ab0d27f477cbb21a62436dea4574c560628793a1324c5232d6aa3d8c2a4a7"
+      },
+      "seconds": 9.182,
+      "tools": [],
+      "reuse": false
+    }
+  },
+  "all_six_outputs_match_generation": true,
+  "rollback_exact": true,
+  "bass_edit_preserves_other_four_stems": true,
+  "official_plugin_sha256": "92b132d635b55c0c1b147d7b9df045fb8780f2310a28f4348a61869573cbe254",
+  "official_sfizz_sha256": "172d94122ad66e0e7a5c3a42019ccbb2319457faab12ddfca66934f5ee6d7b67",
+  "scope": "Same Linux CPU/kernel, fresh offline containers; no native instruments or stage cache mounted. New takes not listener-approved.",
+  "verification": {
+    "pytest": "416 passed, 1 skipped in 236.72s",
+    "ruff": "passed",
+    "cli": "take help/save/export, material import, run"
+  }
+}

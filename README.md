@@ -90,14 +90,54 @@ Saved WAVs are replayable, but arbitrary source rebuilds are not guaranteed dete
 To hear part of a run, `tactus excerpt RUN_DIR --range START:END --out NEW_DIR` cuts it from the
 saved audio without rendering again. Accepting a candidate is a source edit committed with Git.
 
+## Preserve an instrument performance
+
+Use original VST3/SFZ instruments. When a performance should stay fixed, have `render()`
+return its raw array in an optional `takes` mapping alongside the usual audition outputs:
+
+```python
+def render(*, gain=0.25):
+    raw = synthesize()  # your generator, called once for this candidate
+    return {"sample_rate": 44100, "outputs": {"mix": raw * gain}, "takes": {"pad": raw}}
+```
+
+After listening to that run, save the selected take:
+
+```bash
+uv run tactus take save runs/take-a pad
+```
+
+Paste its printed ref into the work and use `load_take` before further processing:
+
+```python
+from tactus import load_take
+
+PAD_TAKE = "tree:sha256:…"
+
+def render(*, gain=0.25):
+    raw = load_take(PAD_TAKE, sample_rate=44100)
+    return {"sample_rate": 44100, "outputs": {"mix": raw * gain}}
+```
+
+Takes preserve the original samples, dtype, shape and headroom, with a source snapshot and
+receipt. They live in the material pool independently of stage cache and run directories.
+Changing MIDI or a patch means generating and selecting a new take; old refs remain usable.
+Playback needs no generator instrument. Gain, effects and placement remain editable in code.
+
+To move a take, use `tactus take export REF --out take-bundle`, copy the folder, then run
+`tactus material add take-bundle` on the destination machine. It returns the same ref.
+Also transfer the work's source/lock and other required materials. See
+[Saved takes](skills/tactus-authoring/reference.md#saved-takes) for the full lifecycle and
+provenance limits.
+
 ## Supported surface
 
 The CLI provides `init` (with `--tactus-path`/`--tactus`), `run` (with `--reuse`), `excerpt`,
 `analyze CATEGORY NAME` (categories `level`, `spectral` and `rhythm`; `tactus analyze --help` lists
 categories, `tactus analyze CATEGORY --help` lists analyses, `tactus analyze CATEGORY NAME
---help` gives parameters and definitions), `material add`, `doctor`, help and version.
+--help` gives parameters and definitions), `material add`, `take save`, `take export`, `doctor`, help and version.
 The public Python exports are `run`, `excerpt`, `RunError`, `AudioRef`, `material`, `tool`,
-`load_audio`, `MaterialError`, `ToolError`, `stage`, the `fx` module, the `timing` module and
+`load_audio`, `load_take`, `MaterialError`, `ToolError`, `stage`, the `fx` module, the `timing` module and
 the `analysis` module.
 Agents writing a work should use the [`tactus-authoring` skill](skills/tactus-authoring/SKILL.md)
 (high-level rules; details in its [`reference.md`](skills/tactus-authoring/reference.md)). The

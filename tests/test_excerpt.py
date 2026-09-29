@@ -306,7 +306,7 @@ def test_excerpt_rejects_an_unsupported_source_manifest_format_version(tmp_path)
     full = run(entry, out=tmp_path / "full")
     manifest_path = Path(full["manifest"])
     manifest = json.loads(manifest_path.read_text())
-    manifest["format_version"] = 3
+    manifest["format_version"] = 999
     manifest_path.write_text(json.dumps(manifest))
     with pytest.raises(RunError) as failure:
         excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.5])

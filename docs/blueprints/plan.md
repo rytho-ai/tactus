@@ -231,9 +231,17 @@ work use the [`tactus-authoring` skill](../../skills/tactus-authoring/SKILL.md).
   did not give repeatable output. Fixed internal voice/oscillator/LFO seeds and a sfizz
   background-loading barrier patch produced six byte-identical WAVs in three fresh full-song
   renders with no cache/frozen performance. Native patches and failure/repair probes are
-  retained; installed tools and public APIs are unchanged. See the
+  retained as research. Paul rejected native forks as a product prerequisite on 2026-09-29;
+  the product uses original instruments plus saved takes. Installed tools remain unchanged. See the
   [findings](thoughts/2026-09-28-deterministic-instruments.md) and
   [reproduction](../../experiments/deterministic-instruments/README.md).
+
+- **Saved takes** — optional `render` takes, `tactus take save`/`export` and `load_take`
+  preserve exact raw performances plus source/receipt as folder materials. Original
+  OB-Xf/sfizz generated two candidates; fresh offline playback without instruments/cache
+  matched all six outputs. Bass gain edits preserved other stems; take switching and rollback
+  passed. Source refs own selection; regeneration remains explicit. See the
+  [plan](plans/2026-09-29-saved-takes.md) and [evidence](../../experiments/saved-takes/README.md).
 
 ## 🚧 In progress
 

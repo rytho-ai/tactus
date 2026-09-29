@@ -1,5 +1,8 @@
 # Deterministic instrument regeneration
 
+> Product decision, 2026-09-29: use original instruments and [saved takes](../saved-takes/README.md).
+> Native patches below remain research evidence, not an installation requirement.
+
 **Both local native patches passed full-song regeneration.** Three fresh offline containers
 regenerated the 46-bar song, without stage reuse or saved performance arrays. All six WAVs
 matched byte-for-byte. The installed plugin and sfizz executable remain unchanged.

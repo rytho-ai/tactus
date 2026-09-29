@@ -1,5 +1,9 @@
 """Run functional Python productions in fresh processes and publish named PCM outputs.
 
+Optional render `takes` preserves exact intermediate arrays with source and receipt in
+run-local candidate bundles (manifest version 3). `takes.py` owns their format and
+explicit promotion to materials; ordinary runs keep manifest version 2.
+
 The public runner owns request validation, process lifetime and failed-run cleanup.
 The private worker calls _execute for source binding, attribution and OutputStore
 publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
@@ -50,7 +54,7 @@ from urllib.request import url2pathname
 
 import numpy as np
 
-from . import revision, stage
+from . import revision, stage, takes
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .store import OutputStore, validate_name
 
@@ -395,14 +399,26 @@ def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[st
 
 
 def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
-    if not isinstance(result, dict) or set(result) != {"sample_rate", "outputs"}:
-        raise ValueError("render must return exactly {sample_rate, outputs}")
+    if not isinstance(result, dict) or set(result) not in (
+        {"sample_rate", "outputs"},
+        {"sample_rate", "outputs", "takes"},
+    ):
+        raise ValueError("render must return {sample_rate, outputs} with optional takes")
     rate = result["sample_rate"]
     if type(rate) is not int or rate <= 0:
         raise ValueError("sample_rate must be a positive integer")
     outputs = result["outputs"]
     if not isinstance(outputs, dict) or not outputs:
         raise ValueError("outputs must be a nonempty dictionary")
+    _validate_audio_mapping(outputs)
+    if "takes" in result:
+        _validate_audio_mapping(result["takes"])
+    return rate, outputs
+
+
+def _validate_audio_mapping(outputs: Any) -> None:
+    if not isinstance(outputs, dict) or not outputs:
+        raise ValueError("audio mapping must be a nonempty dictionary")
     for name, audio in outputs.items():
         if not isinstance(name, str) or not name:
             raise ValueError("output labels must be nonempty strings")
@@ -417,7 +433,6 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
             raise ValueError(f"output {name!r} must contain nonempty mono or stereo frames")
         if not np.isfinite(audio).all():
             raise ValueError(f"output {name!r} contains NaN or infinity")
-    return rate, outputs
 
 
 def _execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -426,6 +441,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
     phase = "load"
     try:
         before = _inventory(source.parent, out)
+        snapshot = takes.snapshot_source(source, before)
         git = revision.record(source.parent, out)
         _reset_record()
         reuse = bool(request.get("reuse", False))
@@ -498,8 +514,12 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "sample_rate": rate,
             "outputs": references,
         }
+        if "takes" in result:
+            manifest["takes"] = takes.publish_candidates(out, result["takes"], rate, snapshot)
+            manifest["format_version"] = 3
         _write_json(out / "manifest.json", manifest)
         return {
+            **({"takes": manifest["takes"]} if "takes" in manifest else {}),
             "status": "ok",
             "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
             "manifest": str(out / "manifest.json"),

@@ -6,9 +6,11 @@ are supported; unknown/missing parameters are errors. There is no type-annotatio
 coercion. Put production work inside the function; Tactus loads the file under a
 non-`__main__` name before calling it.
 
-Return exactly `{"sample_rate": positive_integer, "outputs": {name: numpy_array}}`.
+Return `{"sample_rate": positive_integer, "outputs": {name: numpy_array}}`, optionally
+with `takes: {name: numpy_array}` to preserve original intermediate samples. See
+[Saved takes](../../skills/tactus-authoring/reference.md#saved-takes).
 Each named output is nonempty mono `(frames,)` or mono/stereo `(frames, channels)`,
-real numeric, finite and within [-1, 1]. All outputs share the rate; lengths can
+real numeric and finite. Outputs beyond [-1, 1] are clipped on PCM24 delivery and reported. All outputs share the rate; lengths can
 differ and no name is mandatory. Tactus stores float32-to-PCM24 WAVs without
 normalization, resampling, limiting or automatic mixing. Each name must match
 `[A-Za-z0-9][A-Za-z0-9._-]*`, since it becomes part of the saved WAV's filename.
@@ -53,7 +55,7 @@ and stateful range audition are not implemented.
 
 ## Attribution and saved results
 
-`manifest.json` has kind `tactus.functional-run`, format version 1, sample rate and
+`manifest.json` has kind `tactus.functional-run`, format version 2 (3 with optional `takes`), sample rate and
 named AudioRefs (`sha256`, `frames`, `channels`, `file`). WAVs live at
 `<out>/<name>-<sha256[:8]>.wav`; identical output bytes under the same name share
 the same file. Saved WAVs remain playable without the original source. This format
