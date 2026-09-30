@@ -44,6 +44,22 @@ work with a pinned Git installation, follow
 [Install and select a work](../skills/references/project-commands.md#install-and-select-a-work).
 Use `uv tool install --force` when intentionally replacing an existing CLI installation.
 
+## Building distributions
+
+```bash
+uv build
+```
+
+The source distribution has an explicit allowlist in `pyproject.toml`: runtime source,
+tests, maintained examples, usage/design docs, shared skills, plugin manifests and adopted
+brand assets. Local blueprints, experiments, dogfood, probes and worktrees stay outside it.
+Nested example environments, input audio, run outputs and delivery directories are excluded
+explicitly, independently of Git tracking. Keep selected audio and experiment evidence in
+their local stores; package rebuilds do not need them.
+
+When changing the package boundary, inspect the resulting archive and build a wheel from
+the unpacked source distribution. A wheel-only build does not verify the source archive.
+
 ## Plugin verification
 
 Both hosts use the same skills and references under `skills/`, with plugin manifests

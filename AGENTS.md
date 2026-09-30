@@ -11,10 +11,11 @@ maintained independently of the historical thoughts; design choices do not imply
 
 Use the installed small-change skill for decided fixes and the planning skill for new
 capabilities. Maintain principles in `docs/positioning.md`, current approaches in `docs/design.md`,
-grounded plans in `docs/blueprints/plans/`, decision rationale and experiments in
-`docs/blueprints/thoughts/`,
-and current status in `docs/blueprints/plan.md`. Historical docs retain their original names;
-follow supersession notices before treating them as current requirements.
+grounded plans for active work in `docs/blueprints/plans/`, decision rationale by topic in
+`docs/blueprints/thoughts/`, and current status in `docs/blueprints/plan.md`.
+Original experiments and retired plans are archived with checksums under
+`experiments/documentation-history/`; consult them when original measurements or superseded
+proposals are needed. Current contracts stay in the maintained product documents.
 Blueprints and `experiments/` are local, Git-ignored working material. Keep usage contracts
 and verification needed by a clean checkout in tracked docs, examples and tests.
 
