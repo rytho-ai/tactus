@@ -1,45 +1,18 @@
-"""Run functional Python productions in fresh processes and publish named PCM outputs.
+"""Execute functional productions in fresh processes and coordinate publication.
 
-Optional render `takes` preserves exact intermediate arrays with source and receipt in
-run-local candidate bundles (manifest version 3). `takes.py` owns their format and
-explicit promotion to materials; ordinary runs keep manifest version 2.
+Owns request/process lifetime, render binding, receipts and failed-run cleanup.
+Original arrays are committed before PCM delivery; completed renders survive a
+delivery failure. Stage reuse, saved takes and output formats have dedicated owners.
+Shared errors/JSON/audio contracts live in _contracts; source and environment
+identities live in _source. RunError and parse_params remain available here.
 
-Original returned arrays are committed to render.json before WAV delivery. Delivery
-failure preserves that checkpoint for export; earlier failures remove the run directory.
-The public runner owns request validation, process lifetime and failed-run cleanup.
-The private worker calls _execute for source binding, attribution and OutputStore
-publication. Manifests identify saved audio, plus each output's `peak_dbfs` and
-`clipped_samples` from `OutputStore.add` (manifest `format_version` 2); the run result's
-`levels` mirrors the same numbers so the Agent sees them without opening the manifest.
-Nothing about level is refused — over-full-scale audio publishes clipped. Receipts
-attribute the bounded execution, including resolved input materials, declared tools and
-imported package versions (`tactus.inputs`) (receipt `format_version` 4, adding `stages`,
-`reuse`, `environment` and `package_sources` — the interpreter's project lock and each
-non-index distribution's PEP 610 origin, so a work can be rebuilt in another directory).
-To hear part of a run, or only some of its outputs, slice an already
-completed run with `tactus.excerpt` instead of re-rendering — a work whose render is
-nondeterministic (e.g. a VST3 instrument) would otherwise produce a different
-performance.
-
-With `reuse=True` (CLI `--reuse`), `_execute` computes this run's stage key parts once
-from data it already gathers (`source_files`, `dependency_lock`, the Python and Tactus
-versions) and hands them to `stage.py` before calling `render`, so `@stage`-marked
-functions can reuse an unchanged prior call's result; see `stage.py` for the key and
-storage. Without `--reuse`, `@stage` is a transparent call and this costs nothing.
-
-`_direct_url` is the single PEP 610 reader (`_package_sources` uses it for attribution;
-`init.py` reuses it to resolve the running Tactus's own origin when scaffolding a work).
-
-Reads: inputs.MaterialError/ToolError/_record_snapshot/_reset_record · store.OutputStore
-· stage._begin_run/_end_run
+Reads: _contracts · _source · inputs · stage · takes/render_store · store/revision
 """
 
 from __future__ import annotations
 
-import hashlib
 import inspect
 import json
-import math
 import os
 import runpy
 import shutil
@@ -48,83 +21,19 @@ import subprocess
 import sys
 import tempfile
 import time
-from importlib.metadata import PackageNotFoundError, distribution, packages_distributions, version
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
-from urllib.request import url2pathname
 
 import numpy as np
 
+from . import _source as source_info
 from . import render_store, revision, stage, takes
+from ._contracts import RunError, json_copy, parse_params, validate_audio_mapping, write_json
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
-from .store import OutputStore, validate_name
+from .store import OutputStore
 
-
-class RunError(Exception):
-    """A failed run with a stable code and the phase in which it failed."""
-
-    def __init__(self, code: str, phase: str, message: str) -> None:
-        super().__init__(message)
-        self.code = code
-        self.phase = phase
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "status": "error",
-            "error": {
-                "code": self.code,
-                "phase": self.phase,
-                "message": str(self),
-            },
-        }
-
-    @property
-    def exit_code(self) -> int:
-        if self.code == "cancelled":
-            return 130
-        return 2 if self.phase in {"request", "load", "bind"} else 1
-
-
-def _json_copy(value: Any) -> Any:
-    """Validate JSON values without silently coercing tuples or nonstring keys."""
-    if value is None or type(value) in (str, bool, int):
-        return value
-    if type(value) is float and math.isfinite(value):
-        return value
-    if type(value) is list:
-        return [_json_copy(item) for item in value]
-    if type(value) is dict and all(isinstance(key, str) for key in value):
-        return {key: _json_copy(item) for key, item in value.items()}
-    raise ValueError("parameters must contain finite JSON values and string object keys")
-
-
-def parse_params(raw: str) -> dict[str, Any]:
-    """Parse CLI overrides, rejecting duplicate keys and nonstandard JSON numbers."""
-
-    def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in items:
-            if key in result:
-                raise ValueError(f"duplicate parameter key: {key}")
-            result[key] = value
-        return result
-
-    try:
-        params = _json_copy(json.loads(raw, object_pairs_hook=pairs))
-        if not isinstance(params, dict):
-            raise TypeError("--params must be a JSON object")
-        return params
-    except (ValueError, TypeError, RecursionError) as exc:
-        raise RunError("invalid_request", "request", str(exc)) from exc
-
-
-def _write_json(path: Path, value: dict[str, Any]) -> None:
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(
-        json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
-    )
-    temporary.replace(path)
+__all__ = ["RunError", "parse_params", "run"]
 
 
 def _stop(process: subprocess.Popen[str]) -> None:
@@ -168,7 +77,7 @@ def run(
     try:
         source = Path(source).resolve()
         out = Path(out).resolve()
-        params = _json_copy({} if params is None else params)
+        params = json_copy({} if params is None else params)
         if not isinstance(params, dict):
             raise TypeError("params must be a dictionary")
         if not source.is_file() or source.suffix != ".py":
@@ -191,7 +100,7 @@ def run(
         with tempfile.TemporaryDirectory(prefix="tactus-run-") as temporary:
             request = Path(temporary) / "request.json"
             response = Path(temporary) / "response.json"
-            _write_json(
+            write_json(
                 request,
                 {
                     "source": str(source),
@@ -268,126 +177,6 @@ def run(
                 shutil.rmtree(out, ignore_errors=True)
 
 
-def _find_lock(start: Path) -> Path | None:
-    """Walk upward from `start` for the nearest `uv.lock`, stopping at the filesystem root."""
-    current = start
-    while True:
-        candidate = current / "uv.lock"
-        if candidate.is_file():
-            return candidate
-        parent = current.parent
-        if parent == current:
-            return None
-        current = parent
-
-
-def _inventory(root: Path, output: Path) -> dict[str, Any]:
-    excluded = {".tactus", ".tactus-code", ".venv", "__pycache__", ".git"}
-    files = {}
-    for directory, children, names in os.walk(root):
-        children[:] = [
-            name
-            for name in children
-            if name not in excluded and (Path(directory) / name).resolve() != output
-        ]
-        for name in sorted(names):
-            if name.endswith(".py"):
-                path = Path(directory) / name
-                files[path.relative_to(root).as_posix()] = hashlib.sha256(
-                    path.read_bytes()
-                ).hexdigest()
-    lock = _find_lock(root)
-    return {
-        "source_files": files,
-        "dependency_lock": {
-            "path": str(lock),
-            "sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
-        }
-        if lock is not None
-        else None,
-    }
-
-
-def _python_packages() -> dict[str, str]:
-    """Map imported top-level modules to installed distribution versions, minus stdlib."""
-    mapping = packages_distributions()
-    stdlib = sys.stdlib_module_names
-    result: dict[str, str] = {}
-    for name in list(sys.modules):
-        top = name.split(".", 1)[0]
-        if top in stdlib:
-            continue
-        for dist_name in mapping.get(top, ()):
-            if dist_name in result:
-                continue
-            try:
-                result[dist_name] = version(dist_name)
-            except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
-                pass
-    return dict(sorted(result.items()))
-
-
-def _environment() -> dict[str, Any]:
-    """The running interpreter's prefix and, when it owns a project, that project's lock."""
-    prefix = Path(sys.prefix)
-    candidate = prefix.parent / "uv.lock"
-    lock = (
-        {"path": str(candidate), "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest()}
-        if candidate.is_file()
-        else None
-    )
-    return {"prefix": str(prefix), "lock": lock}
-
-
-def _direct_url(name: str) -> dict[str, Any] | None:
-    """Parsed PEP 610 `direct_url.json` for an installed distribution, or None without one.
-
-    Shared by `_package_sources` (receipt attribution) and `init.py` (resolving the
-    running Tactus's own origin to pin a new work) so the parsing lives in one place.
-    """
-    try:
-        raw = distribution(name).read_text("direct_url.json")
-    except PackageNotFoundError:  # pragma: no cover - defensive; metadata inconsistent
-        return None
-    if raw is None:
-        return None
-    return json.loads(raw)
-
-
-def _package_sources(names: list[str]) -> dict[str, Any]:
-    """PEP 610 origin of each named distribution not installed from an index.
-
-    Reads each distribution's `direct_url.json`; a distribution with none (an index
-    install) is omitted, since the lock already pins it.
-    """
-    result: dict[str, Any] = {}
-    for name in names:
-        data = _direct_url(name)
-        if data is None:
-            continue
-        url = data.get("url", "")
-        vcs_info = data.get("vcs_info")
-        dir_info = data.get("dir_info")
-        archive_info = data.get("archive_info")
-        if vcs_info:
-            result[name] = {
-                "url": url,
-                "vcs": vcs_info.get("vcs"),
-                "commit": vcs_info.get("commit_id"),
-            }
-        elif dir_info:
-            entry: dict[str, Any] = {"url": url, "editable": bool(dir_info.get("editable", False))}
-            parsed = urlparse(url)
-            if parsed.scheme == "file":
-                git = revision.describe(Path(url2pathname(parsed.path)))
-                if git is not None:
-                    entry["git"] = git
-            result[name] = entry
-        elif archive_info and archive_info.get("hash"):
-            result[name] = {"url": url, "hash": archive_info["hash"]}
-    return dict(sorted(result.items()))
-
-
 def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     if not inspect.isfunction(factory) or inspect.iscoroutinefunction(factory):
         raise ValueError("source must define a synchronous render function")
@@ -398,12 +187,12 @@ def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[st
         if parameter.kind != inspect.Parameter.KEYWORD_ONLY:
             raise ValueError("render accepts only explicitly named keyword-only parameters")
         if parameter.default is not inspect.Parameter.empty:
-            _json_copy(parameter.default)
+            json_copy(parameter.default)
     bound = signature.bind(**params)
     bound.apply_defaults()
-    effective = _json_copy(dict(bound.arguments))
+    effective = json_copy(dict(bound.arguments))
     # Author mutation must not change the receipt's record of the input values.
-    return _json_copy(effective), effective
+    return json_copy(effective), effective
 
 
 def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
@@ -418,29 +207,10 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
     outputs = result["outputs"]
     if not isinstance(outputs, dict) or not outputs:
         raise ValueError("outputs must be a nonempty dictionary")
-    _validate_audio_mapping(outputs)
+    validate_audio_mapping(outputs)
     if "takes" in result:
-        _validate_audio_mapping(result["takes"])
+        validate_audio_mapping(result["takes"])
     return rate, outputs
-
-
-def _validate_audio_mapping(outputs: Any) -> None:
-    if not isinstance(outputs, dict) or not outputs:
-        raise ValueError("audio mapping must be a nonempty dictionary")
-    for name, audio in outputs.items():
-        if not isinstance(name, str) or not name:
-            raise ValueError("output labels must be nonempty strings")
-        validate_name(name)
-        if not isinstance(audio, np.ndarray) or audio.dtype.kind not in "iuf":
-            raise ValueError(f"output {name!r} must be a real numeric NumPy array")
-        if (
-            audio.ndim not in (1, 2)
-            or not len(audio)
-            or (audio.ndim == 2 and audio.shape[1] not in (1, 2))
-        ):
-            raise ValueError(f"output {name!r} must contain nonempty mono or stereo frames")
-        if not np.isfinite(audio).all():
-            raise ValueError(f"output {name!r} contains NaN or infinity")
 
 
 def _execute(request: dict[str, Any]) -> dict[str, Any]:
@@ -448,7 +218,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
     source, out = Path(request["source"]), Path(request["out"])
     phase = "load"
     try:
-        before = _inventory(source.parent, out)
+        before = source_info.inventory(source.parent, out)
         snapshot = takes.snapshot_source(source, before)
         git = revision.record(source.parent, out)
         _reset_record()
@@ -471,15 +241,15 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         elapsed_seconds = round(time.perf_counter() - started, 3)
         stages = stage._end_run()
         inputs_used = _record_snapshot()
-        python_packages = _python_packages()
-        environment = _environment()
+        python_packages = source_info.python_packages()
+        environment = source_info.environment()
         # Tactus itself is always attributed even though `packages_distributions()`
         # does not map its own editable install back to `tactus.*` modules.
-        package_sources = _package_sources(sorted({*python_packages, "tactus"}))
+        package_sources = source_info.package_sources(sorted({*python_packages, "tactus"}))
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
-        if _inventory(source.parent, out) != before:
+        if source_info.inventory(source.parent, out) != before:
             raise RunError(
                 "source_changed", phase, "source or nearest uv.lock changed during execution"
             )
@@ -508,7 +278,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "resolved materials, declared tools and imported third-party distributions. "
             "Not traced: undeclared files or executables, network access and randomness.",
         }
-        _write_json(out / "receipt.json", receipt)
+        write_json(out / "receipt.json", receipt)
         take_refs = (
             takes.publish_candidates(out, result["takes"], rate, snapshot)
             if "takes" in result
@@ -532,7 +302,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         if "takes" in result:
             manifest["takes"] = take_refs
             manifest["format_version"] = 3
-        _write_json(out / "manifest.json", manifest)
+        write_json(out / "manifest.json", manifest)
         return {
             **({"takes": manifest["takes"]} if "takes" in manifest else {}),
             "status": "ok",

@@ -10,7 +10,7 @@ source manifest of `format_version` 1, 2 or 3. Excerpt outputs are already-clipp
 audio, so each carries `peak_dbfs`/`clipped_samples` for the published slice (`clipped_samples`
 is always 0 there); its own manifest is `format_version` 2, following the run manifest.
 
-Reads: run._write_json (shared JSON writer) · run.RunError · store.OutputStore/AudioRef
+Reads: _contracts · store.OutputStore/AudioRef · timing.frame_of
 """
 
 from __future__ import annotations
@@ -24,8 +24,9 @@ from typing import Any
 
 import numpy as np
 
-from .run import RunError, _write_json
+from ._contracts import RunError, write_json
 from .store import AudioRef, OutputStore, validate_name
+from .timing import frame_of
 
 
 def parse_range(raw: str) -> list[float | None]:
@@ -113,8 +114,8 @@ def _select_and_slice(
         selected = dict(outputs)
 
     start_seconds, end_seconds = range_spec
-    start_frame = round(start_seconds * rate)
-    end_frame = round(end_seconds * rate) if end_seconds is not None else None
+    start_frame = frame_of(start_seconds, rate)
+    end_frame = frame_of(end_seconds, rate) if end_seconds is not None else None
     sliced: dict[str, np.ndarray] = {}
     source_frames: dict[str, int] = {}
     omitted: list[str] = []
@@ -196,6 +197,9 @@ def excerpt(
     Every selected output is re-verified against its recorded sha256 and metadata before
     slicing, so a tampered or corrupted source run fails loudly instead of publishing a
     silently wrong excerpt.
+
+    Absolute boundaries use timing.frame_of: floor(seconds * sample_rate + 0.5),
+    with half-sample ties going to the later frame. End frames are exclusive.
     """
     try:
         run_dir = Path(run_dir).resolve()
@@ -241,7 +245,7 @@ def excerpt(
                     "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
                 },
             }
-            _write_json(out / "manifest.json", manifest_out)
+            write_json(out / "manifest.json", manifest_out)
         except (ValueError, TypeError, OSError) as exc:
             raise RunError("invalid_request", "publish", str(exc)) from exc
         completed = True

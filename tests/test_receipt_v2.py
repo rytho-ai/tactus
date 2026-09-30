@@ -7,18 +7,13 @@ import json
 import stat
 import subprocess
 import sys
-from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pytest
 
-from tactus import RunError, run
+from tactus import RunError, _source, run
 from tactus.inputs import pool
-
-# `tactus/__init__.py` rebinds the package's `run` attribute to this function, shadowing
-# the `tactus.run` submodule; `import_module` reaches the submodule regardless.
-run_module = import_module("tactus.run")
 
 
 def source(tmp_path: Path, text: str, *, subdir: str = "authoring") -> Path:
@@ -193,7 +188,7 @@ def test_environment_lock_is_null_when_the_prefixs_parent_has_no_lock(tmp_path, 
     prefix = tmp_path / "somewhere" / ".venv"
     prefix.mkdir(parents=True)
     monkeypatch.setattr(sys, "prefix", str(prefix))
-    assert run_module._environment() == {"prefix": str(prefix), "lock": None}
+    assert _source.environment() == {"prefix": str(prefix), "lock": None}
 
 
 def test_environment_lock_resolves_when_the_prefixs_parent_has_one(tmp_path, monkeypatch):
@@ -203,7 +198,7 @@ def test_environment_lock_resolves_when_the_prefixs_parent_has_one(tmp_path, mon
     lock = project / "uv.lock"
     lock.write_text("# fake lock\n")
     monkeypatch.setattr(sys, "prefix", str(prefix))
-    assert run_module._environment() == {
+    assert _source.environment() == {
         "prefix": str(prefix),
         "lock": {"path": str(lock), "sha256": hashlib.sha256(lock.read_bytes()).hexdigest()},
     }
@@ -230,11 +225,11 @@ def test_package_sources_records_a_vcs_installed_distributions_commit(monkeypatc
         }
     )
     monkeypatch.setattr(
-        run_module,
+        _source,
         "distribution",
         lambda name: _FakeDistribution(payload if name == "pytimestretch" else None),
     )
-    result = run_module._package_sources(["pytimestretch"])
+    result = _source.package_sources(["pytimestretch"])
     assert result == {
         "pytimestretch": {
             "url": "https://github.com/openmirlab/pytimestretch",
@@ -262,11 +257,11 @@ def test_package_sources_records_an_editable_local_git_checkouts_commit_and_dirt
 
     payload = json.dumps({"url": directory.as_uri(), "dir_info": {"editable": True}})
     monkeypatch.setattr(
-        run_module,
+        _source,
         "distribution",
         lambda name: _FakeDistribution(payload if name == "tactus" else None),
     )
-    result = run_module._package_sources(["tactus"])
+    result = _source.package_sources(["tactus"])
     assert result == {
         "tactus": {
             "url": directory.as_uri(),
@@ -277,13 +272,13 @@ def test_package_sources_records_an_editable_local_git_checkouts_commit_and_dirt
 
 
 def test_package_sources_omits_index_installed_distributions(monkeypatch):
-    monkeypatch.setattr(run_module, "distribution", lambda name: _FakeDistribution(None))
-    assert run_module._package_sources(["numpy", "soundfile"]) == {}
+    monkeypatch.setattr(_source, "distribution", lambda name: _FakeDistribution(None))
+    assert _source.package_sources(["numpy", "soundfile"]) == {}
 
 
 def test_package_sources_skips_a_distribution_missing_its_metadata(monkeypatch):
     def fake(name: str) -> _FakeDistribution:
         raise PackageNotFoundError(name)
 
-    monkeypatch.setattr(run_module, "distribution", fake)
-    assert run_module._package_sources(["ghost"]) == {}
+    monkeypatch.setattr(_source, "distribution", fake)
+    assert _source.package_sources(["ghost"]) == {}

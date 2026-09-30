@@ -1,36 +1,11 @@
-"""Pedalboard parameter, automation, and instrument-rendering helpers shared across works.
+"""Plugin parameter discovery, unit-aware setting and stateful Pedalboard rendering.
 
-`set_param` picks the nearest valid value for a VST3 discrete/string-labelled parameter
-(parsing each label into a canonical unit so a request like "10 ms" doesn't silently
-match a "9.97 s" label) or sets a built-in Pedalboard attribute directly, and returns
-the value actually set so authors can keep it in source or a log. When a parameter's
-unit (e.g. "semitones", "voices") isn't one of the known time/frequency/cents/dB/percent
-families, it falls back to matching labels by their raw unit text instead of raising.
-`process_automated` runs an effects chain block-by-block, calling an author-supplied
-`update(t)` before each block so parameter automation reads as a curve function rather
-than a hand-rolled loop, while handling the reset flag, tail padding, and plugin latency
-alignment once instead of once per `render()`. `render_instrument` renders a VST
-instrument plugin (MIDI in, audio out) to Tactus's `(frames, channels)` layout, running a
-silent warm-up render first because a plugin's very first render after parameter changes
-can carry an audible transient. Four probe-round agents each hand-wrote these pieces
-independently (one got the unit wrong and produced a 10-second attack instead of 10ms;
-two shipped instrument renders with an audible pop before the first note); this module
-gives every future work the same tested implementation. `varispeed` plays audio back at a
-per-frame speed so pitch moves with speed (tape stop, spin-down), which pytimestretch's
-pitch-preserving engines cannot do; two probe Agents hand-wrote it for a tape stop.
-`describe` lists a plugin's parameters (name, current value, units, range or valid
-values) instead of assuming a scale: a full-song dogfood had an Agent set OB-Xf's
-`amp_env_sustain` to 1.0 believing a 0-1 scale when it's 0-100%, and `set_param` accepted
-it silently because 1.0 was in range. A survey of installed plugins found unit metadata
-isn't general (OB-Xf reports units on most params, Dexed and the Cardinal/DrumCraker
-plugins mostly don't), but name/range/valid-values/current-value are always there, so
-discovery generalizes where units don't. `format_table` renders `describe`'s rows as
-fixed-width text for a quick `print`. `fit_rms` brings audio to a target whole-signal RMS
-without letting any sample cross a ceiling, using a smooth look-ahead gain envelope rather than
-a hard-clipping limiter (`pedalboard.Limiter` left probe mixes with thousands of samples flat
-at the ceiling).
+Owns valid-value matching, block automation, tail/latency handling and instrument
+warm-up. Authors choose parameters, curves and notes; helpers return Tactus layout.
+Owned signal processing lives in dsp.py. fit_rms and varispeed remain aliases here
+for existing works, with unchanged signatures and numerical behavior.
 
-Reads: pedalboard · scipy.ndimage
+Reads: numpy · author-supplied plugin objects · lazy dsp compatibility aliases
 """
 
 from __future__ import annotations
@@ -39,10 +14,12 @@ import difflib
 import inspect
 import math
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from scipy.ndimage import minimum_filter1d, uniform_filter1d
+
+if TYPE_CHECKING:
+    from .dsp import fit_rms, varispeed
 
 __all__ = [
     "describe",
@@ -54,7 +31,19 @@ __all__ = [
     "varispeed",
 ]
 
-_FIT_RMS_WINDOW_MS = 5.0
+
+def __getattr__(name: str):
+    """Resolve legacy DSP imports without loading Numba for plugin-only callers."""
+    if name in {"fit_rms", "varispeed"}:
+        from . import dsp
+
+        return getattr(dsp, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(__all__))
+
 
 # Canonical unit per family: ms (time), Hz (frequency), cents, dB, % (percent).
 _TIME_TO_MS = {"ms": 1.0, "s": 1000.0}
@@ -658,119 +647,3 @@ def render_instrument(
         audio = audio[:target_frames]
 
     return audio.astype(np.float32, copy=False)
-
-
-def varispeed(audio: np.ndarray, sample_rate: int, speed: np.ndarray) -> np.ndarray:
-    """Play `audio` back at a per-output-frame `speed`, so pitch follows speed.
-
-    `speed[i]` is the playback rate at output frame `i`: 1.0 is normal, 0.5 is half
-    speed an octave down, 0.0 holds the current position. The read position advances
-    by the cumulative speed and is linearly interpolated; once it passes the end of
-    `audio`, output is silence. Output has `len(speed)` frames in `audio`'s layout
-    (`(frames,)` or `(frames, channels)`), float32. The curve's shape is the work's
-    choice; this only resamples. Speeds above 1.0 are not band-limited and can alias.
-    """
-    raw = np.asarray(audio)
-    if type(sample_rate) is not int or sample_rate <= 0:
-        raise ValueError("sample_rate must be a positive int")
-    if raw.ndim not in (1, 2) or not len(raw) or not np.isfinite(raw).all():
-        raise ValueError("audio must be finite, nonempty (frames,) or (frames, channels)")
-    rates = np.asarray(speed, dtype=np.float64)
-    if rates.ndim != 1 or not len(rates) or not np.isfinite(rates).all() or (rates < 0).any():
-        raise ValueError("speed must be a nonempty 1-D array of finite values >= 0")
-
-    source = raw.astype(np.float32, copy=False)
-    frames = source.shape[0]
-    position = np.concatenate([[0.0], np.cumsum(rates[:-1])])
-    inside = position <= frames - 1
-    grid = np.arange(frames, dtype=np.float64)
-    if source.ndim == 1:
-        out = np.interp(position, grid, source).astype(np.float32)
-        out[~inside] = 0.0
-        return out
-    out = np.stack(
-        [np.interp(position, grid, source[:, ch]) for ch in range(source.shape[1])], axis=1
-    ).astype(np.float32)
-    out[~inside] = 0.0
-    return out
-
-
-def _rms_dbfs(x: np.ndarray) -> float:
-    mean_square = float(np.mean(np.square(x, dtype=np.float64))) if x.size else 0.0
-    return 10.0 * math.log10(mean_square) if mean_square > 0 else -math.inf
-
-
-def _limiter_gain(x: np.ndarray, ceiling_lin: float, sample_rate: int) -> np.ndarray:
-    """A per-sample gain envelope that never exceeds what that sample needs to reach the
-    ceiling, smoothed so it changes gradually instead of snapping on and off. `needed` is the
-    instantaneous `min(1, ceiling / peak-across-channels)`; a centered running minimum over a
-    window of about 2W looks ahead and behind so the dip starts before an oncoming peak and
-    holds through it, then a box average over W (W ~ 5 ms) smooths the transitions."""
-    peak = np.max(np.abs(x), axis=-1) if x.ndim == 2 else np.abs(x)
-    needed = np.minimum(1.0, ceiling_lin / np.maximum(peak, 1e-9))
-    w = max(1, round(_FIT_RMS_WINDOW_MS / 1000.0 * sample_rate))
-    ducked = minimum_filter1d(needed, size=2 * w + 1, mode="nearest")
-    return uniform_filter1d(ducked, size=w, mode="nearest")
-
-
-def _apply_gain(x: np.ndarray, gain: np.ndarray) -> np.ndarray:
-    return x * gain[:, None] if x.ndim == 2 else x * gain
-
-
-def fit_rms(
-    audio: np.ndarray, sample_rate: int, target_dbfs: float, ceiling_dbfs: float = -1.0
-) -> np.ndarray:
-    """Return audio whose whole-signal RMS (all channels flattened together) is within 0.05 dB
-    of `target_dbfs`, with every sample at or below `ceiling_dbfs`, measured on this
-    function's returned array (matching how a checker would measure the delivered file).
-
-    Limiting is a NumPy look-ahead gain envelope (`_limiter_gain`), not
-    `pedalboard.Limiter`: a hard-clipping limiter can leave hundreds of samples flat at the
-    ceiling on peaky material, which this avoids by ducking gain smoothly ahead of a peak
-    rather than clipping into it. A trailing `np.clip` is a safety guard for the rare case the
-    smoothing itself lets a sample edge a hair over the ceiling; it should never trigger
-    meaningfully.
-
-    Applying the envelope changes the RMS relative to a plain gain, so this bisects the
-    pre-gain (up to 30 steps) between a bound quiet enough to barely limit and one loud enough
-    to limit heavily -- the achieved RMS rises monotonically with pre-gain over that range --
-    stopping early once within 0.05 dB of the target. If still more than 0.5 dB away after 30
-    steps, raises `ValueError` naming the achieved RMS: heavy targets on peaky material mean
-    heavy limiting, which can make the target unreachable at that ceiling (a target RMS can
-    never exceed the ceiling itself). Silence (all-zero input) passes through unchanged.
-    """
-    x = np.asarray(audio, dtype=np.float32)
-    if x.size == 0 or not np.any(x):
-        return x
-    ceiling_lin = 10.0 ** (ceiling_dbfs / 20.0)
-
-    def measure(pre_gain_db: float) -> tuple[np.ndarray, float]:
-        pre = x * (10.0 ** (pre_gain_db / 20.0))
-        gain = _limiter_gain(pre, ceiling_lin, sample_rate)
-        limited = _apply_gain(pre, gain)
-        return limited, _rms_dbfs(limited)
-
-    naive_db = target_dbfs - _rms_dbfs(x)
-    lo, hi = naive_db - 60.0, naive_db + 60.0
-    y, cur_db = measure(hi)
-    for _ in range(30):
-        mid = (lo + hi) / 2.0
-        y, cur_db = measure(mid)
-        if abs(cur_db - target_dbfs) <= 0.05:
-            break
-        if cur_db < target_dbfs:
-            lo = mid
-        else:
-            hi = mid
-
-    if abs(cur_db - target_dbfs) > 0.5:
-        raise ValueError(
-            f"fit_rms could not reach {target_dbfs} dBFS within 0.5 dB in 30 iterations "
-            f"(achieved {cur_db:.2f} dBFS); the ceiling of {ceiling_dbfs} dBFS may be too "
-            "tight for this material's crest factor."
-        )
-
-    peak = float(np.max(np.abs(y))) if y.size else 0.0
-    if peak > ceiling_lin:
-        y = np.clip(y, -ceiling_lin, ceiling_lin)
-    return y.astype(np.float32)

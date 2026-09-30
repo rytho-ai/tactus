@@ -678,3 +678,10 @@ def test_fit_rms_no_flat_top_on_peaky_drum_material():
     assert flat_top / y.size < 0.0001, f"{flat_top} of {y.size} samples within 0.01 dB of ceiling"
     assert float(np.max(np.abs(y))) <= ceiling_lin + 1e-6
     assert abs(_rms_dbfs(y) - (-14.0)) <= 0.05
+
+
+def test_owned_dsp_aliases_preserve_existing_fx_imports():
+    from tactus import dsp
+
+    assert fx.varispeed is dsp.varispeed
+    assert fx.fit_rms is dsp.fit_rms

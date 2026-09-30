@@ -13,13 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
+from ._contracts import RunError, validate_audio_mapping, write_json
 from .inputs.pool import hash_file
 from .store import validate_name
 
 
 def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> Path:
-    from .run import _write_json
-
     directory = root / "render"
     directory.mkdir()
     entries = {}
@@ -42,13 +41,11 @@ def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> 
     }
     if takes:
         manifest["takes"] = takes
-    _write_json(root / "render.json", manifest)
+    write_json(root / "render.json", manifest)
     return root / "render.json"
 
 
 def read(root: Path) -> tuple[int, dict, dict]:
-    from .run import RunError
-
     try:
         path = root / "render.json"
         if not path.exists():
@@ -85,9 +82,7 @@ def read(root: Path) -> tuple[int, dict, dict]:
             if list(audio.shape) != item["shape"] or audio.dtype.str != item["dtype"]:
                 raise ValueError(f"render array metadata mismatch: {name}")
             arrays[name] = audio
-        from .run import _validate_audio_mapping
-
-        _validate_audio_mapping(arrays)
+        validate_audio_mapping(arrays)
         return (
             rate,
             arrays,

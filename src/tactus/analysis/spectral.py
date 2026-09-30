@@ -8,13 +8,9 @@ single-number/curve measurements over the mixed signal, not a per-channel or ste
 report. `ANALYSES` lists the public analyses; each carries a `revision` int, bumped only when a
 result's meaning changes.
 
-Ported from the frequency-analysis probe's validated `tfreq.py` prototype (see
-`docs/blueprints/thoughts/2026-09-27-frequency-analysis-probes.md`), without its `fundamental`/
-`f0_over_time` pitch estimators: validation found `fundamental` within ±50 cents on only 47.5%
-of unseen material (two SFZ bass patches carry a sub-octave layer louder than the fundamental
-and defeat every method tried, not just this one), so there is no `pitch` category yet.
-`spectrum`, `band_levels`, `centroid`, `peaks` and `stft` are computations of stated
-definitions, not estimators, so they carry no equivalent overfitting risk.
+Measurement definitions and feature-array contracts are maintained in
+docs/analysis.md. Pitch estimation is outside this category; current limits
+and the decision to omit a pitch category are recorded in docs/design.md.
 
 dB reference for the original five measurements: 0 dB = the power of a full-scale
 (amplitude 1.0) sine wave, i.e. mean-square 0.5. The owned feature functions `mel`,

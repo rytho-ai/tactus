@@ -21,6 +21,7 @@ from typing import Any
 
 import numpy as np
 
+from ._contracts import RunError
 from .inputs import MaterialError, material, pool, tree
 from .store import validate_name
 
@@ -135,8 +136,6 @@ def load_take(ref: str, *, sample_rate: int) -> np.ndarray:
 
 def save_take(run_dir: str | Path, name: str) -> dict[str, Any]:
     """Verify a completed run's candidate and persist it independently of that run/cache."""
-    from .run import RunError
-
     try:
         validate_name(name)
         run_dir = Path(run_dir).resolve()
@@ -180,8 +179,6 @@ def save_take(run_dir: str | Path, name: str) -> dict[str, Any]:
 
 def export_take(ref: str, *, out: str | Path) -> dict[str, Any]:
     """Copy a take bundle for `tactus material add DIR` on another machine."""
-    from .run import RunError
-
     created = False
     destination = Path(out).resolve()
     try:

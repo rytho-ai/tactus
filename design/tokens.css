@@ -35,7 +35,7 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
-  --panel-pad: 16px;
+  --panel-pad: var(--space-4);
   --control-height: 34px;
   --row-height: 42px;
   --radius: 5px;
@@ -43,7 +43,7 @@
 }
 
 :root[data-density=comfortable] {
-  --panel-pad: 24px;
+  --panel-pad: var(--space-6);
   --control-height: 42px;
   --row-height: 52px;
   --font-size: 14px;
@@ -64,15 +64,16 @@
 }
 
 
-/* Semantic detail values shared by the specimen and brand sources. */
+/* Derived state colors retain the accepted alpha values and follow semantic colors.
+ * Percentage precision preserves the original 8-bit alpha exports. */
 :root {
   --surface-toolbar: #171717;
   --text-on-accent: var(--color-bg);
-  --selection-fill: #ffd7000c;
-  --audio-fill: #4db6ac25;
-  --audio-border: #4db6ac88;
-  --midi-fill: #7986cb25;
-  --midi-border: #7986cb88;
+  --selection-fill: color-mix(in srgb, var(--accent-primary) 4.7058823529%, transparent);
+  --audio-fill: color-mix(in srgb, var(--audio-color) 14.5098039216%, transparent);
+  --audio-border: color-mix(in srgb, var(--audio-color) 53.3333333333%, transparent);
+  --midi-fill: color-mix(in srgb, var(--midi-color) 14.5098039216%, transparent);
+  --midi-border: color-mix(in srgb, var(--midi-color) 53.3333333333%, transparent);
   --text-code: #b8b8b8;
   --slider-track: #454545;
   --panel-highlight: #ffffff03;
@@ -80,9 +81,9 @@
   --wave-divider: #ffffff12;
   --wave-label: #a0a0a0;
   --wave-tick: #ffffff24;
-  --wave-bar-grid: rgba(77,182,172,.25);
+  --wave-bar-grid: color-mix(in srgb, var(--audio-color) 25%, transparent);
   --wave-beat-grid: rgba(255,255,255,.045);
-  --wave-selection: rgba(255,215,0,.07);
+  --wave-selection: color-mix(in srgb, var(--accent-primary) 7%, transparent);
   --wave-hover: #ffffff50;
   --wave-font: 10px ui-monospace,monospace;
   --brand-font: 'Outfit',sans-serif;

@@ -7,7 +7,8 @@ import sys
 import traceback
 from pathlib import Path
 
-from .run import RunError, _execute, _write_json
+from ._contracts import RunError, write_json
+from .run import _execute
 
 
 def main() -> int:
@@ -16,7 +17,7 @@ def main() -> int:
         result = _execute(json.loads(request.read_text(encoding="utf-8")))
     except RunError as exc:
         traceback.print_exc(file=sys.stderr)
-        _write_json(response, exc.to_dict())
+        write_json(response, exc.to_dict())
         return exc.exit_code
-    _write_json(response, result)
+    write_json(response, result)
     return 0

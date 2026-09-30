@@ -6,7 +6,7 @@ its environment moved whenever the Tactus checkout moved. `init` fixes this by w
 work a `pyproject.toml` that depends on `tactus` through `[tool.uv.sources]`, pinned to a
 resolved Git source, plus a `.gitignore`, then running `uv lock` so the work has its own
 `uv.lock`, and `git init` when the folder is not already in a repository. `_tactus_source` resolves that pin: by default the *running* Tactus's own PEP 610
-origin (reusing `run._direct_url`, the same parsing `run.py` uses for receipt attribution),
+origin (reusing `_source.direct_url`, the same parsing `run.py` uses for receipt attribution),
 falling back to an explicit `--tactus-path`/`--tactus` override. An editable checkout is only
 usable as a source when it is clean and its `HEAD` is already pushed (`revision.py`); a dirty
 or unpushed checkout fails with a message telling the caller to push or use `--tactus-path`.
@@ -14,7 +14,7 @@ or unpushed checkout fails with a message telling the caller to push or use `--t
 source is pinned, since that is the interpreter constraint `init` itself was verified against
 (Pedalboard's cp313 crash — see `docs/design.md`).
 
-Reads: run._direct_url/RunError · revision.describe/remote_origin/commit_on_remote/ensure_repository
+Reads: _source.direct_url/RunError · revision.describe/remote_origin/commit_on_remote/ensure_repository
 """
 
 from __future__ import annotations
@@ -30,7 +30,8 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 from . import revision
-from .run import RunError, _direct_url
+from ._contracts import RunError
+from ._source import direct_url as _direct_url
 
 _GITIGNORE = "runs/\n.venv/\n__pycache__/\n"
 

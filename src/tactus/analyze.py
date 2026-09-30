@@ -19,11 +19,11 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
+from ._contracts import RunError, write_json
 from .commands import Command
 from .excerpt import read_published
 from .inputs.pool import hash_file
 from .provenance import begin, finish
-from .run import RunError, _write_json
 
 
 def json_safe(value):
@@ -121,7 +121,7 @@ def _measure(path, output, audio, rate, command, params, out, input_hash, visual
                         raise ValueError("result.json is reserved for the analysis record")
                     artifacts[relative] = {"sha256": hash_file(artifact)}
             report["artifacts"] = artifacts
-            _write_json(directory / "result.json", report)
+            write_json(directory / "result.json", report)
         return report
     except FileExistsError as exc:
         if created:

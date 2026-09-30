@@ -14,6 +14,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 from . import analysis
+from ._contracts import RunError, parse_params
 from .analysis._image import SUPPORTED as IMAGE_ANALYSES
 from .analyze import measure
 from .commands import add_flags, registry
@@ -23,7 +24,7 @@ from .export import deliver
 from .init import init
 from .inputs import pool, tree
 from .project import discover
-from .run import RunError, parse_params, run
+from .run import run
 from .takes import export_take, save_take
 
 

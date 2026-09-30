@@ -569,7 +569,9 @@ def test_frame_at_ms_offset():
 def test_frame_of_rounding_rule():
     assert frame_of(1.0, SR) == SR
     assert frame_of(0.0, SR) == 0
-    assert frame_of(1.0 / SR / 2, SR) in (0, 1)  # boundary of floor(x + 0.5)
+    for position, expected in [(0.5, 1), (1.5, 2), (2.5, 3), (-0.5, 0), (-1.5, -1)]:
+        assert frame_of(position / 1024, 1024) == expected
+    assert frame_of(0.499 / 1024, 1024) == 0
 
 
 # ---------------------------------------------------------------------------

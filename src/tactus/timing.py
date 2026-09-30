@@ -272,7 +272,11 @@ class Clock:
 
 
 def frame_of(seconds: float, sample_rate: int) -> int:
-    """The single rounding rule: floor(seconds * sample_rate + 0.5)."""
+    """Round an absolute time to a frame: floor(seconds * sample_rate + 0.5).
+
+    Half-sample ties go to the later frame, including negative times. Used by
+    musical placement and excerpt boundaries; DSP/analysis window lengths have
+    their own documented discretization contracts."""
     return math.floor(seconds * sample_rate + 0.5)
 
 

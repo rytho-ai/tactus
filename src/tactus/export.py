@@ -20,9 +20,9 @@ import numpy as np
 import soundfile as sf
 
 from . import render_store
+from ._contracts import RunError, write_json
 from .commands import Command, identity
 from .inputs.pool import hash_file
-from .run import RunError, _write_json
 from .store import OutputStore, encode_pcm24
 
 
@@ -136,7 +136,7 @@ def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
             "result": result,
             "provenance": finish(command, out, provenance),
         }
-        _write_json(out / "export.json", record)
+        write_json(out / "export.json", record)
         return {
             "status": "ok",
             "directory": str(out),

@@ -104,6 +104,28 @@ def test_excerpt_slice_is_identical_to_the_same_frames_of_the_source_run_mono_an
         np.testing.assert_array_equal(cut_audio, full_audio[start_frame:end_frame])
 
 
+
+def test_excerpt_half_sample_boundaries_match_musical_placement(tmp_path):
+    """Absolute range ties select later frames and keep an exclusive end."""
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    full = run(entry, out=tmp_path / "full")
+    for i, (start, end, first, last) in enumerate(
+        [(0.5, 2.5, 1, 3), (2.5, 8.5, 3, 9), (2.49, 8.51, 2, 9)]
+    ):
+        cut = excerpt(
+            tmp_path / "full",
+            out=tmp_path / f"cut-{i}",
+            range=[start / RATE, end / RATE],
+        )
+        record = json.loads(Path(cut["manifest"]).read_text())["range"]
+        assert (record["start_frame"], record["end_frame"]) == (first, last)
+        for name in ("mono", "stereo"):
+            np.testing.assert_array_equal(
+                read_int32(cut["outputs"][name]),
+                read_int32(full["outputs"][name])[first:last],
+            )
+
+
 def test_stateful_tail_and_loop_phase_survive_slicing(tmp_path):
     entry = source(tmp_path, STATEFUL_SOURCE)
     full = run(entry, out=tmp_path / "full")

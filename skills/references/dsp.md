@@ -40,8 +40,8 @@ next_filtered, state = dsp.biquad(
   [RBJ Cookbook equations](https://www.w3.org/TR/audio-eq-cookbook/).
   Start with `state=None`, carry returned state between blocks, and process zeros for a
   tail. Parameter changes are not smoothed. Whole/block equality assumes fixed parameters.
-- Existing `varispeed` and `fit_rms` are also exposed through `dsp`; `tactus.fx` imports and
-  plugin helpers continue to work with their existing contracts.
+- `varispeed` and `fit_rms` are implemented in `dsp`; existing `tactus.fx` imports
+  resolve to those same functions. Their float32 behavior and signatures are preserved.
 
 Reusable whole-clip effects also use ordinary arrays:
 

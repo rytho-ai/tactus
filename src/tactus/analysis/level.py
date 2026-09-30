@@ -7,11 +7,8 @@ layout and `sample_rate` (matching `render`'s own `sample_rate`), and returns a 
 dict. `ANALYSES` lists the public analyses; each carries a `revision` int, bumped only when a
 result's meaning changes.
 
-Ported from the audio-analysis probe's `tanalysis.py` prototype (see
-`docs/blueprints/plans/2026-09-27-audio-analysis-measurements.md`), keeping its flat-run
-definition. Stereo-field and dropout measurements (`dc_offset`, `correlation_windows`,
-`silent_runs`) were cut from that prototype port; onsets and beat tracking are not part of
-this category.
+Measurement definitions and limits are maintained in docs/analysis.md.
+Stereo-field, dropout, onset and beat estimates are outside this category.
 
 New curves use complete windows and window-end timestamps. LUFS sums channel powers;
 RMS averages powers; peaks take the maximum across channels. No mono downmix is applied.

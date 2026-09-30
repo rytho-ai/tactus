@@ -19,6 +19,11 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 **尚未定案：**targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
+**執行層的共同契約（2026-09-30）：**`run.py` 協調 process、render 與交付；
+`_contracts.py` 集中錯誤格式、有限 JSON、atomic JSON 寫入與輸出音訊驗證；
+`_source.py` 集中 source／lock inventory、環境與套件來源。儲存、分析、export 與 init
+直接使用共同契約，避免反向依賴 runner。既有公開 API、receipt 與 checkpoint 格式保留。
+
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
 我們目前認為 temporal abstraction 有價值：將 placement、repetition、時間變換與 automation 展開中反覆需要算對的運算集中處理，讓 production source 更直接表達音樂關係。這些工具可以是作品內的 Python 函式，也可以在重複需求成立後成為可選的共用 helper。
@@ -40,6 +45,12 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 機械性 helper 的兩組對照 probe（擺放 clip、marker、quantize、音符值換秒、RMS 貼齊）顯示：有 helper 的 Agent 少寫約三分之一程式碼、少用 21% token，錯誤沒有增加。已交付：`timing.add_at`（就地疊加，頭尾超出就切掉、不會繞回；取代會整份複製 buffer 的 `place`）、`timing.markers`、`timing.quantize`、`timing.note_seconds`、`fx.fit_rms`（平滑的 look-ahead 增益，貼齊目標 RMS 且不超過 ceiling，不像 `pedalboard.Limiter` 會削出平頂）與 `tactus.load_audio`（讀檔、聲道轉換、精確 resample、可選的起音前靜音裁切）。`db_to_gain`／`gain_to_db` 在 probe 中沒有 Agent 使用，未交付。
 
 **尚未定案：**seconds／samples placement 與總長度的正式介面，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用超出 `tactus.timing` 現有範圍。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證；MIDI 檔案讀入 tempo、groove 從音訊萃取，以及「全曲需要一個 clock」的要求，明確不在範圍內。
+
+**時間位置的取整（2026-09-30）：**musical placement 與 excerpt 的秒數邊界共用
+`timing.frame_of`，以 `floor(seconds * sample_rate + 0.5)` 取整；恰好半個 sample
+時選較晚的 frame，excerpt 終點不包含在輸出內。這會改變舊版 excerpt 在部分半 sample
+邊界的結果，既有已保存的 excerpt 不變。Analysis 視窗與 DSP 時長參數保留各自已記錄的
+離散化方式，不因這次位置契約整理而改變演算法結果。
 
 ## Pattern：選用的局部規律工具
 
@@ -196,7 +207,7 @@ Brahms 真人弦樂片段的試作中，實際音訊對應的平均格線偏差�
 詳見 [製作範例與驗證](../examples/beat-alignment/README.md)。
 
 **內建 DSP（2026-09-29）：** `tactus.dsp` 提供普通函式 `gain`、`fade`、`pan`、
-`biquad`，並公開既有 `fx.varispeed`／`fx.fit_rms`。前四項使用 NumPy／SciPy、保留
+`biquad`，並實作 `varispeed`／`fit_rms`；`fx` 的同名入口延遲載入並轉向同一函式。前四項使用 NumPy／SciPy、保留
 headroom，回傳新 float64 陣列，不修改輸入。Gain/pan 支援 scalar 或逐 frame 控制；
 fade 是整段素材的線性淡入淡出；pan 只把 mono 轉為等功率 stereo。
 Biquad 支援 lowpass、highpass、peak、low_shelf、high_shelf，回傳 `(audio, state)`；

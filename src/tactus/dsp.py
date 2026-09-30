@@ -10,7 +10,7 @@ Delay returns only the delayed signal, with explicitly requested tail duration. 
 owns its oversampling/alignment and tanh transfer, not a loudness-normalization policy.
 Crossover returns LR4 low/high branches. Crossfade delay keeps two fractional heads
 fixed during retiming, with explicit transition length and latest-request behavior.
-Existing fx.varispeed/fit_rms are also available here, with their original contracts.
+Varispeed and RMS fitting retain their original float32 contracts; fx re-exports them.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from scipy.ndimage import minimum_filter1d, uniform_filter1d
 from scipy.signal import butter, lfilter, resample_poly, sosfilt
 
 from ._biquad import coefficients
@@ -27,7 +28,6 @@ from ._dsp_kernels import (
     fractional_delay,
     variable_lowpass_svf,
 )
-from .fx import fit_rms, varispeed
 
 __all__ = [
     "biquad",
@@ -43,6 +43,9 @@ __all__ = [
     "saturate",
     "varispeed",
 ]
+
+
+_FIT_RMS_WINDOW_MS = 5.0
 
 
 def _audio(audio):
@@ -505,3 +508,119 @@ def saturate(
         blend = blend[:, None] if blend.ndim else blend
         result = _finite_result((1 - blend) * frames + blend * wet)
     return result[:, 0] if mono else result
+
+
+def varispeed(audio: np.ndarray, sample_rate: int, speed: np.ndarray) -> np.ndarray:
+    """Play `audio` back at a per-output-frame `speed`, so pitch follows speed.
+
+    `speed[i]` is the playback rate at output frame `i`: 1.0 is normal, 0.5 is half
+    speed an octave down, 0.0 holds the current position. The read position advances
+    by the cumulative speed and is linearly interpolated; once it passes the end of
+    `audio`, output is silence. Output has `len(speed)` frames in `audio`'s layout
+    (`(frames,)` or `(frames, channels)`), float32. The curve's shape is the work's
+    choice; this only resamples. Speeds above 1.0 are not band-limited and can alias.
+    """
+    raw = np.asarray(audio)
+    if type(sample_rate) is not int or sample_rate <= 0:
+        raise ValueError("sample_rate must be a positive int")
+    if raw.ndim not in (1, 2) or not len(raw) or not np.isfinite(raw).all():
+        raise ValueError("audio must be finite, nonempty (frames,) or (frames, channels)")
+    rates = np.asarray(speed, dtype=np.float64)
+    if rates.ndim != 1 or not len(rates) or not np.isfinite(rates).all() or (rates < 0).any():
+        raise ValueError("speed must be a nonempty 1-D array of finite values >= 0")
+
+    source = raw.astype(np.float32, copy=False)
+    frames = source.shape[0]
+    position = np.concatenate([[0.0], np.cumsum(rates[:-1])])
+    inside = position <= frames - 1
+    grid = np.arange(frames, dtype=np.float64)
+    if source.ndim == 1:
+        out = np.interp(position, grid, source).astype(np.float32)
+        out[~inside] = 0.0
+        return out
+    out = np.stack(
+        [np.interp(position, grid, source[:, ch]) for ch in range(source.shape[1])], axis=1
+    ).astype(np.float32)
+    out[~inside] = 0.0
+    return out
+
+
+def _rms_dbfs(x: np.ndarray) -> float:
+    mean_square = float(np.mean(np.square(x, dtype=np.float64))) if x.size else 0.0
+    return 10.0 * math.log10(mean_square) if mean_square > 0 else -math.inf
+
+
+def _limiter_gain(x: np.ndarray, ceiling_lin: float, sample_rate: int) -> np.ndarray:
+    """A per-sample gain envelope that never exceeds what that sample needs to reach the
+    ceiling, smoothed so it changes gradually instead of snapping on and off. `needed` is the
+    instantaneous `min(1, ceiling / peak-across-channels)`; a centered running minimum over a
+    window of about 2W looks ahead and behind so the dip starts before an oncoming peak and
+    holds through it, then a box average over W (W ~ 5 ms) smooths the transitions."""
+    peak = np.max(np.abs(x), axis=-1) if x.ndim == 2 else np.abs(x)
+    needed = np.minimum(1.0, ceiling_lin / np.maximum(peak, 1e-9))
+    w = max(1, round(_FIT_RMS_WINDOW_MS / 1000.0 * sample_rate))
+    ducked = minimum_filter1d(needed, size=2 * w + 1, mode="nearest")
+    return uniform_filter1d(ducked, size=w, mode="nearest")
+
+
+def _apply_gain(x: np.ndarray, gain: np.ndarray) -> np.ndarray:
+    return x * gain[:, None] if x.ndim == 2 else x * gain
+
+
+def fit_rms(
+    audio: np.ndarray, sample_rate: int, target_dbfs: float, ceiling_dbfs: float = -1.0
+) -> np.ndarray:
+    """Return audio whose whole-signal RMS (all channels flattened together) is within 0.05 dB
+    of `target_dbfs`, with every sample at or below `ceiling_dbfs`, measured on this
+    function's returned array (matching how a checker would measure the delivered file).
+
+    Limiting is a NumPy look-ahead gain envelope (`_limiter_gain`), not
+    `pedalboard.Limiter`: a hard-clipping limiter can leave hundreds of samples flat at the
+    ceiling on peaky material, which this avoids by ducking gain smoothly ahead of a peak
+    rather than clipping into it. A trailing `np.clip` is a safety guard for the rare case the
+    smoothing itself lets a sample edge a hair over the ceiling; it should never trigger
+    meaningfully.
+
+    Applying the envelope changes the RMS relative to a plain gain, so this bisects the
+    pre-gain (up to 30 steps) between a bound quiet enough to barely limit and one loud enough
+    to limit heavily -- the achieved RMS rises monotonically with pre-gain over that range --
+    stopping early once within 0.05 dB of the target. If still more than 0.5 dB away after 30
+    steps, raises `ValueError` naming the achieved RMS: heavy targets on peaky material mean
+    heavy limiting, which can make the target unreachable at that ceiling (a target RMS can
+    never exceed the ceiling itself). Silence (all-zero input) passes through unchanged.
+    """
+    x = np.asarray(audio, dtype=np.float32)
+    if x.size == 0 or not np.any(x):
+        return x
+    ceiling_lin = 10.0 ** (ceiling_dbfs / 20.0)
+
+    def measure(pre_gain_db: float) -> tuple[np.ndarray, float]:
+        pre = x * (10.0 ** (pre_gain_db / 20.0))
+        gain = _limiter_gain(pre, ceiling_lin, sample_rate)
+        limited = _apply_gain(pre, gain)
+        return limited, _rms_dbfs(limited)
+
+    naive_db = target_dbfs - _rms_dbfs(x)
+    lo, hi = naive_db - 60.0, naive_db + 60.0
+    y, cur_db = measure(hi)
+    for _ in range(30):
+        mid = (lo + hi) / 2.0
+        y, cur_db = measure(mid)
+        if abs(cur_db - target_dbfs) <= 0.05:
+            break
+        if cur_db < target_dbfs:
+            lo = mid
+        else:
+            hi = mid
+
+    if abs(cur_db - target_dbfs) > 0.5:
+        raise ValueError(
+            f"fit_rms could not reach {target_dbfs} dBFS within 0.5 dB in 30 iterations "
+            f"(achieved {cur_db:.2f} dBFS); the ceiling of {ceiling_dbfs} dBFS may be too "
+            "tight for this material's crest factor."
+        )
+
+    peak = float(np.max(np.abs(y))) if y.size else 0.0
+    if peak > ceiling_lin:
+        y = np.clip(y, -ceiling_lin, ceiling_lin)
+    return y.astype(np.float32)

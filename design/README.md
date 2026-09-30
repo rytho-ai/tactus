@@ -70,7 +70,11 @@ Import [tokens.css](tokens.css) and consume semantic variables:
 
 Values are owned by the CSS file, rather than duplicated in this guide or a second
 JSON registry. Component geometry and the specimen's layout stay in `index.html`.
-Canvas drawing reads the same computed color tokens. The token tab displays the
+Canvas drawing reads the same computed color tokens. Translucent selection, audio
+and MIDI states derive from their semantic colors with CSS color-mix; changing a
+semantic color updates both the foreground and its related fills. Shared spacing
+steps are consumed by component padding, margins and gaps; plot geometry keeps
+its own dimensions. The token tab displays the
 current computed values and links to the complete source stylesheet.
 
 The default is compact density with line boundaries. To preview alternatives, set

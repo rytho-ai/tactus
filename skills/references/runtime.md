@@ -58,7 +58,10 @@ the work.
 
 `tactus excerpt RUN_DIR --range START:END [--outputs a,b] --out NEW_DIR` (seconds; `END` may be
 empty for the output's end), or `excerpt(run_dir, out=…, range=[start, end])` from Python. It
-slices that run's saved audio without rendering again.
+slices that run's saved audio without rendering again. Start/end positions use
+[the musical-time rounding rule](#musical-time-optional); the end frame is exclusive.
+Since September 30, 2026, half-sample ties choose the later frame, replacing excerpt's
+previous ties-to-even rounding. Existing saved excerpts remain unchanged.
 
 ## Keeping a candidate
 
@@ -241,8 +244,10 @@ A failed export removes only its new directory, so retrying leaves the render in
 ## Musical time (optional)
 
 `from tactus.timing import Clock, swing, Groove` resolves musical position to seconds and
-frames under a tempo map; `frame_of(seconds, sample_rate)` is the one rounding rule
-(`floor(seconds * sample_rate + 0.5)`) for free-time work that needs no clock at all. It is
+frames under a tempo map; `frame_of(seconds, sample_rate)` maps absolute seconds to
+frames using `floor(seconds * sample_rate + 0.5)`. Musical placement and excerpt
+boundaries share this rule: exact half-sample ties choose the later frame. Analysis
+windows and DSP duration parameters keep their own documented discretization. It is
 optional: nothing in `render`/`run` requires it, and a work may keep its own time maths.
 Beats are 0-based quarter notes from the start of a bar — a musician's "beat 2" is `beat=1.0`.
 `timing.quantize(beat, grid=0.25, strength=1.0)` moves a performed beat toward a grid (exact
