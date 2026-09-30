@@ -22,5 +22,9 @@ and verification needed by a clean checkout in tracked docs, examples and tests.
 The single Tactus plugin uses root `.claude-plugin/` and `.codex-plugin/` manifests.
 Its shared skills, references and examples live under `skills/`; both marketplaces target `.`.
 
-Use `uv` for the Python environment. Run pytest and Ruff for code changes; verify CLI behavior
-when commands or packaging change. Gamut is retired; no workflow should invoke or synchronize it.
+Use `uv` for Python environments, dependencies, and command execution: `uv sync` to prepare
+the environment, `uv add` to manage dependencies, and `uv run python ...` for scripts and
+one-off Python commands. Run tests and lint with `uv run pytest` and `uv run ruff check`.
+Use `uv tool install` for the global CLI. Run commands from the relevant repo or work directory.
+Run pytest and Ruff for code changes; verify CLI behavior when commands or packaging change.
+Gamut is retired; no workflow should invoke or synchronize it.
