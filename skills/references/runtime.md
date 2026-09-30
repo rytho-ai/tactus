@@ -69,6 +69,31 @@ slices that run's saved audio without rendering again. Start/end positions use
 Since September 30, 2026, half-sample ties choose the later frame, replacing excerpt's
 previous ties-to-even rounding. Existing saved excerpts remain unchanged.
 
+`excerpt` is the public CLI/Python name. It provides a verified contiguous time range from
+a saved run. For arbitrary array selection, rearrangement or processing, use ordinary
+Python/NumPy in the work; a [custom export](project-commands.md#export-a-completed-render) can expose that code
+through the CLI.
+
+For adopted beat boundaries:
+
+```bash
+tactus excerpt runs/a --beat-grid beats.json --beats 9:17 --out excerpts/phrase
+```
+
+Beat points are **1-based**: `9:17` spans eight intervals, starting at point 9 and stopping
+before point 17. Supply both flags instead of `--range`. The grid is a JSON seconds array
+(e.g. `[0.1, 0.6, 1.12]`), an object with `beats_s`, or a saved analysis `result.json` with
+`result.beats_s`. Times must be finite, nonnegative and strictly increasing, relative to
+this source run. A grid measured on a different recording or on an offset excerpt must be
+mapped to this run's timeline first. Excerpt does not infer offsets or verify that a grid
+belongs to the chosen run.
+
+From Python, use `excerpt(run_dir, out=…, beat_grid=times_s, beats=[9, 17])`; `beat_grid` also
+accepts a NumPy array or JSON path. Variable tempo uses the actual point times, with no BPM
+interpolation. Both boundary points must exist; there is no extrapolated last beat.
+These are beat points, not bar or downbeat labels. Adopt the analysis explicitly before
+cutting; excerpt never runs beat detection. The usual per-output end clamping still applies.
+
 ## Keeping a candidate
 
 Check the source against the candidate: compare the candidate receipt's `git.commit` and
@@ -328,6 +353,9 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
   open end), and the requested outputs that had no frames in range.
 - `source`: `run` (the source run directory) and `manifest_sha256` (the hash of that run's
   manifest).
+- `beat_selection` (beat requests only): 1-based `start_index` and `end_index`,
+  `index_base: 1`, the full adopted `beats_s` grid, and `source` (file path/SHA-256 for a
+  JSON file, or null for an in-memory array). The resolved seconds/frames remain in `range`.
 - A `source_frames` entry on each output: that output's length in the source run.
 
 `receipt.json` (`format_version` 4) attributes the run:

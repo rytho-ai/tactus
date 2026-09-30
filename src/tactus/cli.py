@@ -18,7 +18,7 @@ from ._contracts import RunError, parse_params
 from .analysis._image import SUPPORTED as IMAGE_ANALYSES
 from .analyze import measure
 from .commands import add_flags, registry
-from .excerpt import excerpt, parse_outputs, parse_range
+from .excerpt import excerpt, parse_beats, parse_outputs, parse_range
 from .export import BUILTINS as EXPORTERS
 from .export import deliver
 from .init import init
@@ -83,10 +83,18 @@ def _main(argv: Sequence[str] | None = None) -> int:
     )
     excerpt_command.add_argument("run_dir", type=Path, help="Directory of a completed run")
     excerpt_command.add_argument("--out", required=True, type=Path, help="New run directory")
-    excerpt_command.add_argument(
+    excerpt_selection = excerpt_command.add_mutually_exclusive_group(required=True)
+    excerpt_selection.add_argument(
         "--range",
-        required=True,
         help="START:END in seconds to publish; END may be empty for each output's end",
+    )
+    excerpt_selection.add_argument(
+        "--beats", help="START:END 1-based beat-point indices, end exclusive; requires --beat-grid"
+    )
+    excerpt_command.add_argument(
+        "--beat-grid",
+        type=Path,
+        help="JSON beat times in source-run seconds (array or beats_s result)",
     )
     excerpt_command.add_argument("--outputs", help="Comma-separated output names to publish")
     init_command = commands.add_parser(
@@ -204,7 +212,9 @@ def _main(argv: Sequence[str] | None = None) -> int:
             result = excerpt(
                 args.run_dir,
                 out=args.out,
-                range=parse_range(args.range),
+                range=parse_range(args.range) if args.range is not None else None,
+                beat_grid=args.beat_grid,
+                beats=parse_beats(args.beats) if args.beats is not None else None,
                 outputs=parse_outputs(args.outputs) if args.outputs is not None else None,
             )
             print(json.dumps(result, sort_keys=True))

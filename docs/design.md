@@ -286,6 +286,8 @@ Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output en
 
 區段試聽：`tactus excerpt RUN_DIR --range START:END [--outputs a,b] --out NEW_DIR` 以秒指定區段，先驗證既有 run 的輸出，再從中剪下該段，不重新 render。因此即使作品用到每次 render 都不同的插件（例如 OB-Xf），片段仍與聽者手上的那次候選 sample 完全一致；邊界硬切，不加 fade、pre-roll 或 tail。excerpt 的 manifest 記錄 range、每個輸出的原始長度，以及來源 run 與其 manifest hash，不另外產生 receipt。先前的 `run --range` 會重新 render 再剪；完整歌曲 dogfood 2 顯示，這種做法下 OB-Xf 作品的預覽與候選相關係數只有 0.42，因此已由 excerpt 取代。作品自行把 `render` 切成視窗的做法會因處理狀態、loop 相位與整體 mix 處理而與成品不同，完整歌曲 dogfood 已實際觀察到這個問題。只計算部分區段的加速版本延後，要等實測等待時間證明有需要，並能證明輸出一致後再做。
 
+公開名稱維持 `excerpt`，避免與 Python 內建 `slice` 混淆。內建命令提供已保存成品的連續區間，可指定秒數，或以 `--beat-grid beats.json --beats 9:17` 選擇已採用拍點。拍點編號從 1 開始，9:17 是第 9 到第 17 個拍點之間的八拍，結尾不包含。拍點以成品起點為時間原點，不自動分析、推斷小節或外推缺失拍點；保存完整採用陣列、JSON 檔案 hash 與換算後的秒數／frames。自由擷取、重組或處理陣列由作品的 Python／NumPy 表達，需要 CLI 入口時可使用現有的自訂 export（2026-09-30）。
+
 Git 與音檔的分工如下：
 - **Git 只保存 source**：`.py`、`uv.lock` 與 `sha256:` refs。
 - **Render 的音檔不進 Git**：它們體積大、無法 diff 或 merge，而且屬於衍生物。

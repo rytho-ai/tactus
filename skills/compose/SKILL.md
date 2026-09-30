@@ -39,6 +39,10 @@ installation scope, layouts, time units and state/reproducibility caveats.
    and the user's intent to judge musical results. If listening tools are unavailable, say
    what was measured and what remains unheard. For an excerpt, use `tactus excerpt` on the
    saved full run so tails, phase and preceding state match the actual candidate.
+   For beat-based listening, use an adopted grid on that run's timeline; read
+   [Listening to part of a run](../references/runtime.md#listening-to-part-of-a-run)
+   for `--beat-grid`, 1-based boundary indices and grid provenance. Do not reanalyze
+   implicitly or mistake beat points for bars/downbeats.
    Use [version](../version/SKILL.md#revise-and-adopt) for the Git base,
    candidate attribution and adoption commit.
 6. **Preserve the selected result.** Adopt parameter values or material refs in source.

@@ -121,6 +121,20 @@ Each output directory must be new. The command returns WAV paths, levels and exe
 records. Play the WAVs with your audio tools. Parameters let you compare candidates without
 editing source; adopt the values you choose in the work's code.
 
+## Listen to a section
+
+Extract saved audio without rendering again:
+
+```bash
+tactus excerpt runs/a --range 0.5:1.5 --out excerpts/section
+# Use an adopted grid of beat times, in seconds relative to runs/a:
+tactus excerpt runs/a --beat-grid beats.json --beats 9:17 --out excerpts/phrase
+```
+
+Beat points are 1-based; `9:17` spans eight intervals. See
+[excerpt contracts](skills/references/runtime.md#listening-to-part-of-a-run) for grid formats
+and variable-tempo boundaries.
+
 ## Go further
 
 - [Creative examples](skills/examples/README.md): custom effects, library combinations and analysis-driven time warping.

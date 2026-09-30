@@ -16,6 +16,7 @@ Reads: _contracts · render_store · store.OutputStore · timing.frame_of
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import shutil
 from pathlib import Path
@@ -42,6 +43,65 @@ def parse_range(raw: str) -> list[float | None]:
     except ValueError as exc:
         raise RunError("invalid_request", "request", f"--range must be numeric: {raw!r}") from exc
     return [start, end]
+
+
+def parse_beats(raw: str) -> list[int]:
+    """Parse two explicit 1-based beat-point indices, with the end exclusive."""
+    try:
+        parts = raw.split(":")
+        if len(parts) != 2 or any(not part.isascii() or not part.isdecimal() for part in parts):
+            raise ValueError
+        return [int(part) for part in parts]
+    except ValueError as exc:
+        raise RunError(
+            "invalid_request", "request", "--beats must be START:END integer indices"
+        ) from exc
+
+
+def _beat_range(grid: Any, beats: Any) -> tuple[list[float], dict[str, Any]]:
+    """Resolve an explicitly adopted seconds grid and retain its selection identity."""
+    source = None
+    if isinstance(grid, (str, Path)):
+        path = Path(grid).resolve()
+        data = path.read_bytes()
+        grid = json.loads(data)
+        source = {"file": str(path), "sha256": hashlib.sha256(data).hexdigest()}
+    if isinstance(grid, dict):
+        grid = grid.get("result", grid)
+        if not isinstance(grid, dict):
+            raise TypeError("beat grid result must contain beats_s")
+        grid = grid.get("beats_s")
+    if isinstance(grid, np.ndarray):
+        grid = grid.tolist()
+    if not isinstance(grid, (list, tuple)) or len(grid) < 2:
+        raise ValueError("beat grid must contain at least two beat times in seconds")
+    times = []
+    for time in grid:
+        if (
+            isinstance(time, bool)
+            or not isinstance(time, (int, float))
+            or not math.isfinite(time)
+            or time < 0
+        ):
+            raise ValueError("beat times must be finite nonnegative numbers")
+        if times and time <= times[-1]:
+            raise ValueError("beat times must be strictly increasing")
+        times.append(float(time))
+    if not isinstance(beats, (list, tuple)) or len(beats) != 2:
+        raise ValueError("beats must be [start_index, end_index]")
+    start, end = beats
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in beats):
+        raise ValueError("beat indices must be integers")
+    if not 1 <= start < end <= len(times):
+        raise ValueError(f"beat indices must satisfy 1 <= start < end <= {len(times)}")
+    record = {
+        "start_index": start,
+        "end_index": end,
+        "index_base": 1,
+        "beats_s": times,
+        "source": source,
+    }
+    return [times[start - 1], times[end - 1]], record
 
 
 def parse_outputs(raw: str) -> list[str]:
@@ -159,7 +219,9 @@ def excerpt(
     run_dir: str | Path,
     *,
     out: str | Path,
-    range: list[float | None],
+    range: list[float | None] | None = None,
+    beat_grid: str | Path | list[float] | np.ndarray | None = None,
+    beats: list[int] | None = None,
     outputs: list[str] | None = None,
 ) -> dict[str, Any]:
     """Slice an existing run's published, hash-verified outputs into a new run directory.
@@ -169,6 +231,11 @@ def excerpt(
     Every selected output is re-verified against its recorded sha256 and metadata before
     slicing, so a tampered or corrupted source run fails loudly instead of publishing a
     silently wrong excerpt.
+
+    Alternatively supply `beat_grid` (seconds array or JSON path) and `beats=[start, end]`.
+    Indices are 1-based beat points; 9:17 spans eight intervals, end exclusive. JSON
+    accepts a raw list, a beats_s object or an analysis record with result.beats_s.
+    Times are relative to the source run, not inferred from BPM or meter. No reanalysis.
 
     Absolute boundaries use timing.frame_of: floor(seconds * sample_rate + 0.5),
     with half-sample ties going to the later frame. End frames are exclusive.
@@ -183,6 +250,11 @@ def excerpt(
             raise ValueError(f"run directory has no manifest.json: {run_dir}")
         if out.exists():
             raise ValueError(f"output already exists: {out}")
+        beat_record = None
+        if beats is not None or beat_grid is not None:
+            if range is not None or beats is None or beat_grid is None:
+                raise ValueError("supply either range or both beat_grid and beats")
+            range, beat_record = _beat_range(beat_grid, beats)
         range = _resolve_range(range)
         outputs = _resolve_outputs(outputs) if outputs is not None else None
     except (ValueError, TypeError, OSError, RecursionError) as exc:
@@ -220,6 +292,8 @@ def excerpt(
                     "manifest_sha256": hashlib.sha256(published.manifest_bytes).hexdigest(),
                 },
             }
+            if beat_record is not None:
+                manifest_out["beat_selection"] = beat_record
             write_json(out / "manifest.json", manifest_out)
         except (ValueError, TypeError, OSError) as exc:
             raise RunError("invalid_request", "publish", str(exc)) from exc

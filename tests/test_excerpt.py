@@ -353,3 +353,85 @@ def test_excerpt_rejects_an_unsupported_source_manifest_format_version(tmp_path)
         excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.5])
     assert failure.value.code == "source_corrupt"
     assert not (tmp_path / "cut").exists()
+
+
+@pytest.mark.parametrize("representation", ["array", "numpy", "file", "object", "analysis"])
+def test_beat_excerpt_uses_adopted_variable_grid_and_records_it(tmp_path, representation):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    run(entry, out=tmp_path / "full")
+    times = [0.1, 0.35025, 0.61, 0.95025, 1.4]
+    grid = times
+    file_bytes = None
+    if representation == "numpy":
+        grid = np.asarray(times)
+    elif representation in ("file", "object", "analysis"):
+        payload = times if representation == "file" else {"beats_s": times}
+        if representation == "analysis":
+            payload = {"analysis": "rhythm.beats", "result": payload}
+        grid = tmp_path / "beats.json"
+        grid.write_text(json.dumps(payload))
+        file_bytes = grid.read_bytes()
+    result = excerpt(tmp_path / "full", out=tmp_path / "cut", beat_grid=grid, beats=[2, 4])
+    manifest = json.loads(Path(result["manifest"]).read_text())
+    source_manifest = json.loads((tmp_path / "full" / "manifest.json").read_text())
+    # Absolute half-sample boundaries use the same rounding as second-based excerpts.
+    for name, output in result["outputs"].items():
+        original = read_int32(str(tmp_path / "full" / source_manifest["outputs"][name]["file"]))
+        np.testing.assert_array_equal(read_int32(output), original[701:1901])
+    assert manifest["range"]["start_seconds"] == times[1]
+    assert manifest["range"]["end_seconds"] == times[3]
+    selection = manifest["beat_selection"]
+    assert selection["beats_s"] == times
+    assert selection["start_index"] == 2
+    assert selection["end_index"] == 4
+    assert selection["index_base"] == 1
+    if file_bytes is not None:
+        assert selection["source"] == {
+            "file": str(grid),
+            "sha256": hashlib.sha256(file_bytes).hexdigest(),
+        }
+    else:
+        assert selection["source"] is None
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"beat_grid": [0, 1]},
+        {"beats": [1, 2]},
+        {"range": [0, 1], "beat_grid": [0, 1], "beats": [1, 2]},
+        {"beat_grid": [], "beats": [1, 2]},
+        {"beat_grid": [0, 0], "beats": [1, 2]},
+        {"beat_grid": [1, 0], "beats": [1, 2]},
+        {"beat_grid": [-1, 0], "beats": [1, 2]},
+        {"beat_grid": [0, float("nan")], "beats": [1, 2]},
+        {"beat_grid": [0, float("inf")], "beats": [1, 2]},
+        {"beat_grid": [False, 1], "beats": [1, 2]},
+        {"beat_grid": [0, 1], "beats": [0, 1]},
+        {"beat_grid": [0, 1], "beats": [1, 3]},
+        {"beat_grid": [0, 1], "beats": [2, 1]},
+        {"beat_grid": [0, 1], "beats": [1, 1]},
+        {"beat_grid": [0, 1], "beats": [True, 2]},
+        {"beat_grid": [0, 1], "beats": [1.0, 2]},
+    ],
+)
+def test_invalid_beat_selection_leaves_no_destination(tmp_path, kwargs):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    run(entry, out=tmp_path / "full")
+    with pytest.raises(RunError) as error:
+        excerpt(tmp_path / "full", out=tmp_path / "cut", **kwargs)
+    assert error.value.code == "invalid_request"
+    assert error.value.phase == "request"
+    assert not (tmp_path / "cut").exists()
+
+
+@pytest.mark.parametrize("content", ["not JSON", "{}", '{"result": null}', "[[0, 1], [2, 3]]"])
+def test_invalid_beat_grid_file_is_a_request_error(tmp_path, content):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    run(entry, out=tmp_path / "full")
+    grid = tmp_path / "beats.json"
+    grid.write_text(content)
+    with pytest.raises(RunError) as error:
+        excerpt(tmp_path / "full", out=tmp_path / "cut", beat_grid=grid, beats=[1, 2])
+    assert error.value.phase == "request"
+    assert not (tmp_path / "cut").exists()

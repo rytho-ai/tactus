@@ -437,3 +437,60 @@ def test_analyze_stft_requires_out_and_saves_numeric_attachments(tmp_path, capsy
     with np.load(ref["file"]) as arrays:
         assert arrays[ref["key"]].shape == tuple(written["result"]["shape"])
     assert "visualization" not in written
+
+
+def test_cli_excerpt_by_adopted_beat_grid(tmp_path, capsys):
+    source = tmp_path / "song.py"
+    source.write_text(
+        'import numpy as np\ndef render():\n    return {"sample_rate": 1000, "outputs": {"mix": np.linspace(0, 0.5, 1000)}}\n'
+    )
+    assert main(["run", str(source), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
+    grid = tmp_path / "beats.json"
+    grid.write_text(json.dumps([0.05, 0.2, 0.55, 0.9]))
+    assert (
+        main(
+            [
+                "excerpt",
+                str(tmp_path / "full"),
+                "--out",
+                str(tmp_path / "cut"),
+                "--beat-grid",
+                str(grid),
+                "--beats",
+                "2:4",
+                "--outputs",
+                "mix",
+            ]
+        )
+        == 0
+    )
+    result = json.loads(capsys.readouterr().out)
+    manifest = json.loads(Path(result["manifest"]).read_text())
+    assert manifest["range"]["start_seconds"] == 0.2
+    assert manifest["range"]["end_seconds"] == 0.9
+    assert manifest["beat_selection"]["beats_s"] == [0.05, 0.2, 0.55, 0.9]
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        ["--beats", "1:2"],
+        ["--beats", "1:2", "--beat-grid", "missing.json"],
+        ["--beats", "1:"],
+        ["--beats", "one:2"],
+        ["--beats", "1.0:2"],
+        ["--range", "0:1", "--beat-grid", "missing.json"],
+    ],
+)
+def test_cli_excerpt_invalid_beat_requests(tmp_path, capsys, flags):
+    source = tmp_path / "song.py"
+    source.write_text(
+        'import numpy as np\ndef render():\n    return {"sample_rate": 1000, "outputs": {"mix": np.linspace(0, 0.5, 1000)}}\n'
+    )
+    assert main(["run", str(source), "--out", str(tmp_path / "full")]) == 0
+    capsys.readouterr()
+    assert main(["excerpt", str(tmp_path / "full"), "--out", str(tmp_path / "cut"), *flags]) == 2
+    error = json.loads(capsys.readouterr().out)
+    assert error["error"]["code"] == "invalid_request"
+    assert not (tmp_path / "cut").exists()

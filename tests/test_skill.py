@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tactus import RunError, excerpt, run
 
 PLUGIN_DIR = Path(__file__).parents[1] / "skills"
@@ -47,13 +49,16 @@ def test_skill_names_every_manifest_and_receipt_field(tmp_path, monkeypatch):
     assert f"`format_version` {receipt['format_version']}" in text
 
 
-def test_skill_names_every_excerpt_manifest_field(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "selection", [{"range": [0.0, 0.0005]}, {"beat_grid": [0.0, 0.0005], "beats": [1, 2]}]
+)
+def test_skill_names_every_excerpt_manifest_field(tmp_path, monkeypatch, selection):
     monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
     entry = tmp_path / "work" / "song.py"
     entry.parent.mkdir()
     entry.write_text(SOURCE, encoding="utf-8")
     run(entry, out=tmp_path / "full")
-    result = excerpt(tmp_path / "full", out=tmp_path / "cut", range=[0.0, 0.0005], outputs=["tone"])
+    result = excerpt(tmp_path / "full", out=tmp_path / "cut", outputs=["tone"], **selection)
     text = _skill_text()
     manifest = json.loads(Path(result["manifest"]).read_text())
     missing = _missing_keys(manifest, text)

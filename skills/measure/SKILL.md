@@ -62,6 +62,9 @@ a delay or expand a phrase.
 
 Freeze accepted decisions as constants or pinned data, recording source identity, analysis
 parameters/revision, units and the chosen mapping. Reanalysis is then a visible revision.
+For listening between adopted beat points, pass the saved beat result to
+[`excerpt`](../references/runtime.md#listening-to-part-of-a-run). Confirm its timestamps
+use the selected run's origin; map offsets explicitly when analyzing a different region.
 An envelope follower that continuously shapes sound may instead run inside `render`.
 For analysis → time-stretch → effect, read
 [Creative connections](../references/connections.md): carry source-time observations
