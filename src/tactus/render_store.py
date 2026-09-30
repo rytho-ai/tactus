@@ -10,14 +10,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import Literal, NamedTuple, TypedDict
 
 import numpy as np
 
 from ._contracts import RunError, validate_audio_mapping, write_json
-from .inputs.pool import hash_file
+from .inputs import MaterialError, _material_tree_files, tree
+from .inputs.pool import DIGEST_RE, hash_file
 from .store import AudioRef, OutputStore, validate_name
 
 
@@ -43,6 +46,19 @@ class RenderedAudio(NamedTuple):
     sample_rate: int
     outputs: dict[str, np.ndarray]
     origin: RenderOrigin
+
+
+@dataclass(frozen=True)
+class LoadedRender:
+    """Original saved arrays, their sample rate and fixed material/checkpoint identity."""
+
+    sample_rate: int
+    outputs: Mapping[str, np.ndarray]
+    origin: Mapping[str, str]
+
+
+class _OutputSelectionError(ValueError):
+    """An invalid caller selection, distinct from malformed checkpoint content."""
 
 
 def read_published(
@@ -113,6 +129,118 @@ def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> 
     return root / "render.json"
 
 
+def _checkpoint(
+    file: Callable[[str, str | None], Path],
+    outputs: list[str] | tuple[str, ...] | None = None,
+) -> tuple[int, dict[str, np.ndarray], str]:
+    """Shared original-array validation for local export and selected material reads."""
+
+    def unique_pairs(pairs: list[tuple[str, object]]) -> dict:
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate checkpoint field: {key}")
+            result[key] = value
+        return result
+
+    payload = file("render.json", None).read_bytes()
+    manifest = json.loads(payload, object_pairs_hook=unique_pairs)
+    if (
+        manifest["kind"] != "tactus.render"
+        or type(manifest["format_version"]) is not int
+        or manifest["format_version"] != 1
+    ):
+        raise ValueError("unsupported render checkpoint")
+    rate = manifest["sample_rate"]
+    if type(rate) is not int or rate <= 0:
+        raise ValueError("invalid render sample rate")
+    receipt_digest = manifest["receipt_sha256"]
+    if not isinstance(receipt_digest, str) or not DIGEST_RE.fullmatch(receipt_digest):
+        raise ValueError("invalid render receipt digest")
+    file("receipt.json", receipt_digest)
+    items = manifest["outputs"]
+    if not isinstance(items, dict) or not items:
+        raise ValueError("render outputs must be a nonempty mapping")
+    for name, item in items.items():
+        validate_name(name)
+        if item["file"] != f"render/{name}.npy":
+            raise ValueError("invalid render array path")
+        digest, shape, dtype = item["sha256"], item["shape"], item["dtype"]
+        if not isinstance(digest, str) or not DIGEST_RE.fullmatch(digest):
+            raise ValueError(f"invalid render array digest: {name}")
+        if (
+            not isinstance(shape, list)
+            or len(shape) not in (1, 2)
+            or any(type(size) is not int or size <= 0 for size in shape)
+            or (len(shape) == 2 and shape[1] not in (1, 2))
+            or not isinstance(dtype, str)
+            or np.dtype(dtype).kind not in "iuf"
+        ):
+            raise ValueError(f"invalid render array metadata: {name}")
+    names = list(items) if outputs is None else outputs
+    if (
+        not isinstance(names, (list, tuple))
+        or not names
+        or any(not isinstance(name, str) for name in names)
+        or len(set(names)) != len(names)
+    ):
+        raise ValueError("outputs must be a nonempty list or tuple of unique names")
+    unknown = set(names) - items.keys()
+    if unknown:
+        raise _OutputSelectionError(f"unknown render outputs: {sorted(unknown)}")
+    arrays = {}
+    for name in names:
+        item = items[name]
+        audio = np.load(file(item["file"], item["sha256"]), allow_pickle=False)
+        if not isinstance(audio, np.ndarray):
+            if hasattr(audio, "close"):
+                audio.close()
+            raise TypeError(f"render output must be an array: {name}")
+        if list(audio.shape) != item["shape"] or audio.dtype.str != item["dtype"]:
+            raise ValueError(f"render array metadata mismatch: {name}")
+        arrays[name] = audio
+    validate_audio_mapping(arrays)
+    return rate, arrays, hashlib.sha256(payload).hexdigest()
+
+
+def load_render(ref: str, *, outputs: list[str] | tuple[str, ...] | None = None) -> LoadedRender:
+    """Load selected original outputs from a pinned render folder material.
+
+    Import a completed run with `tactus material add RUN_DIR`, then pin its tree ref
+    in source. Returns readonly arrays at their original rate, dtype and shape.
+    `outputs=None` selects all; a list/tuple selects named outputs in that order.
+    Copy an array before editing it. No regeneration, resampling or PCM fallback.
+
+    Verifies the tree index, render checkpoint, receipt and selected arrays each call.
+    Unrequested audio is neither loaded nor verified; this is not a whole-tree health
+    check. The tree ref is captured as an input by run receipts and stage captures.
+    Missing/corrupt materials raise MaterialError; invalid selections raise ValueError.
+    """
+    if outputs is not None and (
+        not isinstance(outputs, (list, tuple))
+        or not outputs
+        or any(not isinstance(name, str) for name in outputs)
+        or len(set(outputs)) != len(outputs)
+    ):
+        raise ValueError("outputs must be a nonempty list or tuple of unique names")
+    files = _material_tree_files(ref)
+    try:
+        rate, arrays, digest = _checkpoint(files.file, outputs)
+    except _OutputSelectionError:
+        raise
+    except tree.TreeError as exc:
+        raise MaterialError(exc.reason, ref, str(exc)) from exc
+    except (ValueError, TypeError, KeyError, OSError, EOFError, AttributeError) as exc:
+        raise MaterialError("corrupt", ref, f"invalid render checkpoint: {exc}") from exc
+    for audio in arrays.values():
+        audio.setflags(write=False)
+    return LoadedRender(
+        rate,
+        MappingProxyType(arrays),
+        MappingProxyType({"ref": ref, "kind": "original-render", "sha256": digest}),
+    )
+
+
 def read(root: Path) -> RenderedAudio:
     try:
         path = root / "render.json"
@@ -127,35 +255,23 @@ def read(root: Path) -> RenderedAudio:
                     "sha256": hashlib.sha256(published.manifest_bytes).hexdigest(),
                 },
             )
-        payload = path.read_bytes()
-        manifest = json.loads(payload)
-        if manifest["kind"] != "tactus.render" or manifest["format_version"] != 1:
-            raise ValueError("unsupported render checkpoint")
-        rate = manifest["sample_rate"]
-        if type(rate) is not int or rate <= 0:
-            raise ValueError("invalid render sample rate")
-        if hash_file(root / "receipt.json") != manifest["receipt_sha256"]:
-            raise ValueError("render receipt hash mismatch")
-        arrays = {}
-        for name, item in manifest["outputs"].items():
-            validate_name(name)
-            if item["file"] != f"render/{name}.npy":
-                raise ValueError("invalid render array path")
-            array_path = root / item["file"]
-            if array_path.is_symlink() or hash_file(array_path) != item["sha256"]:
-                raise ValueError(f"render array hash mismatch: {name}")
-            audio = np.load(array_path, allow_pickle=False)
-            if list(audio.shape) != item["shape"] or audio.dtype.str != item["dtype"]:
-                raise ValueError(f"render array metadata mismatch: {name}")
-            arrays[name] = audio
-        validate_audio_mapping(arrays)
+
+        def local_file(relative: str, expected: str | None) -> Path:
+            file_path = root / relative
+            if file_path.is_symlink() or file_path.parent.is_symlink():
+                raise ValueError(f"render file must not be a symlink: {relative}")
+            if expected is not None and hash_file(file_path) != expected:
+                raise ValueError(f"render file hash mismatch: {relative}")
+            return file_path
+
+        rate, arrays, digest = _checkpoint(local_file)
         return RenderedAudio(
             rate,
             arrays,
             {
                 "path": str(root),
                 "kind": "original-render",
-                "sha256": hashlib.sha256(payload).hexdigest(),
+                "sha256": digest,
             },
         )
     except RunError:

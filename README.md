@@ -139,6 +139,7 @@ and variable-tempo boundaries.
 
 - [Creative examples](skills/examples/README.md): custom effects, library combinations and analysis-driven time warping.
 - [Runtime reference](skills/references/runtime.md): materials, rendering, excerpts and saved takes.
+- [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
 - [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Visual style, tokens and brand assets](design/README.md).
 - [Product principles](docs/positioning.md), [current design](docs/design.md) and [development setup](docs/development.md).

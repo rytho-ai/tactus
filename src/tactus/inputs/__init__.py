@@ -198,6 +198,20 @@ def _material_tree(ref: str) -> Path:
     return path
 
 
+def _material_tree_files(ref: str) -> tree._TreeFiles:
+    """Capture one tree identity while allowing verified reads of only selected files."""
+    try:
+        digest = tree.digest_from_ref(ref)
+    except ValueError as exc:
+        raise MaterialError("invalid_ref", ref, str(exc)) from exc
+    try:
+        files = tree._read_files(digest)
+    except tree.TreeError as exc:
+        raise MaterialError(exc.reason, ref, str(exc)) from exc
+    _record_material(ref, {"ref": ref})
+    return files
+
+
 def tool(name_or_path: str) -> Path:
     """Resolve an executable by name (via PATH), a file path, or a folder (bundle) path.
 

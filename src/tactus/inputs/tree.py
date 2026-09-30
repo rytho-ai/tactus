@@ -138,6 +138,56 @@ def _path_for(digest: str, pool_root: Path) -> Path | None:
         raise TreeError("corrupt", str(exc)) from exc
 
 
+class _TreeFiles:
+    """Verified index with on-demand blob verification; no whole-folder health claim."""
+
+    def __init__(self, entries: dict[str, str], pool_root: Path) -> None:
+        self._entries = entries
+        self._pool_root = pool_root
+
+    def file(self, relative: str, expected: str | None = None) -> Path:
+        digest = self._entries.get(relative)
+        if digest is None:
+            raise TreeError("missing", f"tree has no file {relative!r}")
+        if expected is not None and digest != expected:
+            raise TreeError("corrupt", f"tree/checkpoint hash mismatch: {relative}")
+        path = _path_for(digest, self._pool_root)
+        if path is None:
+            raise TreeError("missing", f"tree file {relative!r} (blob {digest}) is not in the pool")
+        if path.is_symlink():
+            raise TreeError("corrupt", f"tree file blob must not be a symlink: {relative}")
+        return path
+
+
+def _read_files(digest: str) -> _TreeFiles:
+    """Read a canonical safe index, leaving individual blobs to the caller's selection."""
+    root = pool.default_pool_dir()
+    path = _path_for(digest, root)
+    if path is None:
+        raise TreeError("missing", f"tree index {PREFIX}{digest} is not in the pool ({root})")
+    try:
+        if path.is_symlink():
+            raise ValueError("tree index must not be a symlink")
+        data = path.read_bytes()
+        entries = parse_manifest(data)
+        if not entries or manifest_bytes(entries) != data:
+            raise ValueError("tree index must be nonempty and canonical")
+        names: set[str] = set()
+        for relative, file_digest in entries:
+            if (
+                relative.startswith("/")
+                or "\\" in relative
+                or any(part in {"", ".", ".."} for part in relative.split("/"))
+                or relative in names
+                or not pool.DIGEST_RE.fullmatch(file_digest)
+            ):
+                raise ValueError(f"invalid tree index entry: {relative!r}")
+            names.add(relative)
+        return _TreeFiles(dict(entries), root)
+    except (ValueError, OSError) as exc:
+        raise TreeError("corrupt", f"invalid tree index: {exc}") from exc
+
+
 def _materialized_tree_matches(target: Path, entries: list[tuple[str, str]]) -> bool:
     """Whether `target` already holds exactly the files `entries` describes, correctly.
 

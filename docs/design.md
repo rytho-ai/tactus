@@ -30,6 +30,16 @@ Analysis／excerpt 仍使用已發布 WAV，export 優先使用原始 arrays。�
 analysis／export attribution 的內部欄位由 TypedDict 定義；對外 JSON 格式保留。
 Excerpt 失敗時只清理本次呼叫成功建立的目錄，避免刪掉競爭程序的結果。
 
+**已接受 render 的延續（2026-09-30）：** `load_render(ref, outputs=...)` 讀取已匯入
+pool 的原始 checkpoint，回傳 `LoadedRender`（sample rate、具名唯讀 arrays、固定 ref 與
+checkpoint hash 的 origin）。單一 tree ref 選定前次成品，作品明確選擇需要的 outputs；
+省略選擇則全部讀取。共用 `render_store` 的原始陣列驗證，素材層負責索引、selected blobs
+與 receipt／stage input 記錄。每次驗證索引、metadata、receipt 與選定 arrays，未選聲部及
+WAV 不讀取也不驗證；`material(tree_ref)` 保留整個資料夾的驗證語意。原始 dtype、shape、
+headroom 保留，不重跑樂器、不 resample、不退回 published PCM。保存仍用既有
+`material add DIR`，沒有新增 save CLI 或作品模型。用法與錯誤契約集中在
+[runtime reference](../skills/references/runtime.md#reuse-saved-render-outputs)。
+
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
 我們目前認為 temporal abstraction 有價值：將 placement、repetition、時間變換與 automation 展開中反覆需要算對的運算集中處理，讓 production source 更直接表達音樂關係。這些工具可以是作品內的 Python 函式，也可以在重複需求成立後成為可選的共用 helper。

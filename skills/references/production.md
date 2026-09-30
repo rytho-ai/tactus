@@ -5,6 +5,11 @@ These are authoring patterns; Tactus does not infer loop bodies, enforce a track
 choose the musical boundaries. [boundaries.py](../examples/boundaries.py) is a synthetic
 example with an intentionally off-grid file tail.
 
+For original outputs from an accepted Tactus render, use
+[saved render loading](runtime.md#reuse-saved-render-outputs) to pin one render identity
+and load selected named arrays with their sample rate. This preserves original headroom
+and dtype; the published audition WAVs may have been clipped or quantized.
+
 ## Choose the musical source region
 
 Pin the source and freeze the boundaries used by the work: sample rate, start/end frames

@@ -11,6 +11,7 @@ adopting a candidate or recovering a work revision.
 - [Render contract](#the-render-contract) and [creating a work](#creating-a-work)
 - [Excerpts](#listening-to-part-of-a-run), [keeping candidates](#keeping-a-candidate) and [saved takes](#saved-takes)
 - [Inputs](#inputs) and [stage reuse](#reusing-unchanged-stages)
+- [Reuse saved render outputs](#reuse-saved-render-outputs)
 - [Plugin helpers](#helpers-from-tactus-import-fx) and [musical time](#musical-time-optional)
 - [Measurements](#measuring-audio) and [project commands/export](#project-commands-and-export)
 - [Library behavior](#library-behavior-that-affects-tactus-results) and [run results](#run-results)
@@ -188,6 +189,59 @@ the material checked on every run (a cache hit otherwise replays its earlier inp
 - Imported Python distributions are recorded automatically; declare external executables
   and native libraries with `tool()`. Read [Packages and integration notes](packages.md)
   when choosing tools or connecting their audio, MIDI, timing and state conventions.
+
+## Reuse saved render outputs
+
+To continue from an accepted render's mix, stems or clips, import the completed run once:
+
+```bash
+tactus material add runs/accepted
+```
+
+Pin the returned `tree:sha256:…` ref in the new source and select the outputs you need:
+
+```python
+from tactus import load_render
+
+ACCEPTED = "tree:sha256:…"  # replace with the printed ref
+
+
+def render(*, bass_gain=0.8):
+    previous = load_render(ACCEPTED, outputs=["bass", "drums"])
+    bass = previous.outputs["bass"] * bass_gain
+    drums = previous.outputs["drums"]
+    return {"sample_rate": previous.sample_rate, "outputs": {"bass": bass, "drums": drums}}
+```
+
+`load_render(ref, *, outputs=None) -> LoadedRender` returns `sample_rate`, an immutable
+`outputs` mapping of readonly arrays, and an immutable `origin` mapping with `ref`,
+`kind="original-render"` and the `render.json` SHA-256 (`sha256`). Omit `outputs` to load
+all outputs, or pass a nonempty list/tuple of unique existing names; requested order is
+preserved. Call `.copy()` on an array before editing in place, or `dict(previous.outputs)`
+when a mutable mapping is needed. Arrays retain their original dtype, shape and headroom;
+they can differ from the clipped/quantized audition WAVs. Loading neither regenerates
+instruments nor resamples: use `previous.sample_rate` or explicitly check and convert rates.
+
+The folder must contain an original `render.json`, `receipt.json` and the requested
+`render/NAME.npy` files. A full run can be imported directly. To preserve fewer bytes,
+copy those metadata files plus **all** `render/` arrays to a separate folder and import
+that folder; its ref differs from the full-run ref. No PCM fallback exists for legacy
+runs or excerpt folders. Historical generator paths/tools in the receipt are provenance,
+not requirements for playback.
+
+Each call verifies the fixed tree index, checkpoint, receipt and selected arrays, including
+their hashes, dtype, shape and finite mono/stereo values. Unrequested arrays and published
+WAVs are neither read nor verified; their absence/corruption does not prevent reading an
+intact subset. Use `material(ref)` for existing whole-folder verification. Missing/corrupt
+inputs raise `MaterialError` (`missing`/`corrupt`), invalid refs use `invalid_ref`, and
+invalid selections raise `ValueError`. The original tree ref is recorded in run receipts
+and stage captures, using the same input recording as other materials.
+
+Keep the pinned ref in Git; the material pool remains local and must be backed up or
+transferred separately. Import before removing the run folder. When verification on every
+run matters, load outside a cached stage: a stage hit replays its earlier input record.
+Inside a stage, return arrays or plain dictionaries rather than the `LoadedRender` object
+if the result should be cacheable.
 
 ## Reusing unchanged stages
 
