@@ -12,11 +12,21 @@ import os
 import sys
 from importlib.metadata import PackageNotFoundError, distribution, packages_distributions, version
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 from . import revision
+
+
+class FileIdentity(TypedDict):
+    path: str
+    sha256: str
+
+
+class SourceInventory(TypedDict):
+    source_files: dict[str, str]
+    dependency_lock: FileIdentity | None
 
 
 def _find_lock(start: Path) -> Path | None:
@@ -32,7 +42,7 @@ def _find_lock(start: Path) -> Path | None:
         current = parent
 
 
-def inventory(root: Path, output: Path | None) -> dict[str, Any]:
+def inventory(root: Path, output: Path | None) -> SourceInventory:
     excluded = {".tactus", ".tactus-code", ".venv", "__pycache__", ".git"}
     files = {}
     for directory, children, names in os.walk(root):

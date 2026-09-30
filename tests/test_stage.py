@@ -6,9 +6,10 @@ import json
 import stat
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from tactus import run
+from tactus import RunError, run
 from tactus.inputs import pool
 
 COUNTER_SOURCE = """\
@@ -264,3 +265,57 @@ def test_without_reuse_nothing_is_cached(tmp_path):
     assert receipt["reuse"] is False
     assert receipt["stages"] == []
     assert not (pool.default_pool_dir() / "stages").exists()
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing-array",
+        "changed-array",
+        "truncated-array",
+        "missing-entry",
+        "invalid-json",
+        "changed-metadata",
+        "legacy-entry",
+    ],
+)
+def test_damaged_cache_fails_without_regenerating_performance(tmp_path, damage):
+    counts = tmp_path / "counts.txt"
+    entry = write_source(tmp_path, COUNTER_SOURCE.format(counts=str(counts)))
+    first = run(entry, out=tmp_path / "first", reuse=True)
+    key = read(first["receipt"])["stages"][0]["key"]
+    cache = pool.default_pool_dir() / "stages" / key
+    metadata_path = cache / "entry.json"
+    array_path = cache / "arr-0.npy"
+    if damage == "missing-array":
+        array_path.unlink()
+    elif damage == "changed-array":
+        np.save(array_path, np.full(8, 0.25, dtype=np.float32))
+    elif damage == "truncated-array":
+        array_path.write_bytes(array_path.read_bytes()[:20])
+    elif damage == "missing-entry":
+        metadata_path.unlink()
+    elif damage == "invalid-json":
+        metadata_path.write_text("{")
+    else:
+        metadata = read(str(metadata_path))
+        if damage == "legacy-entry":
+            metadata = {k: metadata[k] for k in ("result", "materials", "tools")}
+        else:
+            metadata["result"] = ["null"]
+        metadata_path.write_text(json.dumps(metadata))
+
+    out = tmp_path / "failed"
+    with pytest.raises(RunError) as caught:
+        run(entry, out=out, reuse=True)
+    assert caught.value.code == (
+        "cache_incompatible" if damage == "legacy-entry" else "cache_corrupt"
+    )
+    assert str(cache) in str(caught.value)
+    assert "without --reuse" in str(caught.value)
+    assert counts.read_text() == "x"
+    assert cache.is_dir() and not out.exists()
+
+    # Explicitly choosing not to reuse still works, without mutating the old cache.
+    run(entry, out=tmp_path / "regenerated")
+    assert counts.read_text() == "xx"

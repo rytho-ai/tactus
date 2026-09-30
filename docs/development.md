@@ -25,6 +25,20 @@ uv run --extra librosa pytest
 `uv sync --group dev` removes packages left by an earlier reference run; `uv run`
 alone can retain extra packages. The optional references remain pinned in `uv.lock`.
 
+## Internal contract checks
+
+Source inventories, callable identities, attribution and completed-audio readers have
+typed internal records. Check these modules with the checkout's Python environment:
+
+```bash
+uv tool run --from pyright==1.1.414 pyright --pythonpath .venv/bin/python \
+  src/tactus/_source.py src/tactus/commands.py \
+  src/tactus/provenance.py src/tactus/render_store.py
+```
+
+This is a scoped check, not a claim that the whole codebase is type-checked. Pyright runs
+as a separate development tool and adds no runtime dependency.
+
 ## Product and design
 
 Read [positioning](positioning.md) for the product principles and [design](design.md) for

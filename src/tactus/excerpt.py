@@ -10,13 +10,12 @@ source manifest of `format_version` 1, 2 or 3. Excerpt outputs are already-clipp
 audio, so each carries `peak_dbfs`/`clipped_samples` for the published slice (`clipped_samples`
 is always 0 there); its own manifest is `format_version` 2, following the run manifest.
 
-Reads: _contracts · store.OutputStore/AudioRef · timing.frame_of
+Reads: _contracts · render_store · store.OutputStore · timing.frame_of
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 import shutil
 from pathlib import Path
@@ -24,8 +23,9 @@ from typing import Any
 
 import numpy as np
 
+from . import render_store
 from ._contracts import RunError, write_json
-from .store import AudioRef, OutputStore, validate_name
+from .store import OutputStore
 from .timing import frame_of
 
 
@@ -145,42 +145,14 @@ def _select_and_slice(
 def read_published(
     run_dir: Path,
 ) -> tuple[bytes, int, dict[str, np.ndarray], dict[str, str]]:
-    """Read a run or excerpt directory's manifest and every published output, each re-verified
-    against its recorded sha256 and metadata: `(manifest_bytes, sample_rate, {name: audio},
-    {name: file})`. A malformed manifest or a failed verification raises `RunError`
-    (`source_corrupt`)."""
-    manifest_path = run_dir / "manifest.json"
-    manifest_bytes = manifest_path.read_bytes()
-    try:
-        manifest = json.loads(manifest_bytes)
-        if manifest.get("format_version") not in (1, 2, 3):
-            raise ValueError(
-                f"unsupported manifest format_version: {manifest.get('format_version')!r}"
-            )
-        rate = manifest["sample_rate"]
-        refs = manifest["outputs"]
-        if type(rate) is not int or rate <= 0 or not isinstance(refs, dict) or not refs:
-            raise ValueError("manifest sample_rate/outputs are malformed")
-        for name in refs:
-            validate_name(name)
-    except (KeyError, ValueError, TypeError, AttributeError) as exc:
-        raise RunError("source_corrupt", "validate", f"malformed manifest: {exc}") from exc
-
-    source_store = OutputStore(run_dir, rate)
-    full_outputs: dict[str, np.ndarray] = {}
-    files: dict[str, str] = {}
-    for name, ref_dict in refs.items():
-        try:
-            ref = AudioRef(
-                ref_dict["sha256"], ref_dict["frames"], ref_dict["channels"], ref_dict["file"]
-            )
-            full_outputs[name] = source_store.read(ref)
-            files[name] = ref.file
-        except (KeyError, ValueError, TypeError, OSError) as exc:
-            raise RunError(
-                "source_corrupt", "validate", f"output {name!r} failed verification: {exc}"
-            ) from exc
-    return manifest_bytes, rate, full_outputs, files
+    """Compatibility adapter; published-audio reading belongs to render_store."""
+    published = render_store.read_published(run_dir)
+    return (
+        published.manifest_bytes,
+        published.sample_rate,
+        published.outputs,
+        {name: ref.file for name, ref in published.references.items()},
+    )
 
 
 def excerpt(
@@ -217,15 +189,18 @@ def excerpt(
         raise RunError("invalid_request", "request", str(exc)) from exc
 
     completed = False
+    created = False
     try:
-        manifest_bytes, rate, full_outputs, _files = read_published(run_dir)
+        published = render_store.read_published(run_dir)
+        rate = published.sample_rate
 
         selected, range_record, source_frames = _select_and_slice(
-            full_outputs, rate, range, outputs
+            published.outputs, rate, range, outputs
         )
 
         try:
             out.mkdir(parents=True, exist_ok=False)
+            created = True
             publish_store = OutputStore(out, rate)
             references = {}
             for name, audio in selected.items():
@@ -242,7 +217,7 @@ def excerpt(
                 "range": range_record,
                 "source": {
                     "run": str(run_dir),
-                    "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+                    "manifest_sha256": hashlib.sha256(published.manifest_bytes).hexdigest(),
                 },
             }
             write_json(out / "manifest.json", manifest_out)
@@ -255,5 +230,5 @@ def excerpt(
             "manifest": str(out / "manifest.json"),
         }
     finally:
-        if not completed:
+        if created and not completed:
             shutil.rmtree(out, ignore_errors=True)

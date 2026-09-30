@@ -13,7 +13,7 @@ from tactus import RunError, run
 from tactus.cli import main
 from tactus.commands import Command
 from tactus.export import deliver, wav
-from tactus.render_store import read
+from tactus.render_store import read, read_published
 from tactus.takes import save_take
 
 
@@ -55,6 +55,29 @@ def test_double_precision_and_default_wav_parity(rendered, tmp_path):
         assert (output / item["file"]).read_bytes() == Path(
             result["files"][item["file"]]
         ).read_bytes()
+
+
+def test_published_reader_keeps_pcm_distinct_from_original_and_legacy_adapter(rendered):
+    from tactus.excerpt import read_published as legacy_read
+
+    _, output = rendered
+    original = read(output)
+    published = read_published(output)
+    assert original.outputs["mix"].max() == 1.25
+    assert published.outputs["mix"].max() < 1.0
+    assert published.outputs["mix"].dtype == np.float32
+    assert published.manifest_bytes == (output / "manifest.json").read_bytes()
+    payload, rate, arrays, files = legacy_read(output)
+    assert payload == published.manifest_bytes and rate == published.sample_rate
+    for name, reference in published.references.items():
+        assert files[name] == reference.file
+        np.testing.assert_array_equal(arrays[name], published.outputs[name])
+
+
+def test_published_reader_reports_missing_manifest_as_source_corrupt(tmp_path):
+    with pytest.raises(RunError) as caught:
+        read_published(tmp_path)
+    assert caught.value.code == "source_corrupt"
 
 
 def test_cli_stems_and_flac(rendered, tmp_path, capsys):

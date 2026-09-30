@@ -24,6 +24,12 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 `_source.py` 集中 source／lock inventory、環境與套件來源。儲存、分析、export 與 init
 直接使用共同契約，避免反向依賴 runner。既有公開 API、receipt 與 checkpoint 格式保留。
 
+**已完成音訊的讀取：**`render_store` 統一擁有 published PCM 與 original arrays 的讀取與驗證，
+以具名結果交給 caller；analysis 不再自行解析 manifest，excerpt 專注選取與裁切。
+Analysis／excerpt 仍使用已發布 WAV，export 優先使用原始 arrays。來源 inventory 與
+analysis／export attribution 的內部欄位由 TypedDict 定義；對外 JSON 格式保留。
+Excerpt 失敗時只清理本次呼叫成功建立的目錄，避免刪掉競爭程序的結果。
+
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
 我們目前認為 temporal abstraction 有價值：將 placement、repetition、時間變換與 automation 展開中反覆需要算對的運算集中處理，讓 production source 更直接表達音樂關係。這些工具可以是作品內的 Python 函式，也可以在重複需求成立後成為可選的共用 helper。
@@ -130,6 +136,11 @@ commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`
 回歸驗證見 [export 測試](../tests/test_export.py)。
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
+
+Stage cache 現在以格式版本與 SHA-256 驗證 metadata／array bytes。尚無 entry 才視為一般 miss；
+既有 entry 損壞回報 `cache_corrupt`，無法驗證的舊格式回報 `cache_incompatible`，不自動重跑該
+演奏。恢復時明確選擇還原 cache 或重新生成，操作與聲音差異見
+[stage reuse](../skills/references/runtime.md#reusing-unchanged-stages)。
 
 Agent 的指引由 [`tactus` plugin](../skills/README.md) 提供。`compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，並以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，同時保留 caller 要控制的音樂選擇；不能只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。`dsp` 負責使用、撰寫與驗證 processor；`measure` 同時涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到另外兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法；不要求每首作品都走過同一流程。
 

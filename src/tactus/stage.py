@@ -18,6 +18,8 @@ stages would have made. Storage is `$TACTUS_POOL/stages/<key>/`: `entry.json` (t
 result's tagged structure, plus the captured materials/tools) beside `arr-<n>.npy` files
 (`np.save`/`np.load(allow_pickle=False)`, never pickle), written to a temp directory and
 renamed into place, following `inputs/tree.py`'s pattern.
+Versioned entries verify their metadata and array bytes before replay. Existing corrupt
+or unversioned entries fail explicitly: silently rerunning a VST could change the take.
 
 Reads: tactus/inputs/__init__.py (_begin_capture/_end_capture/_replay/_tool_matches) ·
 tactus/inputs/pool.py (default_pool_dir)
@@ -28,6 +30,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import inspect
+import io
 import json
 import math
 import shutil
@@ -39,8 +42,9 @@ from typing import Any
 
 import numpy as np
 
+from ._contracts import RunError
 from .inputs import _begin_capture, _end_capture, _replay, _tool_matches
-from .inputs.pool import default_pool_dir
+from .inputs.pool import default_pool_dir, hash_file
 
 
 class _NotKeyable(Exception):
@@ -187,16 +191,49 @@ def _stage_dir(key: str) -> Path:
 
 
 def _load_entry(directory: Path) -> dict[str, Any] | None:
-    entry_path = directory / "entry.json"
-    if not entry_path.is_file():
+    if not directory.exists() and not directory.is_symlink():
         return None
     try:
-        return json.loads(entry_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
+        entry_path = directory / "entry.json"
+        if directory.is_symlink() or entry_path.is_symlink():
+            raise ValueError("cache entries must not be symlinks")
+        entry = json.loads(entry_path.read_text(encoding="utf-8"))
+        if not isinstance(entry, dict):
+            raise TypeError("entry must be an object")
+        if type(entry.get("format_version")) is not int or entry["format_version"] != 1:
+            raise _cache_error(directory, "unsupported or unversioned entry", incompatible=True)
+        checksum = entry.pop("sha256", None)
+        if checksum != _digest(entry):
+            raise ValueError("entry checksum mismatch")
+        if set(entry) != {"format_version", "result", "arrays", "materials", "tools"}:
+            raise ValueError("invalid entry fields")
+        if not isinstance(entry["arrays"], dict):
+            raise TypeError("array checksums must be an object")
+        for group, required in (("materials", {"ref"}), ("tools", {"name", "path", "sha256"})):
+            if not isinstance(entry[group], list) or any(
+                not isinstance(item, dict)
+                or not required <= item.keys()
+                or any(not isinstance(item[key], str) for key in required)
+                for item in entry[group]
+            ):
+                raise ValueError(f"invalid {group} record")
+        return entry
+    except (OSError, ValueError, TypeError, RecursionError) as exc:
+        raise _cache_error(directory, str(exc)) from exc
 
 
-def _decode(node: Any, directory: Path) -> Any:
+def _cache_error(directory: Path, detail: str, *, incompatible: bool = False) -> RunError:
+    return RunError(
+        "cache_incompatible" if incompatible else "cache_corrupt",
+        "execute",
+        f"stage cache {directory}: {detail}. This cached stage was not regenerated. "
+        "Restore this entry from a known-good backup, or explicitly regenerate with "
+        "a new output directory and without --reuse; the sound may change. "
+        "To rebuild this cache entry, move the named cache directory aside before retrying --reuse.",
+    )
+
+
+def _decode(node: Any, directory: Path, checksums: dict[str, str]) -> Any:
     tag, *rest = node
     if tag == "null":
         return None
@@ -207,13 +244,22 @@ def _decode(node: Any, directory: Path) -> Any:
     if tag == "path":
         return Path(rest[0])
     if tag == "list":
-        return [_decode(item, directory) for item in rest[0]]
+        return [_decode(item, directory, checksums) for item in rest[0]]
     if tag == "tuple":
-        return tuple(_decode(item, directory) for item in rest[0])
+        return tuple(_decode(item, directory, checksums) for item in rest[0])
     if tag == "dict":
-        return {key: _decode(item, directory) for key, item in rest[0]}
+        return {key: _decode(item, directory, checksums) for key, item in rest[0]}
     if tag == "array":
-        return np.load(directory / f"arr-{rest[0]}.npy", allow_pickle=False)
+        if type(rest[0]) is not int or rest[0] < 0:
+            raise ValueError("invalid cached array index")
+        name = f"arr-{rest[0]}.npy"
+        path = directory / name
+        if path.is_symlink():
+            raise ValueError("cached arrays must not be symlinks")
+        payload = path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != checksums[name]:
+            raise ValueError(f"cached array checksum mismatch: {name}")
+        return np.load(io.BytesIO(payload), allow_pickle=False)
     raise ValueError(f"unknown stored result tag: {tag!r}")
 
 
@@ -254,10 +300,14 @@ def _store(
     directory.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f"{directory.name}.building-", dir=directory.parent))
     try:
+        checksums = {}
         for index, array in enumerate(arrays):
-            np.save(staging / f"arr-{index}.npy", array, allow_pickle=False)
+            path = staging / f"arr-{index}.npy"
+            np.save(path, array, allow_pickle=False)
+            checksums[path.name] = hash_file(path)
+        entry = {"format_version": 1, "result": structure, "arrays": checksums, **record}
         (staging / "entry.json").write_text(
-            json.dumps({"result": structure, **record}, sort_keys=True), encoding="utf-8"
+            json.dumps({**entry, "sha256": _digest(entry)}, sort_keys=True), encoding="utf-8"
         )
         if not directory.is_dir():
             staging.rename(directory)
@@ -313,7 +363,18 @@ def stage[F: Callable[..., Any]](func: F) -> F:
             entry = _load_entry(directory)
             if entry is not None and all(_tool_matches(t) for t in entry.get("tools", ())):
                 started = time.perf_counter()
-                result = _decode(entry["result"], directory)
+                try:
+                    result = _decode(entry["result"], directory, entry["arrays"])
+                except (
+                    OSError,
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    IndexError,
+                    EOFError,
+                    RecursionError,
+                ) as exc:
+                    raise _cache_error(directory, str(exc)) from exc
                 _replay({"materials": entry.get("materials", ()), "tools": entry.get("tools", ())})
                 context.calls.append(
                     {

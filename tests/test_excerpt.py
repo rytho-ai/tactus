@@ -20,6 +20,26 @@ from tactus import RunError, excerpt, run
 RATE = 2000
 
 
+def test_competing_output_creator_is_not_removed(tmp_path, monkeypatch):
+    entry = source(tmp_path, MULTI_OUTPUT_SOURCE)
+    run_dir = tmp_path / "run"
+    run(entry, out=run_dir)
+    out = tmp_path / "excerpt"
+    sentinel = out / "other-process.txt"
+    mkdir = Path.mkdir
+
+    def competing_mkdir(path, *args, **kwargs):
+        if path == out:
+            mkdir(path)
+            sentinel.write_text("owned by another process")
+        return mkdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", competing_mkdir)
+    with pytest.raises(RunError):
+        excerpt(run_dir, out=out, range=[0, 0.1])
+    assert sentinel.read_text() == "owned by another process"
+
+
 def source(tmp_path: Path, text: str) -> Path:
     root = tmp_path / "authoring"
     root.mkdir(exist_ok=True)
@@ -102,7 +122,6 @@ def test_excerpt_slice_is_identical_to_the_same_frames_of_the_source_run_mono_an
         full_audio = read_int32(full["outputs"][name])
         cut_audio = read_int32(cut["outputs"][name])
         np.testing.assert_array_equal(cut_audio, full_audio[start_frame:end_frame])
-
 
 
 def test_excerpt_half_sample_boundaries_match_musical_placement(tmp_path):

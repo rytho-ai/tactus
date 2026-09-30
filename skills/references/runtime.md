@@ -167,6 +167,14 @@ call's exact result, including a performance that would otherwise change between
 (OB-Xf) — that is the point, so a part already approved does not re-roll while you audition
 a different parameter. Without `--reuse`, `@stage` is a plain call.
 
+Cache entries carry a format version and SHA-256 checksums for their metadata and array
+files. A missing entry is a normal miss. An existing entry with missing/corrupt files stops
+with `cache_corrupt`; older, unversioned entries stop with `cache_incompatible`. Neither
+silently regenerates that performance. The error names the affected directory. Restore it
+from a known-good backup, or explicitly render to a new output directory without `--reuse`
+(the sound may change). To rebuild the cache, move only the named entry aside before
+retrying with `--reuse`. Preserve approved performances as saved takes, independently of cache.
+
 A call is not reusable when any argument, or the return value, is something other than a
 NumPy array, `None`, a bool/int/float/str/bytes, a `Path`, or a list/tuple/dict of these — a
 random `Generator`, a plugin object, a callable. It then runs normally and the receipt's

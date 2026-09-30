@@ -19,11 +19,18 @@ from collections.abc import Callable
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
+from ._source import FileIdentity
 from .project import Project
 
 _NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+
+class CommandIdentity(TypedDict):
+    name: str
+    callable: str
+    source: FileIdentity | None
 
 
 @dataclass
@@ -36,6 +43,8 @@ class Command:
 
     def load(self) -> Callable:
         if self.function is None:
+            if self.target is None:
+                raise ValueError(f"{self.name} requires a function or module:function target")
             module, name = self.target.split(":")
             try:
                 with redirect_stdout(sys.stderr):
@@ -123,7 +132,9 @@ def add_flags(parser: argparse.ArgumentParser, fn: Callable, reserved: set[str])
             raise ValueError(f"parameter {name!r} conflicts with a CLI argument")
         names.append(name)
         annotation = hints.get(name, param.annotation)
-        kwargs = {"dest": name, "help": f"default: {param.default!r}".replace("%", "%%")}
+        kwargs: dict[str, Any] = {
+            "dest": name, "help": f"default: {param.default!r}".replace("%", "%%")
+        }
         if annotation is bool:
             kwargs["action"] = argparse.BooleanOptionalAction
         else:
@@ -140,7 +151,7 @@ def add_flags(parser: argparse.ArgumentParser, fn: Callable, reserved: set[str])
     return names
 
 
-def identity(command: Command) -> dict:
+def identity(command: Command) -> CommandIdentity:
     from .inputs.pool import hash_file
 
     fn = command.load()

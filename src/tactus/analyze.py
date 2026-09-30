@@ -21,9 +21,9 @@ import soundfile as sf
 
 from ._contracts import RunError, write_json
 from .commands import Command
-from .excerpt import read_published
 from .inputs.pool import hash_file
 from .provenance import begin, finish
+from .render_store import read_published
 
 
 def json_safe(value):
@@ -151,19 +151,18 @@ def measure(
         if path.is_dir():
             if not (path / "manifest.json").is_file():
                 raise RunError("invalid_request", "request", f"no manifest.json in {path}")
-            manifest_bytes, rate, outputs, files = read_published(path)
-            refs = json.loads(manifest_bytes)["outputs"]
-            for name in sorted(outputs):
+            published = read_published(path)
+            for name in sorted(published.outputs):
                 results.append(
                     _measure(
-                        path / files[name],
+                        path / published.references[name].file,
                         name,
-                        outputs[name],
-                        rate,
+                        published.outputs[name],
+                        published.sample_rate,
                         command,
                         params,
                         out,
-                        refs[name]["sha256"],
+                        published.references[name].sha256,
                         visualization,
                     )
                 )

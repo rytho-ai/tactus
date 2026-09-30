@@ -8,15 +8,29 @@ It does not sandbox Python or trace undeclared I/O/network/randomness.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, TypedDict
 
 from . import _source
-from .commands import identity
+from .commands import Command, CommandIdentity, identity
 from .inputs import _record_snapshot, _reset_record
 from .inputs.pool import hash_file
 
 
-def begin(command, out: Path | None) -> dict:
-    _reset_record()
+class AttributionStart(TypedDict):
+    callable: CommandIdentity
+    project: str | None
+    inventory: _source.SourceInventory | None
+    pyproject_sha256: str | None
+
+
+class Attribution(AttributionStart):
+    environment: dict[str, Any]
+    python_packages: dict[str, str]
+    package_sources: dict[str, dict[str, Any]]
+    inputs: dict[str, Any]
+
+
+def _snapshot(command: Command, out: Path | None) -> AttributionStart:
     root = command.project.root if command.project else None
     return {
         "callable": identity(command),
@@ -26,15 +40,13 @@ def begin(command, out: Path | None) -> dict:
     }
 
 
-def finish(command, out: Path | None, before: dict) -> dict:
-    root = command.project.root if command.project else None
-    current = {
-        "callable": identity(command),
-        "project": str(root) if root else None,
-        "inventory": _source.inventory(root, out) if root else None,
-        "pyproject_sha256": hash_file(root / "pyproject.toml") if root else None,
-    }
-    if current != before:
+def begin(command: Command, out: Path | None) -> AttributionStart:
+    _reset_record()
+    return _snapshot(command, out)
+
+
+def finish(command: Command, out: Path | None, before: AttributionStart) -> Attribution:
+    if _snapshot(command, out) != before:
         raise ValueError("analysis/export source or project configuration changed during execution")
     packages = _source.python_packages()
     return {

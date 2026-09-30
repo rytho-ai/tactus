@@ -96,7 +96,8 @@ def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
     try:
         fn = command.load()
         provenance = begin(command, out)
-        rate, arrays, origin = render_store.read(source)
+        rendered = render_store.read(source)
+        rate, arrays, origin = rendered.sample_rate, rendered.outputs, rendered.origin
         for audio in arrays.values():
             audio.flags.writeable = False
         out.mkdir(parents=True, exist_ok=False)
