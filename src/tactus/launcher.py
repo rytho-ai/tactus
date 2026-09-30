@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .project import discover
+from .project import selected_project
 
 
 def main() -> int:
@@ -28,7 +28,7 @@ def main() -> int:
             if not explicit.is_dir():
                 raise ValueError(f"project directory does not exist: {explicit}")
             args = args[2:]
-        project = discover(explicit)
+        project = selected_project(explicit)
         if explicit is not None and project is None:
             raise ValueError(f"no Tactus work found at {explicit}")
         if project is not None and args[:1] != ["init"]:

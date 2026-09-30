@@ -61,6 +61,10 @@ revision with `--tactus URL@REV`. Inside the work, plain `tactus ...` uses its l
 only; the work's Python is pinned to what `init` copied from the running Tactus, not chosen by
 the work.
 
+When entering an existing work from another directory or running Python scratch scripts,
+read [Selecting a work's environment](project-commands.md#selecting-a-works-environment).
+It owns explicit commands, uv/cwd behavior and doctor diagnostics.
+
 ## Listening to part of a run
 
 `tactus excerpt RUN_DIR --range START:END [--outputs a,b] --out NEW_DIR` (seconds; `END` may be

@@ -39,9 +39,11 @@ uv add PACKAGE  # only when the work needs another dependency
 For a portable work, `tactus init DIR --tactus URL@REV` pins a published revision instead.
 An editable path follows local source changes; it does not freeze the checkout.
 
-From then on, use `tactus ...` directly. The launcher discovers the nearest `pyproject.toml`
-from the current directory, including parent directories. An unrelated nearest Python
-project ends discovery. In a Tactus work it runs `uv run --project DIR --locked -- python -m
+From then on, use `tactus ...` directly. The launcher selects an explicit `--project`,
+a work passed by its parent launcher, or a recognizable current uv work environment;
+otherwise it discovers the nearest `pyproject.toml` from cwd, including parents.
+An unrelated nearest Python project ends discovery. In a Tactus work it runs
+`uv run --project DIR --locked -- python -m
 tactus.cli ...`. This installs/syncs the locked environment as needed. Missing or outdated
 locks fail with no fallback to the global installation; use `uv lock` when intentionally
 changing dependencies. `tactus doctor` reports the selected project, interpreter and version.
@@ -51,6 +53,42 @@ Use `tactus --project /path/to/work ...` to select a work from elsewhere. Put `-
 before the subcommand. File arguments remain relative to your invoking directory. A work
 pinned to an older Tactus exposes that version's commands; update its dependency deliberately
 to adopt new commands. `uv run tactus ...` remains usable but is unnecessary for daily use.
+
+## Selecting a work's environment
+
+From another directory, choose the work explicitly and keep file paths unambiguous:
+
+```bash
+tactus --project /path/to/work doctor
+tactus --project /path/to/work run /path/to/work/song.py --out /path/to/work/runs/a
+```
+
+`--project` selects dependencies and custom command registrations; it preserves the
+caller's cwd. Source/input/output arguments still refer to the caller's directory.
+The render entry then resolves its own relative imports/files from its source directory.
+
+For work-local Python scratch scripts, use its locked uv environment:
+
+```bash
+uv run --project /path/to/work --locked -- python /path/to/work/check.py
+```
+
+`uv run --project WORK` selects an environment while keeping cwd. Current Tactus recognizes
+uv's running context when activation matches the interpreter and its default `.venv`
+belongs to a Tactus work, so `uv run --project WORK --locked tactus doctor` keeps that work.
+An activated environment by itself does not override project discovery. For custom/shared
+environment locations, use explicit `tactus --project WORK`; automatic uv recognition is
+limited to a work's default `.venv`. Older pinned launchers may still rediscover cwd:
+use explicit selection or deliberately upgrade the work before relying on this behavior.
+
+`doctor` retains its existing project/version/environment fields and also reports
+`interpreter`, `lock` (path/hash or null), `package_source` (installation provenance or null),
+and `environment_matches_project` (default `.venv` match, or null without a work).
+Check the project, interpreter and package source together: different revisions can share
+the same package version. A false match can reveal that a directly invoked module is using
+another environment; retry through the installed launcher with explicit `--project`.
+This diagnostic compares the default `.venv`, not arbitrary workspace/custom layouts.
+Locks control versions; updating the global CLI does not upgrade a work's pinned Tactus.
 
 ## Register local functions
 

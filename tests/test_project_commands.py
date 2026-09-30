@@ -17,6 +17,7 @@ from tactus.project import discover
 def work(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("TACTUS_PROJECT_ROOT", raising=False)
+    monkeypatch.delenv("UV_RUN_RECURSION_DEPTH", raising=False)
     (tmp_path / "pyproject.toml").write_text("""[project]
 name = "example-work"
 version = "0.1.0"

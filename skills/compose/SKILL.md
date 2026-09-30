@@ -20,8 +20,10 @@ installation scope, layouts, time units and state/reproducibility caveats.
 
 1. **Start from the intended sound or revision.** Locate the existing source and inputs.
    For a new work, `tactus init DIR` creates its uv project; it does not compose a song.
-   Check `tactus doctor` and read [Creating a work](../references/runtime.md#creating-a-work)
-   when installing or selecting an environment.
+   For an existing work, check `tactus --project WORK doctor` before running commands;
+   read [Selecting a work's environment](../references/project-commands.md#selecting-a-works-environment)
+   for command paths, locked Python scratch scripts and runtime diagnostics.
+   Read [Creating a work](../references/runtime.md#creating-a-work) when installing.
    Follow [version](../version/SKILL.md) to verify the work is tracked and
    commit its starting source before the first render.
 2. **Pin inputs.** Use `tactus material add FILE_OR_DIR` and keep the returned ref in source;

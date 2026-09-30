@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
-import os
 import sys
 import tempfile
 from collections.abc import Sequence
@@ -15,6 +14,7 @@ from pathlib import Path
 
 from . import analysis
 from ._contracts import RunError, parse_params
+from ._source import environment, package_sources
 from .analysis._image import SUPPORTED as IMAGE_ANALYSES
 from .analyze import measure
 from .commands import add_flags, registry
@@ -23,7 +23,7 @@ from .export import BUILTINS as EXPORTERS
 from .export import deliver
 from .init import init
 from .inputs import pool, tree
-from .project import discover
+from .project import selected_project
 from .run import run
 from .takes import export_take, save_take
 
@@ -38,9 +38,7 @@ class _RunParser(argparse.ArgumentParser):
 def _main(argv: Sequence[str] | None = None) -> int:
     """Execute a command; functional runs reserve stdout for one JSON result."""
     arguments = list(sys.argv[1:] if argv is None else argv)
-    project = discover(
-        Path(os.environ["TACTUS_PROJECT_ROOT"]) if os.environ.get("TACTUS_PROJECT_ROOT") else None
-    )
+    project = selected_project(recognize_uv=argv is None)
     package_version = version("tactus")
     parser_type = (
         _RunParser
@@ -282,7 +280,15 @@ def _main(argv: Sequence[str] | None = None) -> int:
                     "version": package_version,
                     "python": sys.version.split()[0],
                     "environment": sys.prefix,
+                    "interpreter": sys.executable,
+                    "lock": environment()["lock"],
+                    "package_source": package_sources(["tactus"]).get("tactus"),
                     "project": str(project.root) if project else None,
+                    "environment_matches_project": (
+                        Path(sys.prefix).resolve() == (project.root / ".venv").resolve()
+                        if project
+                        else None
+                    ),
                     "status": "ok",
                 },
                 sort_keys=True,
@@ -318,11 +324,7 @@ def _project_imports(root):
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
-        project = discover(
-            Path(os.environ["TACTUS_PROJECT_ROOT"])
-            if os.environ.get("TACTUS_PROJECT_ROOT")
-            else None
-        )
+        project = selected_project(recognize_uv=argv is None)
         with _project_imports(project.root if project else None):
             return _main(argv)
     except RunError as exc:

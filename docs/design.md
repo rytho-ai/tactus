@@ -40,6 +40,14 @@ headroom 保留，不重跑樂器、不 resample、不退回 published PCM。保
 `material add DIR`，沒有新增 save CLI 或作品模型。用法與錯誤契約集中在
 [runtime reference](../skills/references/runtime.md#reuse-saved-render-outputs)。
 
+**執行環境選擇（2026-09-30）：** launcher 與 CLI 共用 project selection，優先採用
+明確 `--project`、父 launcher 傳遞的 work、可辨識的 uv `.venv` owner，最後才由 cwd
+找最近的專案。這避免 `uv run --project WORK` 保留 cwd 時又跳回另一個 runtime；單純
+activate 不會覆蓋 cwd 選擇。選定 work 後使用其 locked 環境，檔案參數仍以呼叫 cwd
+解析。Doctor 顯示 interpreter、lock hash、套件來源與 default `.venv` match；自訂／
+共享環境明確使用 `--project`，不靠自動猜測。操作契約集中在
+[環境選擇](../skills/references/project-commands.md#selecting-a-works-environment)。
+
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
 我們目前認為 temporal abstraction 有價值：將 placement、repetition、時間變換與 automation 展開中反覆需要算對的運算集中處理，讓 production source 更直接表達音樂關係。這些工具可以是作品內的 Python 函式，也可以在重複需求成立後成為可選的共用 helper。

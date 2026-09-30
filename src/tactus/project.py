@@ -6,7 +6,9 @@ and command registry share this lookup; paths supplied by users keep their cwd m
 
 from __future__ import annotations
 
+import os
 import re
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,3 +49,39 @@ def discover(start: Path | None = None) -> Project | None:
                 project = Project(root, tomllib.load(stream))
             return project if project.is_work else None
     return None
+
+
+def selected_project(explicit: Path | None = None, *, recognize_uv: bool = True) -> Project | None:
+    """Explicit selection, delegated work, uv's current .venv owner, then cwd.
+
+    uv --project changes the environment without changing cwd. Only recognize a
+    running uv context with matching interpreter/activation, not activation alone.
+    Custom or shared environments require explicit selection.
+    """
+    if explicit is not None:
+        return discover(explicit)
+    delegated = os.environ.get("TACTUS_PROJECT_ROOT")
+    if delegated:
+        root = Path(delegated)
+        if not root.is_dir():
+            raise ValueError(f"selected work directory does not exist: {root}")
+        project = discover(root)
+        if project is None:
+            raise ValueError(f"no Tactus work found at selected directory: {root}")
+        return project
+    depth = os.environ.get("UV_RUN_RECURSION_DEPTH", "")
+    active = os.environ.get("VIRTUAL_ENV")
+    prefix = Path(sys.prefix)
+    if (
+        recognize_uv
+        and depth.isdigit()
+        and int(depth) > 0
+        and active
+        and Path(active).resolve() == prefix.resolve()
+        and prefix.name == ".venv"
+        and sys.prefix != sys.base_prefix
+    ):
+        project = discover(prefix.parent)
+        if project is not None and project.root == prefix.parent.resolve():
+            return project
+    return discover()
