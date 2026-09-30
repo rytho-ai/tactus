@@ -45,7 +45,7 @@ def test_copied_plugin_references_are_self_contained(tmp_path):
     """Cache/install copies must not depend on sibling repo files or private paths."""
     copied = tmp_path / "installed-plugin"
     shutil.copytree(SKILLS, copied / "skills")
-    shutil.copytree(PLUGIN / "assets", copied / "assets")
+    shutil.copytree(PLUGIN / "design", copied / "design")
     for host in (".codex-plugin", ".claude-plugin"):
         (copied / host).mkdir()
         shutil.copy2(PLUGIN / host / "plugin.json", copied / host / "plugin.json")

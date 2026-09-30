@@ -1,0 +1,98 @@
+/* Tactus design values. Import once; consume semantic variables in UI code.
+ * Compact + line is the reference baseline; data attributes preview variants.
+ * Raster/SVG exports contain fixed colors; regenerate them after brand changes.
+ */
+:root {
+  color-scheme: dark;
+  --color-bg: #121212;
+  --color-panel: #1e1e1e;
+  --color-raised: #272727;
+  --color-line: #3b3b3b;
+  --color-ink: #e0e0e0;
+  --color-muted: #aaa;
+  --color-yellow: #ffd700;
+  --color-teal: #4db6ac;
+  --color-violet: #7986cb;
+  --color-warning: #efad64;
+  --color-danger: #ee8787;
+
+  --surface-canvas: var(--color-bg);
+  --surface-panel: var(--color-panel);
+  --surface-control: var(--color-raised);
+  --border-panel: var(--color-line);
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-muted);
+  --accent-primary: var(--color-yellow);
+  --audio-color: var(--color-teal);
+  --midi-color: var(--color-violet);
+  --status-warning: var(--color-warning);
+  --status-error: var(--color-danger);
+  --focus-ring: var(--color-yellow);
+  --font-ui: system-ui,'Noto Sans CJK TC',sans-serif;
+  --font-data: ui-monospace,'DejaVu Sans Mono',monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --panel-pad: 16px;
+  --control-height: 34px;
+  --row-height: 42px;
+  --radius: 5px;
+  --font-size: 13px;
+}
+
+:root[data-density=comfortable] {
+  --panel-pad: 24px;
+  --control-height: 42px;
+  --row-height: 52px;
+  --font-size: 14px;
+}
+
+:root[data-boundary=layer] {
+  --border-panel: transparent;
+  --surface-panel: #222;
+  --surface-control: #303030;
+  --radius: 9px;
+}
+
+:root[data-boundary=flat] {
+  --border-panel: transparent;
+  --surface-panel: var(--surface-canvas);
+  --surface-control: #242424;
+  --radius: 2px;
+}
+
+
+/* Semantic detail values shared by the specimen and brand sources. */
+:root {
+  --surface-toolbar: #171717;
+  --text-on-accent: var(--color-bg);
+  --selection-fill: #ffd7000c;
+  --audio-fill: #4db6ac25;
+  --audio-border: #4db6ac88;
+  --midi-fill: #7986cb25;
+  --midi-border: #7986cb88;
+  --text-code: #b8b8b8;
+  --slider-track: #454545;
+  --panel-highlight: #ffffff03;
+  --wave-ruler-fill: rgba(255,255,255,.018);
+  --wave-divider: #ffffff12;
+  --wave-label: #a0a0a0;
+  --wave-tick: #ffffff24;
+  --wave-bar-grid: rgba(77,182,172,.25);
+  --wave-beat-grid: rgba(255,255,255,.045);
+  --wave-selection: rgba(255,215,0,.07);
+  --wave-hover: #ffffff50;
+  --wave-font: 10px ui-monospace,monospace;
+  --brand-font: 'Outfit',sans-serif;
+  --brand-data-font: 'IBM Plex Mono',monospace;
+  --brand-support: #999;
+  --brand-timing: #626262;
+  --brand-guide: #ffffff07;
+  --brand-axis: #2a2a2a;
+  --brand-ring: #343434;
+  --gallery-border: #333;
+  --preview-light-surface: #f0f0f0;
+  --preview-light-ink: #222;
+}

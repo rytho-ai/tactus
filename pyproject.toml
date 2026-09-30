@@ -31,7 +31,7 @@ packages = ["src/tactus"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "src", "tests", "examples", "skills", "assets/branding",
+    "src", "tests", "examples", "skills", "design",
     ".claude-plugin", ".codex-plugin", ".agents/plugins",
     "docs/analysis.md", "docs/design.md", "docs/development.md", "docs/project-commands.md",
     "docs/positioning.md", "README.md", "AGENTS.md", "CLAUDE.md",

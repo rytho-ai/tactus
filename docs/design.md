@@ -2,6 +2,8 @@
 
 本文件保存我們目前認為合適的做法，以及尚未定案的設計邊界。內容獨立、自足，直接隨新決策更新；歷史實驗不需要同步修改。這些選擇包括待實作的方向，不代表現有 runtime 已經全部支援。
 
+視覺樣式、design tokens、品牌資產與互動展示統一維護於 [design/](../design/README.md)。
+
 ## 創作介面：Functional Python 與少量執行邊界
 
 Production 以普通 Python modules、functions、NumPy arrays 與資料結構組成。函式清楚表達輸入、輸出與處理順序，盡量避免共享 mutation，使音樂片段、訊號處理與混音容易重用和修改。Agent 可以直接呼叫既有套件，也可以撰寫作品自己的 DSP。

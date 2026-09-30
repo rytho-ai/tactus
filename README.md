@@ -1,6 +1,6 @@
 # Tactus
 
-![Tactus — Produce music with code. Built for agents.](assets/branding/tactus-banner.png)
+![Tactus — Produce music with code. Built for agents.](design/assets/tactus-banner.png)
 
 *Arrange, render, analyze, and refine.*
 
@@ -120,4 +120,5 @@ editing source; adopt the values you choose in the work's code.
 - [Creative examples](skills/examples/README.md): custom effects, library combinations and analysis-driven time warping.
 - [Runtime reference](skills/references/runtime.md): materials, rendering, excerpts and saved takes.
 - [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
+- [Visual style, tokens and brand assets](design/README.md).
 - [Product principles](docs/positioning.md), [current design](docs/design.md) and [development setup](docs/development.md).
