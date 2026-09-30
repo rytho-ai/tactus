@@ -1,13 +1,14 @@
 ---
 name: dsp
-description: Use, write or adapt audio-processing functions for Tactus works. Use for custom effects, control curves, filters, delays, modulation, nonlinear processing, processor state, DSP correctness or measured acceleration. Builtin Tactus DSP, Pedalboard and work-local Python can be combined or used as implementation references.
+description: Use, write or adapt sound sources and audio-processing functions for Tactus works. Use for synthesis and sound design (oscillators, FM, noise, envelopes, resonators, plucked strings, grains), custom effects, control curves, filters, delays, modulation, waveshaping, spectral processing, processor state, DSP correctness or measured acceleration. Builtin Tactus synthesis and DSP, Pedalboard and work-local Python can be combined or used as implementation references.
 ---
 
 # Build and combine DSP
 
-Start with the audible behavior you want to create. Use an existing processor, adapt its
-implementation, write a local function, or combine these approaches. A custom effect is
-ordinary Python called from a work; it needs no Tactus registration or processor base class.
+Start with the audible behavior you want to create. Use an existing sound source or
+processor, adapt its implementation, write a local function, or combine these approaches.
+A custom synth voice or effect is ordinary Python called from a work; it needs no Tactus
+registration or processor base class.
 Read [Packages and integration notes](../references/packages.md) when selecting a
 library or crossing array, MIDI, plugin-state or time-stretch interfaces.
 

@@ -164,6 +164,38 @@ def test_saturate_retains_nonlinearity_and_suppresses_aliasing(rate, freq):
     assert 10 * np.log10(zz[~valid].sum() / zz[valid].sum()) > -35
 
 
+def test_saturate_curves_transfer_and_fold_reflection():
+    x = np.linspace(-3.0, 3.0, 13)
+    np.testing.assert_allclose(
+        dsp.saturate(x, 48000, drive_db=0, mix=1, oversample=1, curve="clip"), np.clip(x, -1, 1)
+    )
+    folded = dsp.saturate(x, 48000, drive_db=0, mix=1, oversample=1, curve="fold")
+    expected = [1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0]
+    np.testing.assert_allclose(folded, expected, atol=1e-15)
+    np.testing.assert_array_equal(
+        dsp.saturate(x, 48000, mix=1, oversample=1),
+        dsp.saturate(x, 48000, mix=1, oversample=1, curve="tanh"),
+    )
+    with pytest.raises(ValueError, match="curve"):
+        dsp.saturate(x, 48000, curve="sine")
+
+
+@pytest.mark.parametrize("curve", ["clip", "fold"])
+def test_saturate_oversampling_reduces_clip_and_fold_aliasing(curve):
+    rate, freq = 48000, 2345
+    x = 0.8 * np.sin(2 * np.pi * freq * np.arange(3 * rate) / rate)
+
+    def alias_db(y):
+        energy = abs(np.fft.rfft(y[rate : 2 * rate])) ** 2
+        valid = np.zeros(len(energy), dtype=bool)
+        valid[np.arange(freq, rate // 2, 2 * freq)] = True
+        return 10 * np.log10(energy[~valid].sum() / energy[valid].sum())
+
+    naive = dsp.saturate(x, rate, drive_db=12, mix=1, oversample=1, curve=curve)
+    smooth = dsp.saturate(x, rate, drive_db=12, mix=1, oversample=8, curve=curve)
+    assert alias_db(smooth) < alias_db(naive) - 15
+
+
 @pytest.mark.parametrize("oversample", [1, 2, 4, 8, 16])
 def test_saturate_transfer_alignment_and_exact_bypass(oversample):
     n = 4097

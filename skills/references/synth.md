@@ -5,7 +5,9 @@ timbres. Waveform, detune, envelope shape, decay, brightness and grain choices a
 every timbre-shaping value is an explicit argument. Combine the blocks with NumPy,
 [builtin DSP](dsp.md), Pedalboard or your own functions. The
 [instrument examples](../examples/README.md#synthesis-examples) show one way to assemble
-them and are meant to be rewritten.
+them and are meant to be rewritten. The implementations are short and oracle-checked; when
+you need a variation, read one with `inspect.getsource(tactus.synth.saw)` and copy it into
+the work as your own function.
 
 ```python
 import numpy as np

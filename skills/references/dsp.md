@@ -93,8 +93,12 @@ Reusable whole-clip effects also use ordinary arrays:
   normalization, keeping input length/layout. The identity transform reconstructs the
   input to numerical precision. Freeze, bin shift, smear or cross-synthesis are choices
   you write in the transform; `n_fft` even >= 16, `1 <= hop <= n_fft // 2`.
-- `saturate(audio, sample_rate, *, drive_db=12, mix=0.5, oversample=8)`:
-  wet transfer `tanh(audio * 10**(drive_db/20))`, with scalar/per-frame drive and linear
+- `saturate(audio, sample_rate, *, drive_db=12, mix=0.5, oversample=8, curve="tanh")`:
+  wet transfer `curve(audio * 10**(drive_db/20))`. `curve` is `tanh` (smooth), `clip`
+  (hard ±1) or `fold` (triangle wavefolder reflecting at ±1, like SuperCollider `fold2`;
+  more drive adds more folds). At `oversample=1` clip/fold equal SC `clip2`/`fold2`; the
+  default 8x oversampling measured about 20 dB less aliasing for a folded 2.3 kHz sine.
+  It accepts scalar/per-frame drive and linear
   dry/wet mix in `[0, 1]`. Polyphase oversampling accepts 1, 2, 4, 8 or 16; 1 disables
   antialias filtering. Higher factors reduce aliasing, without a universal elimination
   guarantee. Gain is interpolated at the oversampled rate; mix applies at the original

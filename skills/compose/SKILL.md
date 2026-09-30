@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Write, run, audition or revise music as a Tactus Python work. Use for arranging clips, sampling, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates or preserving chosen performances. Connect to dsp for processing design and measure for using or writing analyses.
+description: Write, run, audition or revise music as a Tactus Python work. Use for arranging clips, sampling, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates or preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
 ---
 
 # Compose with Tactus
@@ -58,8 +58,8 @@ installation scope, layouts, time units and state/reproducibility caveats.
 
 ## Connect capabilities when the idea calls for them
 
-- Read [dsp](../dsp/SKILL.md) when designing a processor, adapting an algorithm, deciding
-  state/tail behavior, or turning a curve into an audio effect.
+- Read [dsp](../dsp/SKILL.md) when designing a sound source or processor, adapting an
+  algorithm, deciding state/tail behavior, or turning a curve into an audio effect.
 - Read [measure](../measure/SKILL.md) when choosing observations, writing an analysis,
   comparing candidates objectively, or extracting controls from source audio.
 - Read [Creative connections](../references/connections.md) when an idea crosses these

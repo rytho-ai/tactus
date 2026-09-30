@@ -252,7 +252,9 @@ state 是 `(2, channels)` 的 direct-form-II-transposed 記憶值，由作品明
 另提供四個每次呼叫從零開始、處理完整素材的效果：`duck` 用外部 detector 的跨 channel
 最大峰值產生共同 gain，能回傳曲線供其他聲部重用；`delay` 支援逐 frame 小數延遲，
 只回傳 wet，尾音長度由呼叫端指定；`lowpass` 支援逐 frame cutoff；`saturate` 用
-tanh 與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。這四項不提供跨呼叫
+tanh（或 `curve` 選 clip／fold 波形摺疊）與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。
+Clip／fold 在 oversample=1 時與 SuperCollider `clip2`／`fold2` 數值相同；SC 不做 oversampling，
+預設 8 倍在 2.3 kHz 摺疊正弦上量得約少 20 dB aliasing（2026-09-30）。這四項不提供跨呼叫
 state，不承諾分塊等價；delay 時間變動會改變音高，控制曲線不會自動平滑。
 完整參數契約由 [DSP reference](../skills/references/dsp.md) 維護。
 整合理由是減少跨作品重寫與重測；先前 fresh-agent 實驗觀察到 delay 插值與 wet-only 錯誤，

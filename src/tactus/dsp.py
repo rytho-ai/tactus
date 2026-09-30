@@ -7,7 +7,7 @@ returns (audio, state) for explicit block continuation. No hidden chain or share
 Duck/delay/lowpass/saturate process complete clips, resetting on each call; they accept
 external detectors or per-frame controls without imposing a composition/processor model.
 Delay returns only the delayed signal, with explicitly requested tail duration. Saturate
-owns its oversampling/alignment and tanh transfer, not a loudness-normalization policy.
+owns its oversampling/alignment and tanh/clip/fold transfer, not a loudness-normalization policy.
 Crossover returns LR4 low/high branches. Crossfade delay keeps two fractional heads
 fixed during retiming, with explicit transition length and latest-request behavior.
 Varispeed and RMS fitting retain their original float32 contracts; fx re-exports them.
@@ -505,6 +505,13 @@ def svf(
     return _svf(x, sample_rate, cutoff, k, *weights)
 
 
+def _fold(x):
+    return 1.0 - 4.0 * np.abs(np.mod((x + 1.0) / 4.0, 1.0) - 0.5)
+
+
+_CURVES = {"tanh": np.tanh, "clip": lambda x: np.clip(x, -1.0, 1.0), "fold": _fold}
+
+
 def saturate(
     audio: np.ndarray,
     sample_rate: int,
@@ -512,10 +519,16 @@ def saturate(
     drive_db: float | np.ndarray = 12.0,
     mix: float | np.ndarray = 0.5,
     oversample: int = 8,
+    curve: str = "tanh",
 ) -> np.ndarray:
-    """Whole-clip tanh drive with aligned, linear dry/wet and optional oversampling.
+    """Whole-clip waveshaping drive with aligned, linear dry/wet and optional oversampling.
 
-    Wet transfer: tanh(audio * 10**(drive_db/20)), without makeup/normalization.
+    Wet transfer: curve(audio * 10**(drive_db/20)), without makeup/normalization.
+    curve "tanh" (default) is smooth saturation; "clip" limits hard to ±1; "fold"
+    reflects the signal back at ±1 as often as needed (triangle wavefolder, like
+    SuperCollider's fold2), so more drive adds more folds rather than more clipping.
+    Clip and fold have sharp corners and a wider spectrum than tanh; oversampling
+    matters most for them.
     drive_db/mix may be scalar or one value per frame, shared across channels.
     0<=mix<=1; mix=0 is exact bypass, including input headroom. Output length/layout
     are unchanged. oversample is 1/2/4/8/16; 1 explicitly disables antialiasing.
@@ -538,6 +551,9 @@ def saturate(
         or oversample not in (1, 2, 4, 8, 16)
     ):
         raise ValueError("oversample must be one of 1, 2, 4, 8, 16")
+    if curve not in _CURVES:
+        raise ValueError(f"curve must be one of {', '.join(_CURVES)}")
+    shape = _CURVES[curve]
     with np.errstate(over="ignore", under="ignore"):
         factor = 10 ** (drive / 20)
     if not np.isfinite(factor).all():
@@ -552,7 +568,7 @@ def saturate(
         high_gain = np.interp(np.arange(len(up)) / oversample, np.arange(len(x)), factor)
         high_gain = high_gain[:, None]
     with np.errstate(over="ignore", invalid="ignore"):
-        wet = resample_poly(np.tanh(up * high_gain), 1, oversample, axis=0, window=("kaiser", 8.6))[
+        wet = resample_poly(shape(up * high_gain), 1, oversample, axis=0, window=("kaiser", 8.6))[
             : len(x)
         ]
         blend = blend[:, None] if blend.ndim else blend
