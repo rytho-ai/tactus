@@ -305,7 +305,9 @@ Csound 花更多呼叫並出現不報錯的失敗；同時各 run 反覆手寫�
 oracle（`oracle` 測試標記，未安裝時略過）。PolyBLEP saw 的高次諧波比 `vco2` 略暗
 （48 kHz 下 12 kHz 約 -2 dB），已寫入契約。只有兩個逐 sample 遞迴使用 Numba；其餘以
 NumPy／SciPy 在一秒內處理 60 秒音訊。完整契約見 [synth reference](../skills/references/synth.md)。
-Ladder 濾波器延後，待 SVF 模式上線後以試聽 probe 決定。
+`dsp.ladder`（Huovilainen 非線性 Moog 模型）作為 `svf` 之外的另一種音色提供。盲聽 probe 中 Paul
+三段素材偏好 ladder 0 次，但決定保留創作選項而非只留偏好的聲音；小訊號響應與 Csound
+`moogladder` 相差 0.3 dB 內，並附 LGPL-2.1 聲明（`src/tactus/LICENSE.csound`）（2026-09-30）。
 
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 

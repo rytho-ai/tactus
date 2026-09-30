@@ -85,6 +85,13 @@ Reusable whole-clip effects also use ordinary arrays:
   resonate about `20·log10(Q)` dB at cutoff; bandpass is 0 dB at cutoff and narrows as Q
   rises; notch removes the cutoff frequency. Same recurrence as automated `lowpass`
   (identical output for `mode="lowpass"`); each call starts from silence, no smoothing.
+- `ladder(audio, sample_rate, *, cutoff_hz, resonance=0, drive_db=0)`: nonlinear Moog-style
+  24 dB/octave lowpass (Huovilainen model: four tanh stages, 2x internal iterations), a
+  different character from `svf`, not a replacement. Cutoff (0 to 0.45·sample_rate) and
+  resonance (0..1) may be per-frame; near 1 it self-oscillates at the cutoff. Raising
+  resonance lowers the passband with no makeup gain, as on the hardware. `drive_db` pushes
+  signal harder into the tanh stages at the same output scale; small signals stay linear.
+  Small-signal response matches Csound `moogladder` within 0.3 dB.
 - `spectral(audio, sample_rate, transform, *, n_fft=2048, hop=512)`: phase-vocoder frame
   around your `transform(magnitude, frequency_hz, frame_index)`, which returns new
   `(magnitude, frequency_hz)` with the same shape: `(bins,)` for mono, `(bins, channels)`

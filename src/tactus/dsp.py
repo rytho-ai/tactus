@@ -13,6 +13,7 @@ fixed during retiming, with explicit transition length and latest-request behavi
 Varispeed and RMS fitting retain their original float32 contracts; fx re-exports them.
 Svf generalizes the automated lowpass recurrence to four modes with per-frame cutoff/Q.
 Spectral wraps a caller transform in phase-vocoder analysis/overlap-add resynthesis.
+Ladder is Huovilainen's nonlinear Moog model (see LICENSE.csound), an svf alternative.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ._dsp_kernels import (
     crossfade_fractional_delay,
     duck_envelope,
     fractional_delay,
+    huovilainen_ladder,
     variable_svf,
 )
 
@@ -40,6 +42,7 @@ __all__ = [
     "fade",
     "fit_rms",
     "gain",
+    "ladder",
     "lowpass",
     "pan",
     "saturate",
@@ -573,6 +576,55 @@ def saturate(
         ]
         blend = blend[:, None] if blend.ndim else blend
         result = _finite_result((1 - blend) * frames + blend * wet)
+    return result[:, 0] if mono else result
+
+
+def ladder(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    cutoff_hz: float | np.ndarray,
+    resonance: float | np.ndarray = 0.0,
+    drive_db: float = 0.0,
+) -> np.ndarray:
+    """Whole-clip nonlinear Moog-style ladder lowpass (24 dB/octave), a timbral
+    alternative to `svf`, not a replacement.
+
+    Huovilainen's model: four one-pole stages each with tanh saturation, global feedback
+    4·resonance with his cutoff and resonance compensation polynomials, two iterations
+    per sample. resonance 0..1 (scalar or per frame); near 1 it self-oscillates at the
+    cutoff. As on the hardware, raising resonance lowers the passband level; there is no
+    makeup gain. drive_db scales signal into the tanh stages and back out, so higher drive
+    saturates more at the same output level; 0 dB keeps ±1 audio mildly nonlinear and
+    small signals linear. cutoff (scalar or per frame) must be between 0 and 0.45·sample_rate
+    for the tuning fit. Each channel starts from silence; controls are not smoothed.
+    """
+    x = _audio(audio)
+    _rate(sample_rate)
+    cutoff = _control(cutoff_hz, len(x), "cutoff_hz")
+    res = _control(resonance, len(x), "resonance")
+    drive = _scalar(drive_db, "drive_db")
+    if np.any(cutoff <= 0) or np.any(cutoff >= 0.45 * sample_rate):
+        raise ValueError("cutoff_hz must be between zero and 0.45 * sample_rate")
+    if np.any(res < 0) or np.any(res > 1):
+        raise ValueError("resonance must be between 0 and 1")
+    thermal = 10 ** (drive / 20)
+    if not math.isfinite(thermal) or thermal <= 0:
+        raise ValueError("drive_db produces a nonfinite gain")
+    fc = np.broadcast_to(cutoff / sample_rate, (len(x),))
+    fcr = 1.8730 * fc**3 + 0.4955 * fc**2 - 0.6490 * fc + 0.9988
+    acr = -3.9364 * fc**2 + 1.8409 * fc + 0.9968
+    tune = (1.0 - np.exp(-np.pi * fc * fcr)) / thermal
+    feedback = 4.0 * np.broadcast_to(res, (len(x),)) * acr
+    mono = x.ndim == 1
+    frames = x[:, None] if mono else x
+    result = huovilainen_ladder(
+        np.ascontiguousarray(frames),
+        np.ascontiguousarray(tune, dtype=np.float64),
+        np.ascontiguousarray(feedback, dtype=np.float64),
+        float(thermal),
+    )
+    _finite_result(result)
     return result[:, 0] if mono else result
 
 

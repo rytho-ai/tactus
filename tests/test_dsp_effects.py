@@ -334,3 +334,91 @@ def render():
     assert "wet" in capsys.readouterr().out
     manifest = json.loads((out / "manifest.json").read_text())
     assert manifest["sample_rate"] == 16000
+
+
+def reference_ladder(audio, sample_rate, cutoff, resonance, drive_db=0.0):
+    x = np.asarray(audio, dtype=np.float64)
+    thermal = 10 ** (drive_db / 20)
+    cutoff = np.broadcast_to(cutoff, (len(x),))
+    resonance = np.broadcast_to(resonance, (len(x),))
+    out = np.empty(len(x))
+    d = [0.0] * 6
+    t = [0.0] * 3
+    for i in range(len(x)):
+        fc = cutoff[i] / sample_rate
+        fcr = 1.8730 * fc**3 + 0.4955 * fc**2 - 0.6490 * fc + 0.9988
+        acr = -3.9364 * fc**2 + 1.8409 * fc + 0.9968
+        g = (1 - np.exp(-np.pi * fc * fcr)) / thermal
+        k = 4 * resonance[i] * acr
+        for _ in range(2):
+            d[0] = d[0] + g * (np.tanh((x[i] - k * d[5]) * thermal) - t[0])
+            t[0] = np.tanh(d[0] * thermal)
+            d[1] = d[1] + g * (t[0] - t[1])
+            t[1] = np.tanh(d[1] * thermal)
+            d[2] = d[2] + g * (t[1] - t[2])
+            t[2] = np.tanh(d[2] * thermal)
+            s3 = d[3] + g * (t[2] - np.tanh(d[3] * thermal))
+            d[3] = s3
+            d[5] = (s3 + d[4]) * 0.5
+            d[4] = s3
+        out[i] = d[5]
+    return out
+
+
+def test_ladder_kernel_matches_python_recurrence():
+    rng = np.random.default_rng(12)
+    audio = rng.normal(0, 0.5, 3000)
+    cutoff = np.geomspace(100, 12000, 3000)
+    resonance = np.linspace(0, 1, 3000)
+    np.testing.assert_allclose(
+        dsp.ladder(audio, 48000, cutoff_hz=cutoff, resonance=resonance, drive_db=6),
+        reference_ladder(audio, 48000, cutoff, resonance, drive_db=6),
+        rtol=0,
+        atol=1e-12,
+    )
+
+
+def test_ladder_slope_passband_loss_self_oscillation_and_drive():
+    sr = 48000
+    t = np.arange(sr) / sr
+
+    def gain_db(freq, **kwargs):
+        x = 0.001 * np.sin(2 * np.pi * freq * t)
+        y = dsp.ladder(x, sr, **kwargs)
+        return 20 * np.log10(rms(y[sr // 2 :]) / rms(x[sr // 2 :]))
+
+    assert gain_db(50, cutoff_hz=1000) == pytest.approx(0, abs=0.1)
+    assert gain_db(1000, cutoff_hz=1000) == pytest.approx(-12, abs=0.6)
+    assert gain_db(8000, cutoff_hz=1000) - gain_db(4000, cutoff_hz=1000) < -20  # ~24 dB/oct
+    assert gain_db(50, cutoff_hz=1000, resonance=0.8) < -3  # passband loss, no makeup gain
+    impulse = np.zeros(2 * sr)
+    impulse[0] = 0.1
+    ringing = dsp.ladder(impulse, sr, cutoff_hz=880, resonance=1.0)
+    tail = ringing[-sr // 2 :]
+    assert rms(tail) > 1e-3
+    spectrum = np.abs(np.fft.rfft(tail * np.hanning(len(tail))))
+    assert abs(np.argmax(spectrum) * 2 - 880) < 40
+    loud = 0.9 * np.sin(2 * np.pi * 110 * t)
+    clean = dsp.ladder(loud, sr, cutoff_hz=5000, drive_db=-20)
+    driven = dsp.ladder(loud, sr, cutoff_hz=5000, drive_db=12)
+
+    def third_harmonic(y):
+        s = np.abs(np.fft.rfft(y[sr // 2 :]))
+        return s[165] / s[55]
+
+    assert third_harmonic(driven) > 10 * third_harmonic(clean)
+
+
+def test_ladder_layouts_controls_and_validation():
+    rng = np.random.default_rng(4)
+    stereo = rng.normal(0, 0.2, (2000, 2))
+    out = dsp.ladder(stereo, 48000, cutoff_hz=np.geomspace(200, 9000, 2000), resonance=0.5)
+    assert out.shape == (2000, 2) and np.isfinite(out).all()
+    np.testing.assert_allclose(
+        out[:, 0], dsp.ladder(stereo[:, 0], 48000, cutoff_hz=np.geomspace(200, 9000, 2000), resonance=0.5)
+    )
+    assert dsp.ladder(stereo[:0], 48000, cutoff_hz=1000).shape == (0, 2)
+    with pytest.raises(ValueError, match="resonance"):
+        dsp.ladder(stereo, 48000, cutoff_hz=1000, resonance=1.2)
+    with pytest.raises(ValueError, match="0.45"):
+        dsp.ladder(stereo, 48000, cutoff_hz=22000)

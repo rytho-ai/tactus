@@ -95,3 +95,22 @@ def test_saw_harmonic_profile_matches_csound_vco2(tmp_path):
     # near-ideal band limiting (documented in synth.saw): monotonic, under 2.5 dB at 12 kHz.
     assert np.max(np.abs(diff[:6])) < 0.5
     assert np.all(np.diff(diff) <= 0.01) and diff[-1] > -2.5
+
+
+@pytest.mark.parametrize("resonance", [0.0, 0.5, 0.9])
+def test_ladder_small_signal_response_matches_csound_moogladder(tmp_path, resonance):
+    from tactus import dsp
+
+    cutoff = 1200.0
+    for i, freq in enumerate((150.0, 600.0, 1200.0, 2400.0, 6000.0)):
+        oracle = render_csound(
+            tmp_path,
+            f"ain poscil 0.001, {freq}\n aout moogladder ain, {cutoff}, {resonance}\n out aout",
+            1.0,
+        )
+        tone = 0.001 * synth.sine(freq, SR, frames=len(oracle))
+        ours = dsp.ladder(tone, SR, cutoff_hz=cutoff, resonance=resonance)
+        steady = slice(SR // 2, len(oracle))
+        gain_ours = 20 * math.log10(np.std(ours[steady]) / np.std(tone[steady]))
+        gain_oracle = 20 * math.log10(np.std(oracle[steady]) / np.std(tone[steady]))
+        assert gain_ours == pytest.approx(gain_oracle, abs=0.3), (freq, gain_ours, gain_oracle)

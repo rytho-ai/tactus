@@ -157,3 +157,38 @@ def variable_svf(
             state2[channel] = 2.0 * v2 - state2[channel]
             output[i, channel] = m0[i] * v0 + m1[i] * v1 + m2[i] * v2
     return output
+
+
+@njit(cache=True)
+def huovilainen_ladder(
+    frames: np.ndarray, tune: np.ndarray, feedback: np.ndarray, thermal: float
+) -> np.ndarray:
+    """Huovilainen nonlinear four-stage ladder, two iterations per input sample.
+
+    Each stage integrates tanh(thermal·input) - tanh(thermal·state); feedback is
+    4·resonance·compensation; the output averages the last stage over half a sample.
+    """
+    output = np.empty_like(frames)
+    channels = frames.shape[1]
+    for channel in range(channels):
+        d0 = d1 = d2 = d3 = d4 = d5 = 0.0
+        t0 = t1 = t2 = 0.0
+        for i in range(frames.shape[0]):
+            x = frames[i, channel]
+            g = tune[i]
+            for _ in range(2):
+                s0 = d0 + g * (np.tanh((x - feedback[i] * d5) * thermal) - t0)
+                d0 = s0
+                t0 = np.tanh(s0 * thermal)
+                s1 = d1 + g * (t0 - t1)
+                d1 = s1
+                t1 = np.tanh(s1 * thermal)
+                s2 = d2 + g * (t1 - t2)
+                d2 = s2
+                t2 = np.tanh(s2 * thermal)
+                s3 = d3 + g * (t2 - np.tanh(d3 * thermal))
+                d3 = s3
+                d5 = (s3 + d4) * 0.5
+                d4 = s3
+            output[i, channel] = d5
+    return output
