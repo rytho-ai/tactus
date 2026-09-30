@@ -1,5 +1,9 @@
 # Tactus plugin
 
+**Produce music with code. Built for agents.**
+
+Arrange, render, analyze, and refine.
+
 Three composable skills for making music with the separately installed Tactus Python runtime:
 
 | Skill | Responsibility |

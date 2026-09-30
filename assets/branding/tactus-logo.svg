@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <title>Tactus</title>
+  <desc>A rounded yellow T ending above a separate beat dot.</desc>
+  <g fill="#FFD700">
+    <path d="M98 49H414a49 49 0 0 1 0 98H305v155a49 49 0 0 1-98 0V147H98a49 49 0 0 1 0-98Z"/>
+    <circle cx="256" cy="413" r="49"/>
+  </g>
+</svg>

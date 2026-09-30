@@ -1,7 +1,7 @@
 [project]
 name = "tactus"
 version = "0.1.0"
-description = "An experimental code-first music production framework."
+description = "Produce music with code. Built for agents."
 readme = "README.md"
 authors = [{ name = "Paul", email = "bernie40916@gmail.com" }]
 requires-python = ">=3.12,<3.13"

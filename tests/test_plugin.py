@@ -45,9 +45,15 @@ def test_copied_plugin_references_are_self_contained(tmp_path):
     """Cache/install copies must not depend on sibling repo files or private paths."""
     copied = tmp_path / "installed-plugin"
     shutil.copytree(SKILLS, copied / "skills")
+    shutil.copytree(PLUGIN / "assets", copied / "assets")
     for host in (".codex-plugin", ".claude-plugin"):
         (copied / host).mkdir()
         shutil.copy2(PLUGIN / host / "plugin.json", copied / host / "plugin.json")
+    manifest = json.loads((copied / ".codex-plugin/plugin.json").read_text())
+    for key in ("composerIcon", "logo"):
+        target = (copied / manifest["interface"][key]).resolve()
+        assert target.is_relative_to(copied)
+        assert target.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     for document in copied.rglob("*.md"):
         text = document.read_text()
         for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):

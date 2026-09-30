@@ -1,8 +1,11 @@
 # Tactus
 
-Tactus is a Python-first music production runtime for people and agents. Write music as
-code, render audio, listen, and revise. Tactus handles execution and records what produced
-each result; the author makes the musical decisions.
+![Tactus — Produce music with code. Built for agents.](assets/branding/tactus-banner.png)
+
+*Arrange, render, analyze, and refine.*
+
+Tactus is a programmable music production runtime for people and agents. It handles
+execution and records what produced each result; the author makes the musical decisions.
 
 ## Core ideas
 

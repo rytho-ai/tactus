@@ -1,4 +1,4 @@
-"""Tactus: an experimental code-first music production framework."""
+"""Tactus: produce music with code. Built for agents."""
 
 from . import analysis, fx, timing
 from .excerpt import excerpt

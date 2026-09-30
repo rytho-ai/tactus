@@ -49,8 +49,11 @@ def _main(argv: Sequence[str] | None = None) -> int:
     )
     parser = parser_type(
         prog="tactus",
-        description="Experimental code-first music production framework.",
-        epilog="The installed launcher accepts: tactus --project DIR COMMAND ...",
+        description="Produce music with code. Built for agents.",
+        epilog=(
+            "Arrange, render, analyze, and refine. "
+            "The installed launcher accepts: tactus --project DIR COMMAND ..."
+        ),
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version}")
     commands = parser.add_subparsers(dest="command", required=True)
