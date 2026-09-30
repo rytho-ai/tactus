@@ -4,15 +4,17 @@
 
 Arrange, render, analyze, and refine.
 
-Three composable skills for making music with the separately installed Tactus Python runtime:
+Four composable skills for making music with the separately installed Tactus Python runtime:
 
 | Skill | Responsibility |
 |---|---|
 | [compose](compose/SKILL.md) | Develop and maintain a work as functional, modular code; render, listen and revise. |
 | [dsp](dsp/SKILL.md) | Use or build processors and controls, validate their behavior and accelerate measured bottlenecks. |
 | [measure](measure/SKILL.md) | Use or write analyses, evaluate their limits and supply observations for creative choices. |
+| [version](version/SKILL.md) | Explore, compare, preserve and reuse versions; use Git to connect source, refs and locks to audio. |
 
-Compose links to DSP and measurement when an idea needs them. All three are independently
+Compose uses version when starting and adopting revisions, and links to DSP and
+measurement when an idea needs them. All four are independently
 usable. Builtin functions, Pedalboard and local Python are ordinary options. The skills
 provide working methods and adaptable examples; musical form and aesthetics remain yours.
 
@@ -46,6 +48,7 @@ skills/
   compose/SKILL.md
   dsp/SKILL.md
   measure/SKILL.md
+  version/SKILL.md
   references/
   examples/
 ```
@@ -69,6 +72,7 @@ The plugin supplies guidance, not an MCP server or Python dependency installer.
 - [Packages and integration notes](references/packages.md): tool selection, layouts, timing and state.
 - [Builtin DSP](references/dsp.md): available functions and behavior worth considering when adapting them.
 - [Creative connections](references/connections.md): connect observations, time changes and processing.
+- [Source regions and audio delivery](references/production.md): loop-body/tail boundaries and channel/master relationships.
 - [Runnable examples](examples/README.md): synthetic, editable starting points; no sample downloads.
 
 To verify the package in its repository, run `uv run pytest tests/test_skill.py tests/test_plugin.py`

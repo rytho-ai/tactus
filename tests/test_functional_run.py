@@ -174,6 +174,30 @@ def test_invalid_outputs_never_publish(tmp_path, expression):
 
 
 @pytest.mark.parametrize(
+    "expression,diagnostic",
+    [
+        ("None", "got NoneType"),
+        ("(8000, np.zeros(8))", "got tuple"),
+        ("{'outputs': {'a': np.zeros(8)}}", "missing fields: sample_rate"),
+        (
+            "{'sample_rate': 8000, 'outputs': {'a': np.zeros(8)}, 'metadata': {}}",
+            "unexpected fields: 'metadata'",
+        ),
+        ("{3: 'extra'}", "unexpected fields: 3"),
+    ],
+)
+def test_invalid_result_explains_the_contract(tmp_path, expression, diagnostic):
+    entry = source(tmp_path, f"import numpy as np\ndef render():\n    return {expression}\n")
+    with pytest.raises(RunError) as failure:
+        run(entry, out=tmp_path / "out")
+    assert (failure.value.code, failure.value.phase) == ("invalid_output", "validate")
+    assert diagnostic in str(failure.value)
+    assert '"sample_rate": 48000' in str(failure.value)
+    assert '"outputs": {"mix": audio}' in str(failure.value)
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize(
     "body,params",
     [
         ("def render(positional=1): pass", {}),

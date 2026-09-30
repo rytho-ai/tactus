@@ -196,11 +196,24 @@ def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[st
 
 
 def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
-    if not isinstance(result, dict) or set(result) not in (
-        {"sample_rate", "outputs"},
-        {"sample_rate", "outputs", "takes"},
-    ):
-        raise ValueError("render must return {sample_rate, outputs} with optional takes")
+    example = 'Return {"sample_rate": 48000, "outputs": {"mix": audio}}; optional: "takes".'
+    if not isinstance(result, dict):
+        raise TypeError(
+            f"render must return a dictionary, got {type(result).__name__}. {example}"
+        )
+    required = {"sample_rate", "outputs"}
+    missing = required - result.keys()
+    unexpected = result.keys() - (required | {"takes"})
+    if missing or unexpected:
+        details = []
+        if missing:
+            details.append(f"missing fields: {', '.join(sorted(missing))}")
+        if unexpected:
+            details.append(f"unexpected fields: {', '.join(sorted(map(repr, unexpected)))}")
+        raise ValueError(
+            f"invalid render result ({'; '.join(details)}). {example} "
+            "Keep notes and processing metadata outside the returned audio dictionary."
+        )
     rate = result["sample_rate"]
     if type(rate) is not int or rate <= 0:
         raise ValueError("sample_rate must be a positive integer")

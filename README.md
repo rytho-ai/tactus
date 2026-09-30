@@ -60,7 +60,8 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 ### Agent skills
 
 The `tactus` plugin provides **compose** (write and revise works), **dsp** (use or build
-effects) and **measure** (use or write analyses). Install it from this repository root
+effects), **measure** (use or write analyses) and **version** (track work revisions
+with Git). Install it from this repository root
 for your agent host.
 
 **Codex:**
@@ -88,6 +89,11 @@ From the Tactus checkout, create a separate work:
 tactus init ../my-work --tactus-path "$PWD"
 cd ../my-work
 ```
+
+Use the [version workflow](skills/version/SKILL.md) to commit the work's
+source and lock before rendering, then preserve and commit the revisions you choose.
+`tactus init` requires Git and creates the work's own repository, including inside another
+checkout. Commit source after writing it; initialization alone creates no version history.
 
 Save this as `song.py`:
 

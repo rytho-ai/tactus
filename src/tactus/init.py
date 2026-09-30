@@ -5,7 +5,9 @@ it could not add a package of its own, its receipt's `dependency_lock` was alway
 its environment moved whenever the Tactus checkout moved. `init` fixes this by writing the
 work a `pyproject.toml` that depends on `tactus` through `[tool.uv.sources]`, pinned to a
 resolved Git source, plus a `.gitignore`, then running `uv lock` so the work has its own
-`uv.lock`, and `git init` when the folder is not already in a repository. `_tactus_source` resolves that pin: by default the *running* Tactus's own PEP 610
+`uv.lock`, and a Git repository rooted at the work even inside another checkout.
+Git availability and initialization failures are reported explicitly. `_tactus_source`
+resolves that pin: by default the *running* Tactus's own PEP 610
 origin (reusing `_source.direct_url`, the same parsing `run.py` uses for receipt attribution),
 falling back to an explicit `--tactus-path`/`--tactus` override. An editable checkout is only
 usable as a source when it is clean and its `HEAD` is already pushed (`revision.py`); a dirty
@@ -33,7 +35,7 @@ from . import revision
 from ._contracts import RunError
 from ._source import direct_url as _direct_url
 
-_GITIGNORE = "runs/\n.venv/\n__pycache__/\n"
+_GITIGNORE = "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
 
 def _project_name(directory: Path) -> str:
@@ -156,8 +158,8 @@ def init(
     checkout; `tactus` pins an explicit `URL@REV`; passing both is a request error. With
     neither, the source is the running Tactus's own origin (see `_running_tactus_source`).
     Does not write `song.py`; the work's content belongs to whoever writes it next. Runs
-    `git init` when `directory` is not already inside a Git work tree, so the first receipt
-    records a revision.
+    `git init` creates a repository rooted at `directory`, even inside another checkout.
+    The author commits the first source before rendering; initialization alone creates no HEAD.
     """
     if tactus_path is not None and tactus is not None:
         raise RunError(
@@ -172,6 +174,8 @@ def init(
     uv = shutil.which("uv")
     if uv is None:
         raise RunError("init_failed", "request", "uv is not installed or not on PATH")
+    if shutil.which("git") is None:
+        raise RunError("init_failed", "request", "Git is not installed or not on PATH; install Git before tactus init")
 
     if tactus_path is not None:
         source = _path_source(Path(tactus_path))
@@ -192,7 +196,10 @@ def init(
     except subprocess.CalledProcessError as exc:
         raise RunError("init_failed", "lock", f"uv lock failed: {exc.stderr}") from exc
 
-    git_created = revision.ensure_repository(directory)
+    try:
+        git_created = revision.ensure_repository(directory)
+    except OSError as exc:
+        raise RunError("init_failed", "git", str(exc)) from exc
     return {
         "status": "ok",
         "work": str(directory),

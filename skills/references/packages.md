@@ -35,6 +35,9 @@ Use `tactus doctor` to identify the selected environment. A package in the globa
 environment is not necessarily in the work's locked environment. Inspect a callable from
 that work with `uv run python`, `help(...)`, `inspect.signature(...)` or `inspect.getsource(...)`.
 Private Tactus kernels are references, not stable imports for a portable work.
+Native extension callables may lack an inspectable signature: try their installed
+`__doc__` or `help()` and a small validated call rather than treating introspection
+failure as an unavailable processor. See [production notes](production.md#a-valid-entry-and-processing-notes).
 
 ## Pedalboard and instrument hosts
 

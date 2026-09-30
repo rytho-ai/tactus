@@ -19,9 +19,14 @@ installation scope, layouts, time units and state/reproducibility caveats.
    For a new work, `tactus init DIR` creates its uv project; it does not compose a song.
    Check `tactus doctor` and read [Creating a work](../references/runtime.md#creating-a-work)
    when installing or selecting an environment.
+   Follow [version](../version/SKILL.md) to verify the work is tracked and
+   commit its starting source before the first render.
 2. **Pin inputs.** Use `tactus material add FILE_OR_DIR` and keep the returned ref in source;
    resolve it with `material(REF)`. Declare external binaries and plugin bundles with
    `tool()`. See [Inputs](../references/runtime.md#inputs) for folder materials and loading.
+   When chopping loops or mixing from saved stems, read
+   [Source regions and audio delivery](../references/production.md) to declare the musical
+   body, tails and processing boundaries.
 3. **Express the idea in functional code.** Extract coherent musical and processing logic
    into functions and modules that make the next edit easy. Choose the arrangement
    representation that suits the work. Read the
@@ -34,6 +39,8 @@ installation scope, layouts, time units and state/reproducibility caveats.
    and the user's intent to judge musical results. If listening tools are unavailable, say
    what was measured and what remains unheard. For an excerpt, use `tactus excerpt` on the
    saved full run so tails, phase and preceding state match the actual candidate.
+   Use [version](../version/SKILL.md#revise-and-adopt) for the Git base,
+   candidate attribution and adoption commit.
 6. **Preserve the selected result.** Adopt parameter values or material refs in source.
    Use [Saved takes](../references/runtime.md#saved-takes) for performances that vary on
    each render. Follow [Keeping a candidate](../references/runtime.md#keeping-a-candidate)

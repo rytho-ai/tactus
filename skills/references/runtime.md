@@ -3,6 +3,8 @@
 Shared execution contracts for the [compose](../compose/SKILL.md),
 [dsp](../dsp/SKILL.md) and [measure](../measure/SKILL.md) skills.
 Read the relevant section on demand; installed help describes the work's pinned version.
+Use [version](../version/SKILL.md) when establishing Git history,
+adopting a candidate or recovering a work revision.
 
 ## Contents
 
@@ -39,14 +41,18 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
     refused for exceeding [-1, 1]: the saved WAV is clipped to full scale, and the run
     reports it (see Run results).
 - Outputs may differ in length. A mix, stems, and clips can live side by side.
+  For stem processing and summation boundaries, read [audio delivery](production.md#explain-the-stem-and-master-boundaries).
 - Relative imports and relative files resolve from the entry file's directory. Author logs go
   to stderr; stdout carries one JSON result.
 
 ## Creating a work
 
 `tactus init DIR` scaffolds `DIR` as its own uv project depending on a pinned Tactus (a
-`pyproject.toml` with `[tool.uv.sources]` and its own `uv.lock`, inside a new Git repository
-unless `DIR` is already in one). Install once with
+`pyproject.toml` with `[tool.uv.sources]` and its own `uv.lock`, inside a Git repository
+rooted at `DIR`, even when it is inside another checkout). Git must be installed and on
+PATH; initialization failures are reported as `init_failed` with phase `git`.
+Initialization creates no commit: write and commit the source before the first render.
+Install once with
 `uv tool install --python 3.12 --editable TACTUS_CHECKOUT`; use
 `tactus init DIR --tactus-path TACTUS_CHECKOUT` during local development, or pin a published
 revision with `--tactus URL@REV`. Inside the work, plain `tactus ...` uses its locked environment.

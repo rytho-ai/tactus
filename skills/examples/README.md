@@ -29,6 +29,11 @@ Git history. It contains refs generated in your pool, so these examples carry no
   level-to-time choice and its source identity, time-warp the audio, then map the source
   envelope through the inverse warp to drive a filter. Change the descriptor, mapping or
   effect. Regenerating `decisions.py` is an explicit revision, not part of every render.
+- [minimal.py](minimal.py): a small valid entry to copy as `song.py`; keyword controls and
+  the exact render-result shape, without extra top-level metadata.
+- [boundaries.py](boundaries.py): select full phrases inside an authored loop body while
+  excluding an off-grid tail; deliver post-channel stems, their pre-master sum and a final
+  gain stage. Read [Source regions and audio delivery](../references/production.md).
 
 Each render returns comparable named WAVs. Listen with your audio tools. For an objective
 check of the heard output, try `tactus analyze level sample_peak runs/warp` or write your own

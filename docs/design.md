@@ -145,7 +145,11 @@ Stage cache 現在以格式版本與 SHA-256 驗證 metadata／array bytes。尚
 Agent 的指引由 [`tactus` plugin](../skills/README.md) 提供。`compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，並以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，同時保留 caller 要控制的音樂選擇；不能只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。`dsp` 負責使用、撰寫與驗證 processor；`measure` 同時涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到另外兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法；不要求每首作品都走過同一流程。
 
 單一產品的 plugin manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，
-兩個 marketplace 都指向根目錄。三個 skills 放在 `skills/`，共用契約由
+`version` 指導 Agent 使用版本探索、比較、保留與重用創作方向，並負責 Git 操作紀律：確認作品實際被追蹤、初始 commit、候選採用與舊版本恢復。Compose 在開始作品與接受修訂時使用它。`init` 要求 Git 可用並建立作品自己的 repository，即使作品位於外層 checkout；缺失或失敗會明確報錯。Commit 由 Agent 在 source 準備好後直接操作 Git；renderer 維持唯讀記錄，`doctor` 不檢查 Git。Git binary 與 ancestor HEAD 都不足以證明作品已保存；生成音訊在 Git 外保存，receipt 保留當次執行的原始身分（2026-09-30）。
+
+素材切片與分軌交付以 [production reference](../skills/references/production.md) 保存可改寫的 authoring pattern：loop body／尾音分開，source 與 output 的格點各自明確；post-channel、pre-master 與最終 master 的關係由作品 source 宣告。這不新增通用 sample/track API。Render 回傳格式維持原契約；不合法的 dictionary 會指出 missing／unexpected fields，並提供正確形狀的範例。
+
+兩個 marketplace 都指向根目錄。四個 skills 放在 `skills/`，共用契約由
 `skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的
 相對引用可獨立使用，runtime 另行安裝。測試持續比對真實 manifest、receipt 與錯誤欄位。
 內建 DSP、Pedalboard 與作品自寫函式都可自由使用；自寫分析不必先進 Tactus core。

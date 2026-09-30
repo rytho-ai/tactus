@@ -126,9 +126,20 @@ def commit_on_remote(directory: Path, commit: str) -> bool:
 
 
 def ensure_repository(directory: Path) -> bool:
-    """`git init` `directory` unless it is already inside a work tree; True when it created one."""
-    inside = _git(["rev-parse", "--is-inside-work-tree"], directory)
-    if inside is not None and inside.returncode == 0 and inside.stdout.strip() == "true":
+    """Give a work its own Git root; return False only for an existing root.
+
+    An ancestor checkout does not own the new work's history. Raise OSError when Git
+    cannot initialize it so init cannot report success without a repository.
+    """
+    root = _git(["rev-parse", "--show-toplevel"], directory)
+    if (
+        root is not None
+        and root.returncode == 0
+        and Path(root.stdout.strip()).resolve() == directory.resolve()
+    ):
         return False
     created = _git(["init", "-q"], directory)
-    return created is not None and created.returncode == 0
+    if created is None or created.returncode != 0:
+        detail = created.stderr.strip() if created is not None else "Git is unavailable or timed out"
+        raise OSError(f"git init failed for {directory}: {detail}")
+    return True

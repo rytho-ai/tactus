@@ -38,9 +38,10 @@ def commit_all(root: Path, message: str) -> str:
 def _fake_uv(monkeypatch):
     """Unit tests never shell out to a real `uv`; they only assert it would be invoked."""
     calls: list[tuple[list[str], Path]] = []
+    real_which = shutil.which
 
     def fake_which(name: str) -> str | None:
-        return "/usr/bin/uv" if name == "uv" else None
+        return "/usr/bin/uv" if name == "uv" else real_which(name)
 
     real_run = subprocess.run
 
@@ -74,7 +75,7 @@ def test_init_writes_pyproject_and_gitignore_and_locks(tmp_path, _fake_uv):
     assert 'git = "https://example.com/tactus"' in pyproject
     assert 'rev = "abc123"' in pyproject
 
-    assert (work / ".gitignore").read_text() == "runs/\n.venv/\n__pycache__/\n"
+    assert (work / ".gitignore").read_text() == "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
     assert _fake_uv == [(["/usr/bin/uv", "lock"], work)]
 
@@ -310,8 +311,31 @@ def test_init_creates_a_git_repository_for_a_fresh_work(tmp_path, _fake_uv):
     assert (tmp_path / "work" / ".git").is_dir()
 
 
-def test_init_does_not_nest_a_repository_inside_an_existing_one(tmp_path, _fake_uv):
+def test_init_gives_a_nested_work_its_own_repository(tmp_path, _fake_uv):
     init_repo(tmp_path)
     result = init(tmp_path / "work", tactus_path=TACTUS_ROOT)
-    assert result["git_init"] is False
-    assert not (tmp_path / "work" / ".git").exists()
+    assert result["git_init"] is True
+    assert (tmp_path / "work" / ".git").is_dir()
+    assert git(["rev-parse", "--show-toplevel"], tmp_path / "work").stdout.strip() == str(tmp_path / "work")
+
+
+def test_init_requires_git_before_creating_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(init_module.shutil, "which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+    with pytest.raises(RunError, match="install Git") as failure:
+        init(tmp_path / "work", tactus_path=TACTUS_ROOT)
+    assert (failure.value.code, failure.value.phase) == ("init_failed", "request")
+    assert not (tmp_path / "work").exists()
+
+
+def test_init_reports_git_initialization_failure(tmp_path, monkeypatch, _fake_uv):
+    real_git = init_module.revision._git
+
+    def fail(args, directory):
+        if args[:1] == ["init"]:
+            return subprocess.CompletedProcess(args, 1, stdout="", stderr="permission denied")
+        return real_git(args, directory)
+
+    monkeypatch.setattr(init_module.revision, "_git", fail)
+    with pytest.raises(RunError, match="permission denied") as failure:
+        init(tmp_path / "work", tactus_path=TACTUS_ROOT)
+    assert (failure.value.code, failure.value.phase) == ("init_failed", "git")
