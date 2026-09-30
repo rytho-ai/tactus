@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,55 @@ def test_init_writes_pyproject_and_gitignore_and_locks(tmp_path, _fake_uv):
     assert (work / ".gitignore").read_text() == "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
     assert _fake_uv == [(["/usr/bin/uv", "lock"], work)]
+
+
+def test_work_pytest_discovers_source_tests_without_generated_copies(tmp_path, _fake_uv):
+    work = tmp_path / "work"
+    init(work, tactus="https://example.com/tactus@abc123")
+    (work / "test_song.py").write_text("def test_song():\n    assert True\n")
+    (work / "tests").mkdir()
+    (work / "tests/test_dsp.py").write_text("def test_dsp():\n    assert True\n")
+    for name in ("runs", "pool", "analyses", "exports"):
+        generated = work / name / "old-work"
+        generated.mkdir(parents=True)
+        (generated / "test_song.py").write_text("raise RuntimeError('generated copy imported')\n")
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stdout
+
+
+def test_work_ruff_uses_local_rules_and_detects_real_errors(tmp_path, _fake_uv):
+    # Deliberately conflicting ancestor rules must not become the work's policy.
+    (tmp_path / "ruff.toml").write_text('lint.select = ["D"]\n')
+    work = tmp_path / "work"
+    init(work, tactus="https://example.com/tactus@abc123")
+    (work / "song.py").write_text("value = missing_name\n")
+    (work / "runs").mkdir()
+    (work / "runs/generated.py").write_text("this is not valid python !!!\n")
+    command = [
+        sys.executable,
+        "-m",
+        "ruff",
+        "check",
+        ".",
+        "--no-respect-gitignore",
+        "--output-format",
+        "json",
+    ]
+    result = subprocess.run(command, cwd=work, capture_output=True, text=True, check=False)
+    assert result.returncode == 1, result.stdout + result.stderr
+    findings = json.loads(result.stdout)
+    assert [item["code"] for item in findings] == ["F821"]
+    assert Path(findings[0]["filename"]) == work / "song.py"
+    (work / "song.py").write_text("value = 1\n")
+    result = subprocess.run(command, cwd=work, capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_init_refuses_a_nonempty_directory(tmp_path, _fake_uv):

@@ -4,7 +4,8 @@ Before this module, a work borrowed Tactus's own environment (`uv run --project 
 it could not add a package of its own, its receipt's `dependency_lock` was always null, and
 its environment moved whenever the Tactus checkout moved. `init` fixes this by writing the
 work a `pyproject.toml` that depends on `tactus` through `[tool.uv.sources]`, pinned to a
-resolved Git source, plus a `.gitignore`, then running `uv lock` so the work has its own
+resolved Git source and local pytest/Ruff settings, plus a `.gitignore`, then running
+`uv lock` so the work has its own
 `uv.lock`, and a Git repository rooted at the work even inside another checkout.
 Git availability and initialization failures are reported explicitly. `_tactus_source`
 resolves that pin: by default the *running* Tactus's own PEP 610
@@ -36,6 +37,25 @@ from ._contracts import RunError
 from ._source import direct_url as _direct_url
 
 _GITIGNORE = "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
+
+_WORK_TOOL_CONFIG = """
+[tool.pytest.ini_options]
+norecursedirs = [
+    "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}",
+    "runs", "pool", "analyses", "exports",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["."]
+extend-exclude = ["runs", "pool", "analyses", "exports"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["tactus"]
+"""
 
 
 def _project_name(directory: Path) -> str:
@@ -143,6 +163,7 @@ def _pyproject_toml(name: str, requires_python: str, source: dict[str, Any]) -> 
         "\n"
         "[tool.uv.sources]\n"
         f"tactus = {{ {fields} }}\n"
+        f"{_WORK_TOOL_CONFIG}"
     )
 
 

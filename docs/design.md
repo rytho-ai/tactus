@@ -48,6 +48,14 @@ activate 不會覆蓋 cwd 選擇。選定 work 後使用其 locked 環境，檔�
 共享環境明確使用 `--project`，不靠自動猜測。操作契約集中在
 [環境選擇](../skills/references/project-commands.md#selecting-a-works-environment)。
 
+**作品檢查設定（2026-09-30）：** `init` 在作品的 `pyproject.toml` 寫入本地 pytest／Ruff
+預設，recursive checks 略過 runs、pool、analyses、exports，避免 Git 恢復 worktree 被
+重複收集。Ruff 明確採用 error／unused-name／import-order 規則，作品 module 為 first-party、
+Tactus 為 third-party，不繼承外層產品 repo 的 lint policy。設定可自行修改；pytest／Ruff
+不加入 runtime dependencies，臨時用 `uv run --locked --with ...`，需要固定工具版本時加入
+作品的 dev group。舊作品手動合併設定，runtime lock 不隨之升級。操作見
+[作品測試與 lint](../skills/references/project-commands.md#test-and-lint-a-work)。
+
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
 我們目前認為 temporal abstraction 有價值：將 placement、repetition、時間變換與 automation 展開中反覆需要算對的運算集中處理，讓 production source 更直接表達音樂關係。這些工具可以是作品內的 Python 函式，也可以在重複需求成立後成為可選的共用 helper。

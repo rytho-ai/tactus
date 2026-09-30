@@ -7,6 +7,7 @@ for built-in and custom operations.
 ## Contents
 
 - [Install and select a work](#install-and-select-a-work)
+- [Test and lint a work](#test-and-lint-a-work)
 - [Register local functions](#register-local-functions)
 - [Analyze](#analyze)
 - [Export a completed render](#export-a-completed-render)
@@ -89,6 +90,56 @@ the same package version. A false match can reveal that a directly invoked modul
 another environment; retry through the installed launcher with explicit `--project`.
 This diagnostic compares the default `.venv`, not arbitrary workspace/custom layouts.
 Locks control versions; updating the global CLI does not upgrade a work's pinned Tactus.
+
+## Test and lint a work
+
+Run from the work root so both tools use its configuration:
+
+```bash
+uv run --locked --with pytest pytest
+uv run --locked --with ruff ruff check .
+```
+
+`--with` supplies development tools for this invocation without adding runtime
+requirements or changing the work lock. To lock tool versions for repeated checks,
+use `uv add --group dev pytest ruff`, then `uv run --group dev pytest` and
+`uv run --group dev ruff check .`.
+
+New `tactus init` works include local pytest and Ruff settings. Tests can live at the
+work root or under `tests/`; generated `runs/`, `pool/`, `analyses/` and `exports/`
+directories are excluded from recursive checks. Pytest retains its usual excluded
+build/hidden directories. Ruff uses explicit error, unused-name and import-order rules,
+with work-local modules treated as first-party and Tactus as a third-party dependency.
+The work does not inherit an enclosing product repository's lint policy.
+These are editable defaults, not a runtime restriction.
+
+For an older work, merge the following sections into its `pyproject.toml`, preserving
+any deliberate existing tool settings. This updates tooling only; it does not upgrade
+its locked Tactus or other dependencies.
+
+```toml
+[tool.pytest.ini_options]
+norecursedirs = [
+    "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}",
+    "runs", "pool", "analyses", "exports",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["."]
+extend-exclude = ["runs", "pool", "analyses", "exports"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["tactus"]
+```
+
+Recovery worktrees can remain under ignored `runs/`; recursive tests and lint skip
+them. To check a recovery worktree deliberately, run these commands from that worktree's
+own root. Explicit paths or command-line overrides can opt into excluded content; the
+exclusions are discovery defaults, not a sandbox.
 
 ## Register local functions
 
