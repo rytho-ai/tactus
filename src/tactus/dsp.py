@@ -11,6 +11,8 @@ owns its oversampling/alignment and tanh transfer, not a loudness-normalization 
 Crossover returns LR4 low/high branches. Crossfade delay keeps two fractional heads
 fixed during retiming, with explicit transition length and latest-request behavior.
 Varispeed and RMS fitting retain their original float32 contracts; fx re-exports them.
+Svf generalizes the automated lowpass recurrence to four modes with per-frame cutoff/Q.
+Spectral wraps a caller transform in phase-vocoder analysis/overlap-add resynthesis.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from ._dsp_kernels import (
     crossfade_fractional_delay,
     duck_envelope,
     fractional_delay,
-    variable_lowpass_svf,
+    variable_svf,
 )
 
 __all__ = [
@@ -41,6 +43,8 @@ __all__ = [
     "lowpass",
     "pan",
     "saturate",
+    "spectral",
+    "svf",
     "varispeed",
 ]
 
@@ -437,22 +441,68 @@ def lowpass(
         raise ValueError("cutoff_hz must be between zero and Nyquist")
     if cutoff.ndim == 0:
         return biquad(x, sample_rate, kind="lowpass", frequency_hz=float(cutoff), q=q)[0]
+    zeros = np.zeros(len(x))
+    return _svf(x, sample_rate, cutoff, np.full(len(x), 1 / q), zeros, zeros, np.ones(len(x)))
+
+
+def _svf(x, sample_rate, cutoff, k, m0, m1, m2):
     mono = x.ndim == 1
     frames = x[:, None] if mono else x
+    cutoff = np.broadcast_to(cutoff, (len(x),))
     g = np.tan(np.pi * cutoff / sample_rate)
-    k = 1 / q
     a1 = 1 / (1 + g * (g + k))
     a2 = g * a1
     a3 = g * a2
     with np.errstate(over="ignore", invalid="ignore"):
-        result = variable_lowpass_svf(
+        result = variable_svf(
             np.ascontiguousarray(frames),
-            np.ascontiguousarray(a1),
-            np.ascontiguousarray(a2),
-            np.ascontiguousarray(a3),
+            *(np.ascontiguousarray(v, dtype=np.float64) for v in (a1, a2, a3, m0, m1, m2)),
         )
     _finite_result(result)
     return result[:, 0] if mono else result
+
+
+_SVF_MODES = ("lowpass", "highpass", "bandpass", "notch")
+_BUTTERWORTH_Q = 2**-0.5
+
+
+def svf(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    mode: str,
+    cutoff_hz: float | np.ndarray,
+    q: float | np.ndarray = _BUTTERWORTH_Q,
+) -> np.ndarray:
+    """Whole-clip state-variable filter with scalar or per-frame cutoff and Q.
+
+    mode is lowpass, highpass, bandpass or notch. Lowpass/highpass have unity gain in
+    their passband; bandpass is normalized to 0 dB at the cutoff (peak) frequency, so
+    raising Q narrows it; notch removes the cutoff frequency. Higher Q makes low/high
+    pass resonate (about 20·log10(Q) dB at cutoff). Topology-preserving (Simper) SVF,
+    the same recurrence as automated `lowpass`: each channel starts from silence; controls
+    are applied directly without smoothing. 0 < cutoff < Nyquist, q > 0.
+    """
+    x = _audio(audio)
+    _rate(sample_rate)
+    if mode not in _SVF_MODES:
+        raise ValueError(f"mode must be one of {', '.join(_SVF_MODES)}")
+    cutoff = _control(cutoff_hz, len(x), "cutoff_hz")
+    qs = _control(q, len(x), "q")
+    if np.any(cutoff <= 0) or np.any(cutoff >= sample_rate / 2):
+        raise ValueError("cutoff_hz must be between zero and Nyquist")
+    if np.any(qs <= 0) or not np.isfinite(1 / qs).all():
+        raise ValueError("q must be positive with a finite reciprocal")
+    k = np.broadcast_to(1 / qs, (len(x),)).astype(np.float64)
+    one = np.ones(len(x))
+    zero = np.zeros(len(x))
+    weights = {
+        "lowpass": (zero, zero, one),
+        "highpass": (one, -k, -one),
+        "bandpass": (zero, k, zero),
+        "notch": (one, -k, zero),
+    }[mode]
+    return _svf(x, sample_rate, cutoff, k, *weights)
 
 
 def saturate(
@@ -507,6 +557,89 @@ def saturate(
         ]
         blend = blend[:, None] if blend.ndim else blend
         result = _finite_result((1 - blend) * frames + blend * wet)
+    return result[:, 0] if mono else result
+
+
+def spectral(
+    audio: np.ndarray,
+    sample_rate: int,
+    transform,
+    *,
+    n_fft: int = 2048,
+    hop: int = 512,
+) -> np.ndarray:
+    """Phase-vocoder analysis/resynthesis around a caller-supplied per-frame transform.
+
+    Each Hann-windowed frame is analyzed into magnitude and instantaneous frequency (Hz)
+    per bin. `transform(magnitude, frequency_hz, frame_index)` returns new
+    (magnitude, frequency_hz) arrays of the same shape: (bins,) for mono audio or
+    (bins, channels). Output phase accumulates 2π·frequency·hop/sample_rate per frame
+    from the first frame's analysis phase, then frames are overlap-added with
+    window-power normalization. The identity transform reconstructs the input to
+    numerical precision; freezing, shifting or smearing are choices of the transform.
+    Output keeps the input length and layout. n_fft is an even integer >= 16;
+    1 <= hop <= n_fft // 2. Magnitudes must be finite and nonnegative.
+    """
+    x = _audio(audio)
+    _rate(sample_rate)
+    if (
+        isinstance(n_fft, (bool, np.bool_))
+        or not isinstance(n_fft, (int, np.integer))
+        or n_fft < 16
+        or n_fft % 2
+    ):
+        raise ValueError("n_fft must be an even integer of at least 16")
+    if (
+        isinstance(hop, (bool, np.bool_))
+        or not isinstance(hop, (int, np.integer))
+        or not 1 <= hop <= n_fft // 2
+    ):
+        raise ValueError("hop must be an integer between 1 and n_fft // 2")
+    if not callable(transform):
+        raise TypeError("transform must be callable")
+    mono = x.ndim == 1
+    frames = x[:, None] if mono else x
+    length, channels = frames.shape
+    count = -(-(length + n_fft) // hop) + 1
+    padded = np.zeros((count * hop + n_fft, channels))
+    padded[n_fft : n_fft + length] = frames
+    window = 0.5 - 0.5 * np.cos(2 * np.pi * np.arange(n_fft) / n_fft)
+    bins = n_fft // 2 + 1
+    advance = 2 * np.pi * np.arange(bins)[:, None] * hop / n_fft
+    to_hz = sample_rate / (2 * np.pi * hop)
+    output = np.zeros_like(padded)
+    norm = np.zeros(len(padded))
+    previous = None
+    phase = None
+    for m in range(count):
+        start = m * hop
+        spectrum = np.fft.rfft(padded[start : start + n_fft] * window[:, None], axis=0)
+        magnitude = np.abs(spectrum)
+        angle = np.angle(spectrum)
+        if previous is None:
+            deviation = np.zeros_like(angle)
+        else:
+            deviation = np.mod(angle - previous - advance + np.pi, 2 * np.pi) - np.pi
+        previous = angle
+        frequency = (advance + deviation) * to_hz
+        result = transform(
+            magnitude[:, 0] if mono else magnitude, frequency[:, 0] if mono else frequency, m
+        )
+        if not isinstance(result, tuple) or len(result) != 2:
+            raise ValueError("transform must return (magnitude, frequency_hz)")
+        new_mag, new_freq = (np.asarray(v, dtype=np.float64) for v in result)
+        if mono:
+            new_mag, new_freq = new_mag[:, None], new_freq[:, None]
+        if new_mag.shape != magnitude.shape or new_freq.shape != magnitude.shape:
+            raise ValueError("transform results must keep the analysis shape")
+        if not (np.isfinite(new_mag).all() and np.isfinite(new_freq).all()) or np.any(new_mag < 0):
+            raise ValueError("transform must return finite, nonnegative magnitudes and finite Hz")
+        phase = angle if phase is None else phase + new_freq / to_hz
+        frame = np.fft.irfft(new_mag * np.exp(1j * phase), n_fft, axis=0)
+        output[start : start + n_fft] += frame * window[:, None]
+        norm[start : start + n_fft] += window**2
+    result = output[n_fft : n_fft + length] / norm[n_fft : n_fft + length, None]
+    _finite_result(result)
     return result[:, 0] if mono else result
 
 

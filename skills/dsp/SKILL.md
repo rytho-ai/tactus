@@ -17,7 +17,7 @@ library or crossing array, MIDI, plugin-state or time-stretch interfaces.
    latency, tail, parameter units and state lifetime. Whole-clip reset and continuous block
    processing are different contracts; choose the one the work needs.
 2. **Find useful mechanisms.** Read [Builtin DSP](../references/dsp.md) for available
-   operations, then inspect the installed function's signature, docstring and source when
+   operations and [Synthesis building blocks](../references/synth.md) for sound sources, then inspect the installed function's signature, docstring and source when
    adapting it. Use `inspect.getsource(tactus.dsp.delay)` or the module's `__file__` in the
    work's Python environment. Private kernels are implementation references; own copied or
    adapted code locally and respect its license. Read a dependency's own API for its details.

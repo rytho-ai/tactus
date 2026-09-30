@@ -56,6 +56,7 @@ testpaths = ["tests"]
 markers = [
     "slow: real uv sync/install integration test; opt-in via TACTUS_SLOW=1",
     "reference: numerical comparison requiring the optional librosa extra",
+    "oracle: behavioral comparison against an installed csound binary; skipped without it",
 ]
 
 [tool.uv.sources]

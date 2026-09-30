@@ -275,6 +275,20 @@ crossfade，回傳 wet-only，保留 feedback 與指定尾音；過渡途中不�
 [可執行範例](../examples/dsp-components/README.md) 與
 [響應與切換測試](../tests/test_dsp_components.py)。
 
+**合成構件（2026-09-30）：** `tactus.synth` 提供產生聲音的構件，不是樂器或預設音色：
+相位累加、PolyBLEP／PolyBLAMP 振盪器（saw、pulse、triangle、sine，頻率與 `phase_mod`
+可逐 frame，FM／PM 由作品組合）、必須指定 seed 的噪音、`transeg` 式分段 envelope、
+modal 共振器組、Karplus-Strong 撥弦與明確列表的顆粒。`dsp` 新增 `svf`（四種模式、
+cutoff 與 Q 可逐 frame，自動化 `lowpass` 改用同一 kernel 且輸出不變）與 `spectral`
+（phase vocoder 外框，逐 frame 的變換由作品提供）。完整樂器只以可改寫範例提供。
+依據是兩輪盲聽：換成 SuperCollider／Csound／SignalFlow 沒有勝過 NumPy 基準，且 SC／
+Csound 花更多呼叫並出現不報錯的失敗；同時各 run 反覆手寫噪音、envelope、振盪器與共振器組。
+因此不整合外部引擎，改依公開演算法自行實作（未讀取或複製其原始碼），並以 Csound 作行為
+oracle（`oracle` 測試標記，未安裝時略過）。PolyBLEP saw 的高次諧波比 `vco2` 略暗
+（48 kHz 下 12 kHz 約 -2 dB），已寫入契約。只有兩個逐 sample 遞迴使用 Numba；其餘以
+NumPy／SciPy 在一秒內處理 60 秒音訊。完整契約見 [synth reference](../skills/references/synth.md)。
+Ladder 濾波器延後，待 SVF 模式上線後以試聽 probe 決定。
+
 Audio handoff 要明確處理 sample rate、channel layout、dtype 與 output encoding。改寫檔案的 sample-rate 標籤不等於 resampling；工具間的 layout 轉換也必須保留 channel 身分。SoundFile 使用的 `(samples, channels)` layout 不自動決定所有工具或 Tactus 未來的內部表示。
 
 自有 DSP 的有限實驗支持 Python／Numba 實作與 native／WASM 輸出的可行性，但尚未形成產品的通用 export pipeline。驗證移植算法時要涵蓋時變參數、state 與 block boundaries；參考輸出本身也可能有錯，不能只因符合單一 golden 就宣稱正確。

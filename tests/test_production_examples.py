@@ -53,3 +53,23 @@ def test_minimal_entry_runs_without_materials(tmp_path):
     audio, rate = sf.read(result["outputs"]["mix"])
     assert rate == 48000 and audio.shape == (48000,)
     assert np.isfinite(audio).all() and np.max(np.abs(audio)) <= 0.2 + 2**-23
+
+
+@pytest.mark.parametrize(
+    ("name", "outputs"),
+    [
+        ("voices.py", {"lead", "bell", "mix"}),
+        ("physical.py", {"metal", "strings", "mix"}),
+        ("textures.py", {"grain_pad", "riser", "mix"}),
+    ],
+)
+def test_synth_instrument_examples_run_deterministically(tmp_path, name, outputs):
+    first = run(EXAMPLES / name, out=tmp_path / "a")
+    second = run(EXAMPLES / name, out=tmp_path / "b")
+    assert set(first["outputs"]) == outputs
+    for output, path in first["outputs"].items():
+        audio, rate = sf.read(path, always_2d=True)
+        again, _ = sf.read(second["outputs"][output], always_2d=True)
+        assert rate == 48000 and audio.shape[1] == 2
+        assert np.isfinite(audio).all() and 0.01 < np.max(np.abs(audio)) < 1
+        np.testing.assert_array_equal(audio, again)

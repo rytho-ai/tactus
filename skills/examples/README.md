@@ -35,6 +35,20 @@ Git history. It contains refs generated in your pool, so these examples carry no
   excluding an off-grid tail; deliver post-channel stems, their pre-master sum and a final
   gain stage. Read [Source regions and audio delivery](../references/production.md).
 
+## Synthesis examples
+
+Instruments assembled from [synthesis building blocks](../references/synth.md). Every
+waveform, ratio, decay and grain choice is the example's own; rewrite them freely.
+
+- [voices.py](voices.py): a detuned PolyBLEP saw lead with pitch scoop, vibrato, an
+  enveloped SVF sweep and light saturation, plus an FM bell with a decaying index.
+- [physical.py](physical.py): struck metal from noise bursts through a free-bar modal
+  bank, and a plucked-string line with filtered-noise excitation.
+- [textures.py](textures.py): a granular pad from a synthesized chord using a seeded grain
+  list, and a riser from a `dsp.spectral` freeze with upward frequency drift.
+
+Run them like the others, for example `tactus run voices.py --out runs/voices`.
+
 Each render returns comparable named WAVs. Listen with your audio tools. For an objective
 check of the heard output, try `tactus analyze level sample_peak runs/warp` or write your own
 analysis using the [measure skill](../measure/SKILL.md) and

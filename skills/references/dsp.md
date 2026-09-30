@@ -2,8 +2,8 @@
 
 `analysis` reports observations; `dsp` transforms audio. Both are optional: ordinary Python,
 custom analysis commands and VST effects remain supported. Built-in calculations use
-NumPy/SciPy, with cached Numba kernels for the sequential duck, both delays and automated
-lowpass loops; beat tracking and time stretching retain pyqmdsp and pytimestretch.
+NumPy/SciPy, with cached Numba kernels for the sequential duck, both delays and the
+automated lowpass/svf loop; beat tracking and time stretching retain pyqmdsp and pytimestretch.
 See [DSP regression tests](https://github.com/rytho-ai/tactus/blob/main/tests/test_dsp_effects.py).
 
 ```python
@@ -79,6 +79,20 @@ Reusable whole-clip effects also use ordinary arrays:
   scalar or per-frame cutoff strictly between zero and Nyquist, positive scalar Q.
   Scalar cutoff uses biquad; varying cutoff uses a topology-preserving state-variable
   filter. Controls are not automatically smoothed.
+- `svf(audio, sample_rate, *, mode, cutoff_hz, q=1/sqrt(2))`: state-variable filter with
+  mode `lowpass`, `highpass`, `bandpass` or `notch`; cutoff and Q may each be scalar or
+  per-frame (0 < cutoff < Nyquist, q > 0). Low/high pass have unity passband gain and
+  resonate about `20·log10(Q)` dB at cutoff; bandpass is 0 dB at cutoff and narrows as Q
+  rises; notch removes the cutoff frequency. Same recurrence as automated `lowpass`
+  (identical output for `mode="lowpass"`); each call starts from silence, no smoothing.
+- `spectral(audio, sample_rate, transform, *, n_fft=2048, hop=512)`: phase-vocoder frame
+  around your `transform(magnitude, frequency_hz, frame_index)`, which returns new
+  `(magnitude, frequency_hz)` with the same shape: `(bins,)` for mono, `(bins, channels)`
+  otherwise. Frequency is the per-bin instantaneous frequency. Output phase accumulates
+  from the first frame's phase; Hann frames are overlap-added with window-power
+  normalization, keeping input length/layout. The identity transform reconstructs the
+  input to numerical precision. Freeze, bin shift, smear or cross-synthesis are choices
+  you write in the transform; `n_fft` even >= 16, `1 <= hop <= n_fft // 2`.
 - `saturate(audio, sample_rate, *, drive_db=12, mix=0.5, oversample=8)`:
   wet transfer `tanh(audio * 10**(drive_db/20))`, with scalar/per-frame drive and linear
   dry/wet mix in `[0, 1]`. Polyphase oversampling accepts 1, 2, 4, 8 or 16; 1 disables
@@ -92,6 +106,9 @@ resampling pads clip edges with zeros. For fixed-filter streaming, use `biquad` 
 See the runnable [DSP effects production](https://github.com/rytho-ai/tactus/tree/main/examples/dsp-effects).
 The [band processing and delay comparison](https://github.com/rytho-ai/tactus/tree/main/examples/dsp-components) uses
 `crossover` and `crossfade_delay` alongside the existing effects.
+
+For sound sources (oscillators, noise, envelopes, resonators, plucked strings, grains)
+see [Synthesis building blocks](synth.md).
 
 Numba acceleration is automatic and keeps the same public API. The first call for a
 new kernel signature compiles code; later processes can load its on-disk cache. First

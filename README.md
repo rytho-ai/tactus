@@ -11,7 +11,8 @@ execution and records what produced each result; the author makes the musical de
 
 - **Code owns the work.** Python source, pinned materials and dependency locks capture
   creative choices; Git records revisions.
-- **Compose freely.** Combine builtin DSP, existing libraries, VSTs and your own functions.
+- **Compose freely.** Combine builtin synthesis blocks and DSP, existing libraries, VSTs
+  and your own functions.
   Choose the timing, routing and arrangement that suit the music.
 - **Maintain music as code.** Use functional, modular code with clear interfaces; reveal
   implementation details as needed when reading or revising a work.
@@ -137,9 +138,9 @@ and variable-tempo boundaries.
 
 ## Go further
 
-- [Creative examples](skills/examples/README.md): custom effects, library combinations and analysis-driven time warping.
+- [Creative examples](skills/examples/README.md): custom effects, library combinations, analysis-driven time warping and synthesized instruments.
 - [Runtime reference](skills/references/runtime.md): materials, rendering, excerpts and saved takes.
 - [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
-- [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
+- [Synthesis](skills/references/synth.md), [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Visual style, tokens and brand assets](design/README.md).
 - [Product principles](docs/positioning.md), [current design](docs/design.md) and [development setup](docs/development.md).

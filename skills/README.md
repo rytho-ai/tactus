@@ -71,6 +71,7 @@ The plugin supplies guidance, not an MCP server or Python dependency installer.
 - [Project commands](references/project-commands.md): custom analysis/export and environment selection.
 - [Packages and integration notes](references/packages.md): tool selection, layouts, timing and state.
 - [Builtin DSP](references/dsp.md): available functions and behavior worth considering when adapting them.
+- [Synthesis building blocks](references/synth.md): oscillators, seeded noise, envelopes, resonators, plucked strings and grains.
 - [Creative connections](references/connections.md): connect observations, time changes and processing.
 - [Source regions and audio delivery](references/production.md): loop-body/tail boundaries and channel/master relationships.
 - [Runnable examples](examples/README.md): synthetic, editable starting points; no sample downloads.

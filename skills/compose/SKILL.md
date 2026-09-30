@@ -9,6 +9,9 @@ A work is ordinary Python and NumPy defining `render(*, ...)`. You choose its ma
 notes, timing, processing order, routing and form. Tactus runs it, saves audio and records
 what produced it. Builtin DSP, Pedalboard, other libraries and your own functions are
 equally valid building blocks; builtin source can also be studied and adapted.
+To make sounds from scratch, [synthesis building blocks](../references/synth.md) provide
+oscillators, seeded noise, envelopes, resonators, plucked strings and grains; the
+[instrument examples](../examples/README.md#synthesis-examples) are starting points, not presets.
 When choosing a package or connecting its audio/MIDI to the work, read
 [Packages and integration notes](../references/packages.md) for available tools,
 installation scope, layouts, time units and state/reproducibility caveats.

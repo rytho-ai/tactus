@@ -22,6 +22,9 @@ uv run --extra librosa pytest -m reference
 uv run --extra librosa pytest
 ```
 
+Tests marked `oracle` compare `tactus.synth` with an installed `csound` binary and skip
+when it is not on `PATH` (`uv run pytest -m oracle`).
+
 `uv sync --group dev` removes packages left by an earlier reference run; `uv run`
 alone can retain extra packages. The optional references remain pinned in `uv.lock`.
 

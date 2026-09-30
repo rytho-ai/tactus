@@ -133,22 +133,27 @@ def crossfade_fractional_delay(
 
 
 @njit(cache=True)
-def variable_lowpass_svf(
+def variable_svf(
     frames: np.ndarray,
     a1: np.ndarray,
     a2: np.ndarray,
     a3: np.ndarray,
+    m0: np.ndarray,
+    m1: np.ndarray,
+    m2: np.ndarray,
 ) -> np.ndarray:
+    """Simper TPT state-variable filter; output = m0*input + m1*band + m2*low per frame."""
     output = np.empty_like(frames)
     channels = frames.shape[1]
     state1 = np.zeros(channels, dtype=np.float64)
     state2 = np.zeros(channels, dtype=np.float64)
     for i in range(frames.shape[0]):
         for channel in range(channels):
-            v3 = frames[i, channel] - state2[channel]
+            v0 = frames[i, channel]
+            v3 = v0 - state2[channel]
             v1 = a1[i] * state1[channel] + a2[i] * v3
             v2 = state2[channel] + a2[i] * state1[channel] + a3[i] * v3
             state1[channel] = 2.0 * v1 - state1[channel]
             state2[channel] = 2.0 * v2 - state2[channel]
-            output[i, channel] = v2
+            output[i, channel] = m0[i] * v0 + m1[i] * v1 + m2[i] * v2
     return output
