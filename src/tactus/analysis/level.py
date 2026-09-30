@@ -16,7 +16,8 @@ this category.
 New curves use complete windows and window-end timestamps. LUFS sums channel powers;
 RMS averages powers; peaks take the maximum across channels. No mono downmix is applied.
 The native curve/LRA algorithms use NumPy/SciPy; integrated loudness preserves
-the legacy pyloudnorm numerical definition. See experiments/level-curves for definitions and bounded verification.
+the legacy pyloudnorm numerical definition. See docs/analysis.md for definitions and
+tests/test_level_curves.py for regression verification.
 
 Reads: numpy · scipy.signal · _level
 """

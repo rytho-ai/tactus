@@ -10,7 +10,8 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).parents[1]
-PLUGIN = ROOT / "plugins" / "tactus"
+PLUGIN = ROOT
+SKILLS = PLUGIN / "skills"
 
 
 def test_marketplaces_resolve_the_same_versioned_plugin():
@@ -26,7 +27,9 @@ def test_marketplaces_resolve_the_same_versioned_plugin():
         manifest = json.loads((PLUGIN / host / "plugin.json").read_text())
         assert manifest["name"] == "tactus"
         assert manifest["version"] == version
-    assert {p.parent.name for p in (PLUGIN / "skills").glob("*/SKILL.md")} == {
+        if host == ".codex-plugin":
+            assert (PLUGIN / manifest["skills"]).resolve() == SKILLS
+    assert {p.parent.name for p in SKILLS.glob("*/SKILL.md")} == {
         "compose",
         "dsp",
         "measure",
@@ -41,7 +44,10 @@ def _anchors(text: str) -> set[str]:
 def test_copied_plugin_references_are_self_contained(tmp_path):
     """Cache/install copies must not depend on sibling repo files or private paths."""
     copied = tmp_path / "installed-plugin"
-    shutil.copytree(PLUGIN, copied)
+    shutil.copytree(SKILLS, copied / "skills")
+    for host in (".codex-plugin", ".claude-plugin"):
+        (copied / host).mkdir()
+        shutil.copy2(PLUGIN / host / "plugin.json", copied / host / "plugin.json")
     for document in copied.rglob("*.md"):
         text = document.read_text()
         for link in re.findall(r"\[[^\]]*\]\(([^)]+)\)", text):

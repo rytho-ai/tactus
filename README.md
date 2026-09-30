@@ -31,7 +31,7 @@ tactus doctor
 ```
 
 The editable install follows this checkout;
-see [fixed-revision installation](plugins/tactus/references/project-commands.md#install-and-select-a-work)
+see [fixed-revision installation](skills/references/project-commands.md#install-and-select-a-work)
 for a portable setup.
 
 ### Core dependencies
@@ -51,7 +51,7 @@ The CLI installation automatically installs these runtime packages:
 
 Each work has its own locked environment. Add further dependencies there with `uv add PACKAGE`;
 librosa is optional via `uv add "tactus[librosa]"`. External instruments, VST plugins and
-sample libraries are installed separately. See [package notes](plugins/tactus/references/packages.md)
+sample libraries are installed separately. See [package notes](skills/references/packages.md)
 for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record dependency constraints and pins.
 
 ### Agent skills
@@ -75,7 +75,7 @@ claude plugin install tactus@tactus-local
 ```
 
 Start a new session to load the skills. Both hosts share the same content; see the
-[plugin guide](plugins/tactus/README.md) for skill details and updates.
+[plugin guide](skills/README.md) for skill details and updates.
 
 ## Your first audio
 
@@ -114,7 +114,7 @@ editing source; adopt the values you choose in the work's code.
 
 ## Go further
 
-- [Creative examples](plugins/tactus/examples/README.md): custom effects, library combinations and analysis-driven time warping.
-- [Runtime reference](plugins/tactus/references/runtime.md): materials, rendering, excerpts and saved takes.
-- [DSP](plugins/tactus/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](plugins/tactus/references/project-commands.md).
+- [Creative examples](skills/examples/README.md): custom effects, library combinations and analysis-driven time warping.
+- [Runtime reference](skills/references/runtime.md): materials, rendering, excerpts and saved takes.
+- [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Product principles](docs/positioning.md), [current design](docs/design.md) and [development setup](docs/development.md).

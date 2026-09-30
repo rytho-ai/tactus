@@ -22,5 +22,5 @@ change amplitude. It does not promise transparent switching. LR4 recombination
 preserves magnitude response, not sample identity or phase.
 
 Declared render parameters are `cutoff_hz`, `crossfade_seconds` and `drive_db`.
-The public contracts are in the [DSP reference](../../plugins/tactus/references/dsp.md). Each call starts
+The public contracts are in the [DSP reference](../../skills/references/dsp.md). Each call starts
 from silence; these examples do not expose streaming state or a new processor graph.

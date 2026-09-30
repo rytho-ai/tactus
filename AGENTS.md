@@ -15,8 +15,11 @@ grounded plans in `docs/blueprints/plans/`, decision rationale and experiments i
 `docs/blueprints/thoughts/`,
 and current status in `docs/blueprints/plan.md`. Historical docs retain their original names;
 follow supersession notices before treating them as current requirements.
-Blueprints are local, Git-ignored working documents. Keep usage contracts and verification
-needed by a clean checkout in tracked docs, examples, tests, or experiments.
+Blueprints and `experiments/` are local, Git-ignored working material. Keep usage contracts
+and verification needed by a clean checkout in tracked docs, examples and tests.
+
+The single Tactus plugin uses root `.claude-plugin/` and `.codex-plugin/` manifests.
+Its shared skills, references and examples live under `skills/`; both marketplaces target `.`.
 
 Use `uv` for the Python environment. Run pytest and Ruff for code changes; verify CLI behavior
 when commands or packaging change. Gamut is retired; no workflow should invoke or synchronize it.

@@ -26,6 +26,6 @@ isolated environment and review of changes to these values; normal development a
 CI never install or invoke pyloudnorm.
 
 These snapshots complement analytical channel/gain/window tests, the published
-48 kHz K-weighting coefficients and the independent EBU corpus check in
-`experiments/level-curves/check.py`. They are regression evidence, not a claim to
+48 kHz K-weighting coefficients and an independent EBU corpus check retained in the
+local experiments workspace. They are regression evidence, not a claim to
 cover every possible audio input or the entire pyloudnorm API.

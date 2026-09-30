@@ -13,3 +13,6 @@ build/
 dogfood/
 probes/
 /docs/blueprints/
+/experiments/
+/runs/
+/.claude/worktrees/

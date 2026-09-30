@@ -1,11 +1,19 @@
 {
   "name": "tactus-local",
-  "interface": {"displayName": "Tactus"},
+  "interface": {
+    "displayName": "Tactus"
+  },
   "plugins": [
     {
       "name": "tactus",
-      "source": {"source": "local", "path": "./plugins/tactus"},
-      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "source": {
+        "source": "local",
+        "path": "."
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
       "category": "Productivity"
     }
   ]

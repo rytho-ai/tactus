@@ -113,14 +113,19 @@ commit；editable checkout 則用該 checkout 的 `origin` remote URL 與 `HEAD`
 `run` 維持一次命令完成生成與預設 PCM24 試聽；另存原始 arrays 會增加磁碟用量。
 舊 run 沒有 checkpoint 時使用已保存的 PCM，明確記為 `published-pcm`，不能恢復先前丟失的精度。
 每次 export 有自己的目錄與 `export.json`；失敗只清除該次新目錄。`take export` 則持續負責
-單一演奏素材包的轉移。完整介面見 [export 契約](../plugins/tactus/references/project-commands.md#export-a-completed-render)，
+單一演奏素材包的轉移。完整介面見 [export 契約](../skills/references/project-commands.md#export-a-completed-render)，
 回歸驗證見 [export 測試](../tests/test_export.py)。
 
 **Opt-in 的 stage reuse（`--reuse`）：** `from tactus import stage`，`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷。帶 `--reuse` 時，一次呼叫只在下列全部相符才視為命中：stage 的 qualified name 與 source file、`source_files`、`dependency_lock`（或無 lock 時已安裝套件的名稱與版本）、Python／Tactus 版本，以及呼叫參數的 canonical hash（僅支援 NumPy array、`None`、bool/int/float/str/bytes、`Path`，以及它們的 list/tuple/dict；其他型別的參數或回傳值都視為不可重用／不可儲存，receipt 說明原因）。命中時重播該次呼叫記錄的 materials／tools（tool 會重新雜湊比對，因為它的路徑可能換了東西；material 不會，因為它是 content-addressed）。結果只存 NumPy array 與上述純值，存在 `$TACTUS_POOL/stages/<key>/`，v1 沒有 garbage collection。巢狀 stage 呼叫在外層命中時整段被跳過。
 
-Agent 的指引由 [`tactus` plugin](../plugins/tactus/README.md) 提供。`compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，並以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，同時保留 caller 要控制的音樂選擇；不能只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。`dsp` 負責使用、撰寫與驗證 processor；`measure` 同時涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到另外兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法；不要求每首作品都走過同一流程。
+Agent 的指引由 [`tactus` plugin](../skills/README.md) 提供。`compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，並以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，同時保留 caller 要控制的音樂選擇；不能只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。`dsp` 負責使用、撰寫與驗證 processor；`measure` 同時涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到另外兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法；不要求每首作品都走過同一流程。
 
-三個 skills 保持精簡，共用契約由 plugin 內的 `references/` 單獨維護，測試持續比對真實 manifest、receipt 與錯誤欄位。安裝只帶獨立的 `plugins/tactus/`，包含可複製修改的小型合成音源範例，runtime 另行安裝。內建 DSP、Pedalboard 與作品自寫函式都可自由使用；自寫分析不必先進 Tactus core。程式結構的紀律服務可理解、可修訂的音樂，而不替 Agent 指定音樂形式。
+單一產品的 plugin manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，
+兩個 marketplace 都指向根目錄。三個 skills 放在 `skills/`，共用契約由
+`skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的
+相對引用可獨立使用，runtime 另行安裝。測試持續比對真實 manifest、receipt 與錯誤欄位。
+內建 DSP、Pedalboard 與作品自寫函式都可自由使用；自寫分析不必先進 Tactus core。
+程式結構的紀律服務可理解、可修訂的音樂，而不替 Agent 指定音樂形式。
 
 已保存的 WAV 可以直接播放，也可透過 OutputStore 檢查內容 hash 與音訊 metadata。Source rebuild 則重新執行 Python，還受到 randomness、外部輸入、套件與 processor state 影響。保存結果與重新製作的保證要分開表達。
 
@@ -131,7 +136,7 @@ Agent 的指引由 [`tactus` plugin](../plugins/tactus/README.md) 提供。`comp
 環境在斷網容器內重建的六個 WAV 全部相同；單改 bass gain 時其他四軌不變。
 因此需要保留的演奏可以成為作品明確引用的 material，生成 source 與 receipt 一併保存；
 它不應只存在 cache，也不能宣稱這證明 generator 本身可重現。這是同主機 Linux 的驗收，
-尚未形成通用交接 CLI。見 [完整交接驗收](../experiments/clean-production-handoff/README.md)。
+尚未形成通用交接 CLI；原始交接實驗保留在本機 experiments 工作區。
 
 **保存 take 是正式重現方式（2026-09-29）：** Paul 決定使用原版樂器。原生修補實驗保留為
 原因調查與可行性證據，不作為安裝或重現的前提。作品要保留某次演奏時，在同一次 `render`
@@ -151,8 +156,8 @@ manifest version 3，增加 `{name: tree_ref}` 的 `takes`；其他 run 維持 v
 `tactus take export REF --out DIR` 匯出音訊與 provenance；另一台電腦以 `tactus material add DIR`
 匯入，得到相同 ref。這個 bundle 足以讀回演奏；重新生成所需的 sample libraries、binaries 與
 Python 環境仍需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用
-演奏的唯一保存處。完整契約見 [Saved takes](../plugins/tactus/references/runtime.md#saved-takes)，
-實際驗證見 [saved takes 實驗](../experiments/saved-takes/README.md)。
+演奏的唯一保存處。完整契約見 [Saved takes](../skills/references/runtime.md#saved-takes)，
+回歸驗證見 [saved takes 測試](../tests/test_takes.py)。
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出第一版 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
@@ -176,7 +181,8 @@ Base environment 選用 NumPy、SciPy、SoundFile，讓 production code 可以�
 緩衝中的音訊。起始延遲由 Pedalboard 補償，不再手動位移。未修改的 LSP 1.2.35
 Limiter 已驗證 mono／stereo、44.1／48 kHz、兩個外掛串接與短區塊，透明設定下
 輸出逐 sample 相同。Automation 若改變外掛回報的延遲會明確報錯；未回報的延遲
-與其他外掛仍需個別驗證。詳見 [真實 VST 驗證](../experiments/vst-latency/README.md)。
+與其他外掛仍需個別驗證。串流與邊界的回歸驗證見 [延遲測試](../tests/test_fx_latency.py)；
+真實外掛的原始量測保留在本機 experiments 工作區。
 
 **Marker warp 的實際製作驗證與採用（2026-09-29）：** 已安裝的 `pytimestretch.time_warp` 接受
 `(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。
@@ -202,7 +208,7 @@ state 是 `(2, channels)` 的 direct-form-II-transposed 記憶值，由作品明
 只回傳 wet，尾音長度由呼叫端指定；`lowpass` 支援逐 frame cutoff；`saturate` 用
 tanh 與預設 8 倍 oversampling，支援逐 frame drive／dry-wet。這四項不提供跨呼叫
 state，不承諾分塊等價；delay 時間變動會改變音高，控制曲線不會自動平滑。
-完整參數契約由 [DSP reference](../plugins/tactus/references/dsp.md) 維護。
+完整參數契約由 [DSP reference](../skills/references/dsp.md) 維護。
 整合理由是減少跨作品重寫與重測；先前 fresh-agent 實驗觀察到 delay 插值與 wet-only 錯誤，
 但沒有量測節省的時間或 token。這些邊界已納入 [DSP 回歸測試](../tests/test_dsp_effects.py)。
 
@@ -218,7 +224,8 @@ packed filters 不超過 64 MiB 時，採用 private cached Numba kernel，最�
 STFT／Mel 保留原生 FFT，較大矩陣使用四個
 worker；Mel 保留 sparse projection。Numba 不開 fastmath，不更動分析的定義、時間格點
 或單位，呼叫結束恢復執行緒設定。首次編譯與快取載入分開記錄，不能以 warm timing
-推論每次 CLI 都同樣快。見 [量測與驗證](../experiments/analysis-acceleration/README.md)。
+推論每次 CLI 都同樣快。數值一致性與選路的回歸驗證見
+[加速測試](../tests/test_analysis_acceleration.py)。
 
 **分頻與 delay 切換（2026-09-29）：** Paul 試聽接受後，整合 `crossover` 與
 `crossfade_delay`。前者以 SciPy 提供固定 cutoff 的雙路 LR4，回傳 low／high；
@@ -290,7 +297,7 @@ Momentary／short-term 分別使用 400 ms／3 s 完整時間窗，時間戳標�
 LRA 獨立在輸入尾端補 1.5 s 靜音，依 EBU 定義計算閘控後的響度分布；
 原音訊短於 3 s 或沒有有效區塊時回傳 null，短於 60 s 標成 provisional。
 這些是量測值，沒有自動混音、品質評分或門檻裁決。驗證見
-[level curves](../experiments/level-curves/README.md)。
+[level curves 測試](../tests/test_level_curves.py)。
 
 **動態與頻譜分布（2026-09-29）：** 新增 `level.crest_factor`／`crest_factor_curve`、
 `spectral.bandwidth`／`rolloff`／`flatness`，都是自有 NumPy／SciPy 計算，沿用函式與
@@ -300,8 +307,8 @@ LRA 獨立在輸入尾端補 1.5 s 靜音，依 EBU 定義計算閘控後的響�
 是 power 加權的頻率標準差，rolloff 是累積 power 達指定比例的第一個 bin，flatness 是
 power 的幾何／算術平均比。Flatness 先按各 frame 的 peak power 設相對 floor，避免絕對
 floor 讓單純 gain 改變數值。靜音與聲道抵消後的零 power frame 回傳 null。
-全部回傳 JSON lists/scalars，不是品質判斷。數值定義、參考比對和實際處理比較見
-[驗證紀錄](../experiments/analysis-descriptors/README.md)。既有 stereo／DC／dropout 延後決定不變。
+全部回傳 JSON lists/scalars，不是品質判斷。數值定義見 [analysis 文件](analysis.md#dynamics-and-spectral-distribution)，
+回歸驗證見 [descriptor 測試](../tests/test_analysis_descriptors.py)。既有 stereo／DC／dropout 延後決定不變。
 
 **沒有 `pitch` category**：先前的本機頻率驗證顯示 `fundamental` 在未見素材上
 只有 47.5% 落在 ±50 cents 內——兩個 SFZ bass patch 帶有比 fundamental 更大聲的低八度層，讓每種方法
@@ -318,8 +325,8 @@ threshold、間隔與 backtracking 參數，並記錄實際 hop 與頻率上界�
 附件機制保存，不另建檔案協定。新特徵有各自單位，不沿用舊 spectral 的 full-scale-sine dB 定義。
 聲道政策延續分類：spectral 相加、rhythm 平均；時間窗與 padding 都在函式／CLI help 說明。
 內建分析是可選工具，作品自己的 Python 與註冊分析仍是正式途徑。
-原始準確度與限制見 [librosa analysis](../experiments/librosa-analysis/README.md)，
-自有實作的比對與效能見 [owned analysis](../experiments/owned-analysis/README.md)。
+使用限制見 [analysis 文件](analysis.md#onsets-and-feature-arrays)，
+自有實作的比對見 [owned analysis 測試](../tests/test_owned_analysis.py)；效能探測保留在本機 experiments 工作區。
 沒有事件時開啟 backtrack 回傳空清單，修正原先上游會拋錯的邊界情形。
 
 **SuperFlux 雙前端（2026-09-29）：** `onset_strength`／`onsets` 新增
@@ -331,8 +338,8 @@ log 使用 `bands_per_octave`（預設 24）控制的 A440 對齊三角頻帶、
 兩者沿用 Tactus 的 centered periodic Hann、整數 hop、lag 補償與 peak picking，
 不宣稱與原版 SuperFlux 應用程式完全相同。既有結果欄位與 revision 1 保留，CLI params
 記錄選擇的前端；既有 Mel 事件時間須保持一致。共同的稀疏頻帶投影與分塊 FFT 減少
-計算與暫存配置。精確率比較及效能證據見
-[驗證紀錄](../experiments/superflux-frontends/README.md)。
+計算與暫存配置。前端與參考濾波器的比對見
+[SuperFlux 測試](../tests/test_superflux_frontends.py)。
 
 
 **Q transforms、tempogram 與矩陣圖片（2026-09-29）：** 內建 `spectral.cqt`、
@@ -357,14 +364,15 @@ CLI `--out DIR --image` 同時保存數值、圖片與 artifact hashes；`--imag
 圖片最多 1200 個時間欄，先取數值區塊平均再轉色彩；列等距呈現並標示實際中心頻率／BPM，
 STFT 的 Hz 軸為線性，其他分析保留原本的頻帶／lag 間距。Q magnitude 的 dB 與
 Mel power 的 dB 都是特徵單位、非 dBFS。
-規格、限制與效能測試見 [驗證](../experiments/q-transforms/README.md)。
+規格與限制見 [analysis 文件](analysis.md#stft-mel-spectrogram-cqt-vqt-tempogram-and-images)，
+數值與訊號驗證見 [Q-transform 測試](../tests/test_q_transforms.py)。
 
 **Beat tracking 已整合**：`tactus analyze rhythm beats FILE` 與 Python 使用同一函式。
 72 個驗證音檔經 CLI 的三個結果欄位與直接呼叫 pyqmdsp 完全一致；對原 Vamp 參考的平均
 F-measure 差 0.000492，小於 0.005 門檻。這是特定素材的驗證，不保證所有音樂準確。
 約 7.45 秒以下的有效音訊或全靜音會回傳空陣列與 `bpm: null`，不猜測小節或第一拍。
-分析結果採用後仍依 frozen-analysis 規則固定成素材或 source 常數。詳見
-[整合驗證](../experiments/pyqmdsp-integration/README.md)。
+分析結果採用後仍依 frozen-analysis 規則固定成素材或 source 常數。使用契約見
+[拍點分析](analysis.md#beat-analysis)；原始 corpus 比對保留在本機 experiments 工作區。
 
 **作品自訂分析與交付：** 常用或難實作的能力由 Tactus 內建；其他分析與交付邏輯由作品
 自己的 Python 定義，在 `pyproject.toml` 明確註冊：`[tool.tactus.analysis]` 的 `category.name`

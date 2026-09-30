@@ -19,5 +19,5 @@ Each function processes a complete clip and resets on every call. Existing
 `dsp.biquad` remains the API for explicit fixed-parameter filter block state.
 
 Change the declared `drive_db` and `delay_seconds` render parameters to produce
-candidates. Full function contracts are in the [DSP reference](../../plugins/tactus/references/dsp.md)
+candidates. Full function contracts are in the [DSP reference](../../skills/references/dsp.md)
 and the functions' Python docstrings.

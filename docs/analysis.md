@@ -12,8 +12,8 @@ available analyses, parameters and exact definitions in the installed version.
 - [Dynamics and spectral distribution](#dynamics-and-spectral-distribution)
 
 To write an analysis or register a work-local command, read the
-[measure skill](../plugins/tactus/skills/measure/SKILL.md) and
-[project command contract](../plugins/tactus/references/project-commands.md#analyze).
+[measure skill](../skills/measure/SKILL.md) and
+[project command contract](../skills/references/project-commands.md#analyze).
 
 ## Beat analysis
 
@@ -32,8 +32,9 @@ Beat tracking uses [pyqmdsp](https://github.com/openmirlab/pyqmdsp), pinned in t
 lock, with no Vamp installation or separate Tactus native build. Source installation needs
 a C/C++ toolchain. Short material (roughly 7.45 seconds or less of active audio) or silence
 returns empty arrays and `bpm: null`. Beat tracking does not identify meter or downbeats.
-The [integration check](../experiments/pyqmdsp-integration/README.md) records corpus parity
-and its accuracy limits.
+The integration was checked against 72 corpus files, with exact CLI/package output parity;
+this does not guarantee accuracy on arbitrary music. API regressions live in the
+[analysis tests](../tests/test_analysis.py).
 
 ## Level curves and loudness range
 
@@ -69,7 +70,8 @@ percentile levels, gate and block count; inputs under 3 s or without gated block
 Durations under 60 s are marked `provisional`. Short clips and isolated events can give
 misleadingly large LRA; it is not a transient or mix-quality score. New LUFS calculations use
 De Man K-weighting; owned integrated LUFS retains the legacy RBJ filter, with small
-response differences. See [definitions and EBU verification](../experiments/level-curves/README.md).
+response differences. See [curve regression tests](../tests/test_level_curves.py) and
+[independent reference fixtures](../tests/fixtures/README.md).
 
 ## Onsets and feature arrays
 
@@ -135,12 +137,12 @@ Both use Tactus's centered periodic Hann, integer-hop timing and peak picker, so
 option is not a claim of complete numerical equivalence to the original SuperFlux program.
 Strength units differ between variants; neither is a probability or guaranteed more accurate.
 Sparse projection and bounded FFT chunks reduce work and memory; see
-[reference, accuracy and performance checks](../experiments/superflux-frontends/README.md).
+[front-end reference checks](../tests/test_superflux_frontends.py).
 
 Onsets are candidates, not sample-accurate cut points. `--backtrack` moves them to preceding
 strength minima; it changes their meaning and does not guarantee better accuracy.
-The [evaluation](../experiments/librosa-analysis/README.md) retains the difficult-loop comparison
-and timing limitations. Freeze accepted markers before using them in a production.
+Difficult-loop experiments did not establish sample-accurate transient boundaries.
+Freeze accepted markers before using them in a production.
 
 ## STFT, Mel spectrogram, CQT, VQT, tempogram and images
 
@@ -172,7 +174,8 @@ STFT bounds FFT temporaries in chunks; STFT and Mel retain native SciPy FFTs,
 using four workers for at least 2**20 frame
 samples; an enclosing nondefault `scipy.fft.set_workers(...)` setting takes precedence.
 Mel keeps sparse native projection. Thread settings are restored after calls; results,
-frame conventions and units are preserved. See [measurements and startup costs](../experiments/analysis-acceleration/README.md).
+frame conventions and units are preserved. See
+[native/accelerated equality checks](../tests/test_analysis_acceleration.py).
 
 `--out` saves the full numeric arrays as NPZ and the analysis/provenance record as JSON.
 `--image` additionally saves a standalone labeled `image.svg` (with an embedded PNG
@@ -224,7 +227,8 @@ Mel power dB and STFT full-scale-sine dB use different references, so matching t
 color bounds does not make their levels interchangeable.
 For readability, at most 1200 time columns are averaged before display conversion;
 NPZ retains every frame. Image metadata records units, color bounds and display shape.
-See [verification and acceleration evidence](../experiments/q-transforms/README.md).
+See [Q-transform checks](../tests/test_q_transforms.py) and
+[image output checks](../tests/test_analysis_images.py).
 
 ## Dynamics and spectral distribution
 
@@ -262,4 +266,4 @@ power at `floor_ratio=1e-12` of each frame's largest bin before both means, so a
 change in gain does not change the descriptor. Uniform spectra approach 1; concentrated
 spectra approach 0. Zero-power frames return null for all three. Opposite-phase channels
 can cancel. These values describe distributions; they do not identify instruments or grade
-mix quality. See [definitions and verification](../experiments/analysis-descriptors/README.md).
+mix quality. See [descriptor regression tests](../tests/test_analysis_descriptors.py).

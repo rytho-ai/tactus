@@ -7,7 +7,7 @@ from pathlib import Path
 
 from tactus import RunError, excerpt, run
 
-PLUGIN_DIR = Path(__file__).parents[1] / "plugins" / "tactus"
+PLUGIN_DIR = Path(__file__).parents[1] / "skills"
 
 
 def _skill_text() -> str:

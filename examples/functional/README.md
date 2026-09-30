@@ -8,7 +8,7 @@ non-`__main__` name before calling it.
 
 Return `{"sample_rate": positive_integer, "outputs": {name: numpy_array}}`, optionally
 with `takes: {name: numpy_array}` to preserve original intermediate samples. See
-[Saved takes](../../plugins/tactus/references/runtime.md#saved-takes).
+[Saved takes](../../skills/references/runtime.md#saved-takes).
 Each named output is nonempty mono `(frames,)` or mono/stereo `(frames, channels)`,
 real numeric and finite. Outputs beyond [-1, 1] are clipped on PCM24 delivery and reported. All outputs share the rate; lengths can
 differ and no name is mandatory. Tactus stores float32-to-PCM24 WAVs without
