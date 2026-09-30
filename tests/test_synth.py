@@ -94,8 +94,20 @@ def test_waveform_shapes_and_pulse_width_average():
     assert abs(tri[0] - 1) < 0.02 and abs(tri[240] + 1) < 0.02
     with pytest.raises(ValueError, match="width"):
         synth.pulse(100.0, SR, frames=10, width=1.0)
-    with pytest.raises(ValueError, match="Nyquist"):
+    with pytest.raises(ValueError, match=r"reaches \d+ Hz at frame \d+.*2\*pi\*D\*f"):
         synth.saw(12000.0, SR, frames=100, phase_mod=synth.sine(5000, SR, frames=100) * 3)
+
+
+def test_sine_accepts_any_fm_depth_and_matches_radian_index():
+    deep = synth.sine(8000.0, SR, frames=SR, phase_mod=3.0 * synth.sine(2000.0, SR, frames=SR))
+    assert np.isfinite(deep).all() and np.max(np.abs(deep)) <= 1
+    beta = 2.0
+    ours = synth.sine(1000.0, SR, frames=SR, phase_mod=beta / (2 * np.pi) * synth.sine(100.0, SR, frames=SR))
+    t = np.arange(SR) / SR
+    classic = np.sin(2 * np.pi * 1000.0 * t + beta * np.sin(2 * np.pi * 100.0 * t))
+    np.testing.assert_allclose(ours, classic, atol=1e-9)
+    with pytest.raises(ValueError, match="Nyquist"):
+        synth.sine(24000.0, SR, frames=10)
 
 
 def test_glides_and_negative_frequency_stay_band_limited():

@@ -92,10 +92,12 @@ def phase(
     return start + out
 
 
-def _total_phase(freq_hz, sample_rate, frames, start, phase_mod):
+def _total_phase(freq_hz, sample_rate, frames, start, phase_mod, *, band_limited=True):
     base = phase(freq_hz, sample_rate, frames=frames, start=start)
     mod = _control(phase_mod, frames, "phase_mod")
     total = base + mod
+    if not band_limited:
+        return total, None
     increment = np.empty(frames)
     if frames > 1:
         increment[1:] = np.diff(total)
@@ -105,7 +107,14 @@ def _total_phase(freq_hz, sample_rate, frames, start, phase_mod):
         increment[0] = float(freq if freq.ndim == 0 else freq[0]) / sample_rate
     step = np.abs(increment)
     if np.any(step >= 0.5):
-        raise ValueError("instantaneous frequency including phase_mod must stay below Nyquist")
+        frame = int(np.argmax(step))
+        raise ValueError(
+            f"instantaneous frequency reaches {step[frame] * sample_rate:.0f} Hz at frame {frame}, "
+            f"at or above Nyquist ({sample_rate / 2:.0f} Hz); band-limited oscillators need "
+            "freq_hz plus the phase_mod deviation below Nyquist. A sinusoidal phase_mod of "
+            "depth D cycles at f Hz deviates by 2*pi*D*f Hz; reduce D or f, or use sine, "
+            "which accepts any phase_mod"
+        )
     return total, step
 
 
@@ -142,9 +151,16 @@ def sine(
     phase: float = 0.0,
     phase_mod: float | np.ndarray = 0.0,
 ) -> np.ndarray:
-    """sin(2π·(phase(t) + phase_mod)): a sine in -1..1. phase_mod (cycles, per frame)
-    adds phase modulation, so FM/PM is `sine(f, sr, frames=n, phase_mod=index*sine(...))`."""
-    total, _ = _total_phase(freq_hz, sample_rate, _frames(frames), phase, phase_mod)
+    """sin(2π·(phase(t) + phase_mod)): a sine in -1..1 for FM/PM carriers and modulators.
+
+    phase_mod is in cycles per frame: `phase_mod = D * sine(f_m, ...)` deviates the
+    frequency by 2π·D·f_m Hz. A classic FM index β (radians) is D = β / (2π); β = 2 is
+    D ≈ 0.32. Any depth is accepted: sidebands beyond Nyquist fold back (alias) as in
+    other FM implementations; only freq_hz itself must stay below Nyquist.
+    """
+    total, _ = _total_phase(
+        freq_hz, sample_rate, _frames(frames), phase, phase_mod, band_limited=False
+    )
     return _finite_result(np.sin(2 * np.pi * total))
 
 

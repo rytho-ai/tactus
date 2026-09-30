@@ -35,6 +35,7 @@ def lead_note(freq, seconds, *, detune_cents, scoop_semitones, brightness):
 
 
 def bell_note(freq, seconds, *, ratio, index):
+    """FM bell; `index` is the phase_mod depth in cycles (radian index = 2π·index)."""
     frames = round(seconds * SR)
     depth = synth.envelope(index, [(seconds, 0.0, -6)], SR, frames=frames)
     modulator = depth * synth.sine(freq * ratio, SR, frames=frames)

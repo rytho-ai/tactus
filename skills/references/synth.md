@@ -16,7 +16,7 @@ pitch = 220 * 2 ** (synth.envelope(-2, [(0.08, 0, -4)], sr, frames=n) / 12)   # 
 tone = synth.saw(pitch, sr, frames=n) + 0.3 * synth.pulse(pitch / 2, sr, frames=n, width=0.3)
 cutoff = synth.envelope(800, [(0.02, 8000, 3), (0.9, 1500, -2)], sr, frames=n)
 voice = dsp.svf(tone, sr, mode="lowpass", cutoff_hz=cutoff, q=2.5)
-bell = synth.sine(440, sr, frames=n, phase_mod=1.2 * synth.sine(1540, sr, frames=n))  # FM
+bell = synth.sine(440, sr, frames=n, phase_mod=0.3 * synth.sine(1540, sr, frames=n))  # FM, β≈1.9
 hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675], decays_s=[1.2, 0.7, 0.4])
 ```
 
@@ -38,7 +38,9 @@ hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675],
   `start + sum(freq[:i]) / sample_rate`. Not wrapped, so glides stay continuous.
   |freq| must stay below Nyquist; negative frequency runs backwards.
 - `sine(freq_hz, sample_rate, *, frames, phase=0.0, phase_mod=0.0)`: `sin(2π(phase + phase_mod))`.
-  FM/PM is `phase_mod=index * sine(...)` (index in cycles).
+  FM/PM is `phase_mod=D * sine(f_m, ...)` with depth `D` in cycles. It deviates frequency by
+  `2π·D·f_m` Hz; a classic radian index β is `D = β / (2π)` (β = 2 → D ≈ 0.32). `sine` accepts
+  any depth; sidebands above Nyquist fold back (alias) as in other FM implementations.
 - `saw(...)`: rising -1..+1 sawtooth with PolyBLEP band limiting. The first frame of a
   cycle sits mid-jump. Aliasing is greatly reduced, not removed. Upper harmonics are
   slightly darker than an ideal band-limited saw (at 48 kHz about -1 dB at 9 kHz, -2 dB at
@@ -46,7 +48,10 @@ hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675],
 - `pulse(..., width=0.5)`: +1 for the first `width` of each cycle, -1 after; `0<width<1`,
   per-frame width for PWM. Average is `2*width-1`; no DC removal. Width 0.5 is square.
 - `triangle(...)`: +1 at cycle start, -1 at mid-cycle, PolyBLAMP band limited.
-- Oscillators reject an instantaneous frequency (including `phase_mod`) at or above Nyquist.
+- `saw`, `pulse` and `triangle` reject an instantaneous frequency (including `phase_mod`)
+  at or above Nyquist, because band limiting fails there; the error names the frequency, the
+  frame and the `2π·D·f_m` deviation. Use `sine` for deep FM, or modulate a band-limited
+  oscillator gently.
 - `noise(frames, *, seed, color="white")`: white is uniform in [-1, 1) from NumPy PCG64;
   pink is that noise through Paul Kellet's refined filter (about -3 dB/octave from ~10 Hz at
   44.1-48 kHz), scaled by 0.11 and not peak-bounded.
