@@ -20,7 +20,7 @@ provide working methods and adaptable examples; musical form and aesthetics rema
 
 ## Install from a checkout
 
-From the Tactus repository root, with Codex:
+From a clean Tactus checkout root, with Codex:
 
 ```bash
 codex plugin marketplace add .
@@ -41,7 +41,17 @@ user-authored copies until their changes have been migrated.
 
 Both marketplaces point at the repository root, following the single-product layout used
 by Rytho and My-wiki. Host manifests live in `.claude-plugin/plugin.json` and
-`.codex-plugin/plugin.json`; the shared skill content lives in `skills/`:
+`.codex-plugin/plugin.json`; the shared skill content lives in `skills/`.
+Keep these platform entry points at their current locations:
+
+| Path | Responsibility |
+|---|---|
+| `.claude-plugin/plugin.json` | Claude plugin metadata |
+| `.claude-plugin/marketplace.json` | Claude marketplace catalog, targeting `.` |
+| `.codex-plugin/plugin.json` | Codex plugin metadata and the shared `./skills/` path |
+| `.agents/plugins/marketplace.json` | Codex marketplace catalog, targeting `.` |
+
+The shared content has one owner:
 
 ```text
 skills/
@@ -57,10 +67,34 @@ References and small synthetic examples stay with the skills, so their relative 
 work in installed copies. Installing the plugin does not install the Python runtime.
 This follows the [Codex local marketplace format](https://developers.openai.com/plugins/build/plugins).
 The two host manifests share the runtime's version (`0.1.0`); update both when versioning a
-release. Install plugin and runtime from the same revision where possible. A work's own lock
+release, including the Claude marketplace entry. `pyproject.toml` owns the package name,
+version and description; `tests/test_plugin.py` checks their consistency across manifests
+and catalogs, marketplace names and root source paths, shared skills and installed-copy
+references. Run `uv run pytest tests/test_plugin.py` after editing any of these entry points.
+Install plugin and runtime from the same revision where possible. A work's own lock
 can still pin another version: `tactus doctor`, installed signatures and `--help` are the
 authority for what that work can execute. Reinstall/update a plugin after changing its source,
 then start a new session to load it; cached installations are not editable source directories.
+
+## Install from a development checkout
+
+Local plugin installers can copy the source tree, including Git-ignored work files.
+Installing from a checkout containing pools or dogfood runs can copy large audio files
+or fail on their permissions. Use a separate clean checkout, or export the committed
+revision into a persistent plugin source directory:
+
+```bash
+# From the development checkout; commit the plugin changes you want to install first.
+plugin_source="$(mktemp -d "$HOME/tactus-plugin-source.XXXXXX")"
+git archive HEAD | tar -x -C "$plugin_source"
+cd "$plugin_source"
+```
+
+Then run the Codex or Claude installation commands above. Keep this directory while it
+is registered as a local marketplace. The snapshot contains committed tracked files;
+uncommitted changes and ignored audio pools are excluded. To adopt a newer revision,
+export a new snapshot, replace the registered marketplace source using the host's
+marketplace commands, then update/reinstall the plugin.
 
 ## Runtime and references
 

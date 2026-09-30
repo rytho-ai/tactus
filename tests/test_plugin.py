@@ -15,20 +15,29 @@ SKILLS = PLUGIN / "skills"
 
 
 def test_marketplaces_resolve_the_same_versioned_plugin():
-    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    version = project["version"]
+    description = project["description"]
+    name = project["name"]
     codex = json.loads((ROOT / ".agents/plugins/marketplace.json").read_text())
     claude = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())
     [codex_entry] = codex["plugins"]
     [claude_entry] = claude["plugins"]
     assert (ROOT / codex_entry["source"]["path"]).resolve() == PLUGIN
     assert (ROOT / claude_entry["source"]).resolve() == PLUGIN
+    assert codex["name"] == claude["name"] == "tactus-local"
+    assert codex_entry["name"] == claude_entry["name"] == name
+    assert codex_entry["source"]["source"] == "local"
     assert claude_entry["version"] == version
+    assert claude_entry["description"] == claude["metadata"]["description"] == description
     for host in (".codex-plugin", ".claude-plugin"):
         manifest = json.loads((PLUGIN / host / "plugin.json").read_text())
-        assert manifest["name"] == "tactus"
+        assert manifest["name"] == name
+        assert manifest["description"] == description
         assert manifest["version"] == version
         if host == ".codex-plugin":
             assert (PLUGIN / manifest["skills"]).resolve() == SKILLS
+            assert manifest["interface"]["shortDescription"] == description
     assert {p.parent.name for p in SKILLS.glob("*/SKILL.md")} == {
         "compose",
         "dsp",

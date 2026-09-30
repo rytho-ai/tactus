@@ -63,7 +63,9 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 The `tactus` plugin provides **compose** (write and revise works), **dsp** (use or build
 effects), **measure** (use or write analyses) and **version** (track work revisions
 with Git). Install it from this repository root
-for your agent host.
+for your agent host. Run the following commands from a clean checkout root.
+For an active development checkout containing local pools or dogfood runs, use the
+[tracked snapshot workflow](skills/README.md#install-from-a-development-checkout).
 
 **Codex:**
 
@@ -79,7 +81,9 @@ claude plugin marketplace add "$PWD"
 claude plugin install tactus@tactus-local
 ```
 
-Start a new session to load the skills. Both hosts share the same content; see the
+Start a new session to load the skills. Platform manifests and marketplace catalogs
+are separate entry points; both hosts use the single shared `skills/` directory.
+The plugin installation is separate from the Python runtime installation above. See the
 [plugin guide](skills/README.md) for skill details and updates.
 
 ## Your first audio
