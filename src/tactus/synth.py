@@ -17,8 +17,8 @@ two-pole modal resonators with T60 decay (Csound mode, SC Ringz/Klank),
 Karplus-Strong with a first-order allpass tuning stage (Jaffe-Smith; Csound pluck,
 SC Pluck), and windowed-grain overlap-add (Csound partikkel, SC GrainBuf).
 
-Reads: numpy · scipy.signal.lfilter · dsp validation/pan · timing.frame_of ·
-_synth_kernels.karplus_strong
+Reads: numpy · scipy.signal.lfilter · dsp validation · timing.frame_of ·
+_synth_kernels.karplus_strong/overlap_grains
 """
 
 from __future__ import annotations
@@ -28,9 +28,8 @@ import math
 import numpy as np
 from scipy.signal import lfilter
 
-from ._synth_kernels import karplus_strong
+from ._synth_kernels import karplus_strong, overlap_grains
 from .dsp import _audio, _control, _finite_result, _rate, _scalar
-from .dsp import pan as _pan
 from .timing import frame_of
 
 __all__ = [
@@ -460,28 +459,21 @@ def grains(
         pans = np.full(count, float(pans)) if pans.ndim == 0 else pans
         if pans.shape != (count,) or not np.isfinite(pans).all() or np.any(np.abs(pans) > 1):
             raise ValueError("pan must be between -1 and 1: a scalar or one value per grain")
-    out = np.zeros((frames, 2) if pans is not None else frames)
-    padded = np.concatenate((src, [0.0]))
-    for i in range(count):
-        begin = frame_of(onsets[i], sample_rate)
-        length = max(1, frame_of(columns["durations_s"][i], sample_rate))
-        stop = min(frames, begin + length)
-        if begin >= frames:
-            continue
-        k = np.arange(stop - begin)
-        read = columns["positions_s"][i] * sample_rate + k * columns["rate"][i]
-        whole = np.floor(read)
-        frac = read - whole
-        idx = whole.astype(np.int64)
-        valid = (idx >= 0) & (idx < len(src))
-        idx_safe = np.where(valid, idx, 0)
-        samples = (1 - frac) * padded[idx_safe] + frac * padded[np.minimum(idx_safe + 1, len(src))]
-        samples[~valid] = 0.0
-        x = (k + 0.5) / length
-        win = np.sin(np.pi * x) ** 2 if window == "hann" else 1.0 - np.abs(2.0 * x - 1.0)
-        grain = samples * win * columns["gain"][i]
-        if pans is None:
-            out[begin:stop] += grain
-        else:
-            out[begin:stop] += _pan(grain, float(pans[i]))
+    begins = np.floor(onsets * sample_rate + 0.5).astype(np.int64)
+    lengths = np.maximum(1, np.floor(columns["durations_s"] * sample_rate + 0.5)).astype(np.int64)
+    angle = (pans + 1) * (np.pi / 4) if pans is not None else np.zeros(count)
+    out = overlap_grains(
+        np.concatenate((src, [0.0])),
+        begins,
+        lengths,
+        np.ascontiguousarray(columns["positions_s"] * sample_rate),
+        np.ascontiguousarray(columns["rate"]),
+        np.ascontiguousarray(columns["gain"]),
+        np.cos(angle),
+        np.sin(angle),
+        window == "hann",
+        frames,
+        pans is not None,
+    )
+    out = out if pans is not None else out[:, 0]
     return _finite_result(out)

@@ -1,6 +1,12 @@
-"""Tactus: produce music with code. Built for agents."""
+"""Tactus: produce music with code. Built for agents.
 
-from . import analysis, fx, timing
+`tactus.analysis` loads on first access, so importing Tactus does not import SciPy's
+signal package until an analysis (or DSP/synthesis) needs it.
+"""
+
+import importlib
+
+from . import fx, timing
 from .excerpt import excerpt
 from .inputs import MaterialError, ToolError, load_audio, material, tool
 from .render_store import LoadedRender, load_render
@@ -27,3 +33,9 @@ __all__ = [
     "timing",
     "tool",
 ]
+
+
+def __getattr__(name):
+    if name == "analysis":
+        return importlib.import_module(".analysis", __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

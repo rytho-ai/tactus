@@ -12,11 +12,8 @@ from contextlib import contextmanager
 from importlib.metadata import version
 from pathlib import Path
 
-from . import analysis
 from ._contracts import RunError, parse_params
 from ._source import environment, package_sources
-from .analysis._image import SUPPORTED as IMAGE_ANALYSES
-from .analyze import measure
 from .commands import add_flags, registry
 from .excerpt import excerpt, parse_beats, parse_outputs, parse_range
 from .export import BUILTINS as EXPORTERS
@@ -112,19 +109,26 @@ def _main(argv: Sequence[str] | None = None) -> int:
         "add", help="Import files into the pool, printing their sha256 refs"
     )
     add_command.add_argument("paths", nargs="+", type=Path, help="Files or folders to import")
-    builtin_analysis = {
-        f"{category}.{fn.__name__}": fn
-        for category, module in analysis.CATEGORIES.items()
-        for fn in module.ANALYSES
-    }
+    analyzing = arguments[:1] == ["analyze"]
+    if analyzing:
+        # Analysis modules import SciPy's signal package; load them only for `analyze`.
+        from . import analysis
+        from .analysis._image import SUPPORTED as IMAGE_ANALYSES
+        from .analyze import measure
+
+        builtin_analysis = {
+            f"{category}.{fn.__name__}": fn
+            for category, module in analysis.CATEGORIES.items()
+            for fn in module.ANALYSES
+        }
+    else:
+        builtin_analysis = {}
     # Registrations for the other command family do not affect this invocation.
-    analyses = registry(
-        project if arguments[:1] == ["analyze"] else None, "analysis", builtin_analysis
-    )
+    analyses = registry(project if analyzing else None, "analysis", builtin_analysis)
     exporters = registry(project if arguments[:1] == ["export"] else None, "export", EXPORTERS)
     analyze_command = commands.add_parser("analyze", help="Built-in and project audio analyses")
     category_commands = analyze_command.add_subparsers(dest="category", required=True)
-    for category in sorted({name.split(".")[0] for name in analyses}):
+    for category in sorted({name.split(".")[0] for name in analyses} if analyzing else ()):
         module = analysis.CATEGORIES.get(category)
         description = module.__doc__ if module else f"Project analyses: {category}"
         cat_parser = category_commands.add_parser(

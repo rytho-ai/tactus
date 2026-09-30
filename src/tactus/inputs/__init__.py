@@ -39,7 +39,6 @@ from typing import Any
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import resample_poly
 
 from . import pool, tree
 
@@ -293,6 +292,8 @@ def load_audio(
     if sr != sample_rate:
         g = gcd(int(sample_rate), int(sr))
         up, down = sample_rate // g, sr // g
+        from scipy.signal import resample_poly  # deferred: SciPy signal import is slow
+
         x = resample_poly(x, up, down, axis=0).astype(np.float32)
 
     if trim_db is not None:

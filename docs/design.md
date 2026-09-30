@@ -274,6 +274,11 @@ Numba 因實測加速而成為 runtime dependency；analysis 的 librosa 仍是
 磁碟快取，不能把穩態處理時間當作完整 CLI 啟動時間。固定 cutoff 與 saturation
 維持 NumPy／SciPy 路徑。數值一致性驗證見 [Numba DSP 測試](../tests/test_dsp_numba.py)。
 
+**載入時間（2026-09-30）：** `import tactus` 不再立即載入 `tactus.analysis`（它會帶入約 0.4 秒的
+`scipy.signal`）；第一次存取 `tactus.analysis` 或執行 `tactus analyze` 時才載入，`inputs` 也只在
+需要重採樣時載入 `resample_poly`。`import tactus` 由約 470 ms 降到 110 ms，最小作品的 `tactus run`
+由約 2.8 秒降到 1.9 秒；使用 `dsp`／`synth` 的作品仍會在 worker 內載入 SciPy signal。
+
 **頻譜分析加速（2026-09-29）：** CQT／VQT 達十億次估計 filter tap 運算、且
 packed filters 不超過 64 MiB 時，採用 private cached Numba kernel，最多八個執行緒；
 短輸入維持 SciPy FIR，不載入 compiler。STFT 分批運算以限制暫存記憶體；

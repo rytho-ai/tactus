@@ -82,10 +82,11 @@ hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675],
 
 ## Performance
 
-NumPy/SciPy vectorized except the Karplus-Strong loop, which uses a cached Numba kernel
-(first use compiles). Measured on this development machine for 60 s at 48 kHz: glide saw
-0.24 s, PWM pulse 0.15 s, pink noise 0.08 s, 20 resonator modes 0.21 s, pluck 0.01 s,
-2,000 stereo grains 0.10 s, 20,000 mono grains 0.73 s.
+NumPy/SciPy vectorized except the Karplus-Strong loop and grain overlap-add, which use
+cached Numba kernels (first use compiles or loads the cache). Measured on this development
+machine for 60 s at 48 kHz: glide saw 0.10 s, PWM pulse 0.12 s, pink noise 0.08 s,
+20 resonator modes 0.21 s, pluck 0.01 s, 20,000 grains of one length 0.09 s (0.36 s when
+every grain length differs, since the window is recomputed per length).
 
 ## Sources
 

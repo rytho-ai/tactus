@@ -91,7 +91,8 @@ Reusable whole-clip effects also use ordinary arrays:
   resonance (0..1) may be per-frame; near 1 it self-oscillates at the cutoff. Raising
   resonance lowers the passband with no makeup gain, as on the hardware. `drive_db` pushes
   signal harder into the tanh stages at the same output scale; small signals stay linear.
-  Small-signal response matches Csound `moogladder` within 0.3 dB.
+  Small-signal response matches Csound `moogladder` within 0.3 dB. Channels run in
+  parallel (about 0.6 s for 60 s of stereo at 48 kHz); mono speed is unchanged.
 - `spectral(audio, sample_rate, transform, *, n_fft=2048, hop=512)`: phase-vocoder frame
   around your `transform(magnitude, frequency_hz, frame_index)`, which returns new
   `(magnitude, frequency_hz)` with the same shape: `(bins,)` for mono, `(bins, channels)`

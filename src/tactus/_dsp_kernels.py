@@ -2,12 +2,13 @@
 
 Callers own validation, layout adaptation and finite-output checks. Kernels use
 float64 arrays and preserve the scalar recurrence order from dsp.py, without fastmath.
+The ladder processes channels in parallel; each channel's recurrence is unchanged.
 """
 
 from __future__ import annotations
 
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 
 @njit(cache=True)
@@ -159,7 +160,7 @@ def variable_svf(
     return output
 
 
-@njit(cache=True)
+@njit(cache=True, parallel=True)
 def huovilainen_ladder(
     frames: np.ndarray, tune: np.ndarray, feedback: np.ndarray, thermal: float
 ) -> np.ndarray:
@@ -170,7 +171,7 @@ def huovilainen_ladder(
     """
     output = np.empty_like(frames)
     channels = frames.shape[1]
-    for channel in range(channels):
+    for channel in prange(channels):  # channels are independent; each runs in order
         d0 = d1 = d2 = d3 = d4 = d5 = 0.0
         t0 = t1 = t2 = 0.0
         for i in range(frames.shape[0]):
