@@ -11,6 +11,7 @@ owns its oversampling/alignment and tanh/clip/fold transfer, not a loudness-norm
 Crossover returns LR4 low/high branches. Crossfade delay keeps two fractional heads
 fixed during retiming, with explicit transition length and latest-request behavior.
 Varispeed and RMS fitting retain their original float32 contracts; fx re-exports them.
+Loudness fitting shares RMS fitting's limiter and float32 result, measuring with analysis.level.
 Svf generalizes the automated lowpass recurrence to four modes with per-frame cutoff/Q.
 Spectral wraps a caller transform in phase-vocoder analysis/overlap-add resynthesis.
 Ladder is Huovilainen's nonlinear Moog model (see LICENSE.csound), an svf alternative.
@@ -40,6 +41,7 @@ __all__ = [
     "delay",
     "duck",
     "fade",
+    "fit_loudness",
     "fit_rms",
     "gain",
     "ladder",
@@ -795,31 +797,69 @@ def fit_rms(
     x = np.asarray(audio, dtype=np.float32)
     if x.size == 0 or not np.any(x):
         return x
+    return _fit_level(x, sample_rate, target_dbfs, ceiling_dbfs, _rms_dbfs, "fit_rms", "dBFS", 0.05)
+
+
+def fit_loudness(
+    audio: np.ndarray, sample_rate: int, target_lufs: float, ceiling_dbfs: float = -1.0
+) -> np.ndarray:
+    """Return audio whose integrated loudness (`analysis.level.loudness`, BS.1770 gated) is
+    `target_lufs`, with every sample at or below `ceiling_dbfs`. The loudness sibling of
+    `fit_rms`, for matching a mix to a delivery level or to other pieces before listening.
+
+    When a plain gain reaches the target under the ceiling, that gain is all that is applied
+    and the result is within 0.01 LU. Otherwise the same look-ahead limiter and bisection as
+    `fit_rms` are used, to within 0.1 LU; a target the ceiling cannot reach raises
+    `ValueError` naming the achieved loudness. Silence passes through unchanged. Audio too
+    short or too quiet for a gated measurement (under about 0.4 s, or below -70 LUFS) raises
+    `ValueError`. Sample peaks are held, not true peaks. Returns float32 like `fit_rms`.
+    """
+    from .analysis.level import loudness
+
+    x = np.asarray(audio, dtype=np.float32)
+    if x.size == 0 or not np.any(x):
+        return x
+
+    def lufs(signal: np.ndarray) -> float:
+        value = loudness(signal, sample_rate)["integrated_lufs"]
+        return -math.inf if value is None else float(value)
+
+    start = lufs(x)
+    if not math.isfinite(start):
+        raise ValueError("fit_loudness needs audio long and loud enough for gated loudness")
+    plain = x * np.float32(10.0 ** ((target_lufs - start) / 20.0))
+    if float(np.max(np.abs(plain))) <= 10.0 ** (ceiling_dbfs / 20.0):
+        return plain
+    return _fit_level(x, sample_rate, target_lufs, ceiling_dbfs, lufs, "fit_loudness", "LUFS", 0.1)
+
+
+def _fit_level(x, sample_rate, target, ceiling_dbfs, level_of, name, unit, tolerance):
+    """Bisect a pre-gain into the look-ahead limiter until `level_of(result)` meets `target`."""
     ceiling_lin = 10.0 ** (ceiling_dbfs / 20.0)
 
     def measure(pre_gain_db: float) -> tuple[np.ndarray, float]:
         pre = x * (10.0 ** (pre_gain_db / 20.0))
         gain = _limiter_gain(pre, ceiling_lin, sample_rate)
         limited = _apply_gain(pre, gain)
-        return limited, _rms_dbfs(limited)
+        return limited, level_of(limited)
 
-    naive_db = target_dbfs - _rms_dbfs(x)
+    naive_db = target - level_of(x)
     lo, hi = naive_db - 60.0, naive_db + 60.0
     y, cur_db = measure(hi)
     for _ in range(30):
         mid = (lo + hi) / 2.0
         y, cur_db = measure(mid)
-        if abs(cur_db - target_dbfs) <= 0.05:
+        if abs(cur_db - target) <= tolerance:
             break
-        if cur_db < target_dbfs:
+        if cur_db < target:
             lo = mid
         else:
             hi = mid
 
-    if abs(cur_db - target_dbfs) > 0.5:
+    if abs(cur_db - target) > 0.5:
         raise ValueError(
-            f"fit_rms could not reach {target_dbfs} dBFS within 0.5 dB in 30 iterations "
-            f"(achieved {cur_db:.2f} dBFS); the ceiling of {ceiling_dbfs} dBFS may be too "
+            f"{name} could not reach {target} {unit} within 0.5 dB in 30 iterations "
+            f"(achieved {cur_db:.2f} {unit}); the ceiling of {ceiling_dbfs} dBFS may be too "
             "tight for this material's crest factor."
         )
 

@@ -325,6 +325,19 @@ limits and the distinction between estimated beats and bar/downbeat positions.
 Values are measured on whatever array you pass, or on the saved WAV for a resolved run/excerpt
 output — not on some other stage of your signal chain.
 
+**Balance by section.** Whole-run numbers hide a part that is too loud in one section and
+absent in another. Cut the section from the saved run, then measure every output in it:
+
+```bash
+tactus excerpt runs/a --range 11.16:33.49 --out excerpts/hook1
+tactus analyze level rms excerpts/hook1 --brief
+```
+
+One line per output. Compare the stems against each other and against the same stems in
+another section. Use `rms` here, not `loudness`: gated loudness ignores the quiet blocks,
+so a part that sounds only for a moment (a ringing tail, two pickup hits) reads as loud as
+if it played throughout. This says which part dominates, not whether the balance is right.
+
 ## Project commands and export
 
 Register work-owned Python callables in `pyproject.toml`:
@@ -337,7 +350,8 @@ owns signatures, flags, array attachments, provenance and trusted-code limits.
 `tactus export wav RUN --subtype DOUBLE --out NEW_DIR` delivers original float64 audio;
 `FLOAT` casts to float32, the default `PCM_24` matches run's audition conversion.
 `flac` writes PCM24 FLAC; `stems` writes a ZIP of named outputs (default excludes `mix`,
-`--names '["bass", "drums"]'` selects explicitly). All export from saved audio without
+`--names '["bass", "drums"]'` selects explicitly). `wav` and `flac` take the same `--names`
+to write only some outputs, for example `--names '["mix"]'`. All export from saved audio without
 rerunning instruments. Custom exporters receive verified named arrays, sample rate and an
 `out` Path, write files there, and return a JSON dict. `export.json` inventories those files.
 A failed export removes only its new directory, so retrying leaves the render intact.

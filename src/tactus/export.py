@@ -27,17 +27,31 @@ from .inputs.pool import hash_file
 from .store import OutputStore, encode_pcm24
 
 
-def wav(outputs, sample_rate, *, out: Path, subtype: str = "PCM_24") -> dict:
+def _selected(outputs, names) -> dict:
+    """Every output, or the named ones in the given order."""
+    if names is None:
+        return outputs
+    if not isinstance(names, list) or not names or any(n not in outputs for n in names):
+        raise ValueError("names must be a nonempty list of existing output names")
+    if len(set(names)) != len(names):
+        raise ValueError("names must be unique")
+    return {name: outputs[name] for name in names}
+
+
+def wav(
+    outputs, sample_rate, *, out: Path, subtype: str = "PCM_24", names: list[str] | None = None
+) -> dict:
     """Write WAV files: PCM_24 for delivery, FLOAT or DOUBLE for original headroom.
 
     FLOAT casts to float32; DOUBLE casts to float64; both are written without a
     timestamp, so the same audio gives the same bytes. PCM_24 uses the same clipping,
     float32 conversion and hashed names as run's default delivery. No resampling.
+    Pass --names as a JSON list to write only those outputs; the default writes all.
     """
     if subtype not in ("PCM_24", "FLOAT", "DOUBLE"):
         raise ValueError("subtype must be PCM_24, FLOAT or DOUBLE")
     levels = {}
-    for name, audio in outputs.items():
+    for name, audio in _selected(outputs, names).items():
         if subtype == "PCM_24":
             _, levels[name] = OutputStore(out, sample_rate).add(name, audio)
         else:
@@ -52,10 +66,13 @@ def wav(outputs, sample_rate, *, out: Path, subtype: str = "PCM_24") -> dict:
     return {"subtype": subtype, "levels": levels}
 
 
-def flac(outputs, sample_rate, *, out: Path) -> dict:
-    """Write PCM24 FLACs, clipping to full scale with the default WAV conversion policy."""
+def flac(outputs, sample_rate, *, out: Path, names: list[str] | None = None) -> dict:
+    """Write PCM24 FLACs, clipping to full scale with the default WAV conversion policy.
+
+    Pass --names as a JSON list to write only those outputs; the default writes all.
+    """
     clipped = {}
-    for name, audio in outputs.items():
+    for name, audio in _selected(outputs, names).items():
         payload, levels = encode_pcm24(audio, sample_rate)
         clipped[name] = levels["clipped_samples"]
         # Float-to-FLAC conversion can round differently from float-to-WAV by one LSB.
@@ -71,11 +88,7 @@ def stems(outputs, sample_rate, *, out: Path, names: list[str] | None = None) ->
     Pass --names as a JSON list to select explicitly. Lengths are preserved; this does
     not align, mix, normalize or infer stems, and stem sums need not match a master.
     """
-    selected = [n for n in outputs if n != "mix"] if names is None else names
-    if not isinstance(selected, list) or not selected or any(n not in outputs for n in selected):
-        raise ValueError("names must be a nonempty list of existing output names")
-    if len(set(selected)) != len(selected):
-        raise ValueError("names must be unique")
+    selected = list(_selected(outputs, [n for n in outputs if n != "mix"] if names is None else names))
     levels = {}
     with zipfile.ZipFile(out / "stems.zip", "w", compression=zipfile.ZIP_STORED) as archive:
         for name in selected:

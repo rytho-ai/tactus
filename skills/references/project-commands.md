@@ -235,7 +235,8 @@ reusable materials; `take export` transfers one of those bundles.
 Export verifies the checkpoint's array and receipt hashes. `wav` defaults to the identical
 PCM24 conversion and filenames used by `run`; FLOAT casts to float32 and DOUBLE to float64,
 preserving headroom. `flac` and `stems` encode PCM24 with clipping counts. `stems` defaults to
-every named output except literal `mix`; explicit `--names` selects a JSON list. No exporter
+every named output except literal `mix`; explicit `--names` selects a JSON list. `wav` and
+`flac` default to every output and accept the same `--names`. No exporter
 resamples, aligns, normalizes or assumes stems sum to the master. Older runs/excerpts without
 `render.json` use verified saved WAVs; the record labels this `published-pcm`, whose lost
 precision/headroom cannot be recovered. A corrupt checkpoint fails instead of using PCM.

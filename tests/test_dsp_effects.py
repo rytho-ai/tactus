@@ -422,3 +422,35 @@ def test_ladder_layouts_controls_and_validation():
         dsp.ladder(stereo, 48000, cutoff_hz=1000, resonance=1.2)
     with pytest.raises(ValueError, match="0.45"):
         dsp.ladder(stereo, 48000, cutoff_hz=22000)
+
+
+def test_fit_loudness_plain_gain_reaches_target_and_keeps_shape():
+    from tactus.analysis.level import loudness
+
+    rng = np.random.default_rng(0)
+    x = (rng.standard_normal((48000 * 3, 2)) * 0.02).astype(np.float32)
+    y = dsp.fit_loudness(x, 48000, -16.0)
+    assert y.shape == x.shape and y.dtype == np.float32
+    assert abs(loudness(y, 48000)["integrated_lufs"] + 16.0) <= 0.01
+    np.testing.assert_allclose(y / y[0, 0], x / x[0, 0], rtol=1e-4)  # one gain, nothing else
+
+
+def test_fit_loudness_limits_when_the_ceiling_is_in_the_way():
+    from tactus.analysis.level import loudness
+
+    rng = np.random.default_rng(1)
+    x = (rng.standard_normal(48000 * 3) * 0.05).astype(np.float32)
+    x[::4800] = 0.9  # sparse tall peaks: a plain gain to the target would exceed the ceiling
+    y = dsp.fit_loudness(x, 48000, -14.0, ceiling_dbfs=-1.0)
+    assert float(np.max(np.abs(y))) <= 10 ** (-1.0 / 20) + 1e-6
+    assert abs(loudness(y, 48000)["integrated_lufs"] + 14.0) <= 0.1
+
+
+def test_fit_loudness_silence_short_and_unreachable_inputs():
+    silence = np.zeros(48000, dtype=np.float32)
+    np.testing.assert_array_equal(dsp.fit_loudness(silence, 48000, -16.0), silence)
+    with pytest.raises(ValueError, match="long and loud enough"):
+        dsp.fit_loudness(np.full(1000, 0.1, dtype=np.float32), 48000, -16.0)
+    tone = (0.5 * np.sin(2 * np.pi * 1000 * np.arange(48000 * 2) / 48000)).astype(np.float32)
+    with pytest.raises(ValueError, match="fit_loudness could not reach"):
+        dsp.fit_loudness(tone, 48000, 0.0, ceiling_dbfs=-12.0)

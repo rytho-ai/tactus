@@ -90,6 +90,18 @@ def test_cli_stems_and_flac(rendered, tmp_path, capsys):
     assert sf.info(tmp_path / "flac/mix.flac").subtype == "PCM_24"
 
 
+def test_cli_wav_and_flac_select_named_outputs(rendered, tmp_path, capsys):
+    _, output = rendered
+    for kind, suffix in (("wav", "wav"), ("flac", "flac")):
+        out = tmp_path / kind
+        assert main(["export", kind, str(output), "--names", '["mix"]', "--out", str(out)]) == 0
+        capsys.readouterr()
+        audio = sorted(p.name for p in out.iterdir() if p.suffix == f".{suffix}")
+        assert len(audio) == 1 and audio[0].startswith("mix")
+    assert main(["export", "wav", str(output), "--names", '["nope"]', "--out", str(tmp_path / "x")]) != 0
+    assert not (tmp_path / "x").exists()
+
+
 def test_legacy_pcm_fallback_is_explicit(rendered, tmp_path):
     _, output = rendered
     (output / "render.json").unlink()
