@@ -96,3 +96,13 @@ def test_tuning_agrees_with_librosa_estimate(true, librosa):
     ours = spectral.tuning(audio, 22050)["offset_cents"]
     theirs = 100.0 * librosa.estimate_tuning(y=audio, sr=22050)
     assert abs(wrapped(ours - theirs)) <= 6.0
+
+
+@pytest.mark.parametrize("shift", [-30, -10, 10, 25, 40])
+def test_tuning_follows_a_known_repitch_within_a_cent(shift):
+    rng = np.random.default_rng(3)
+    audio = chords(12, seconds=6.0) + 0.02 * rng.standard_normal(SR * 6)
+    rate = 2 ** (shift / 1200)
+    repitched = np.interp(np.arange(0, len(audio) - 1, rate), np.arange(len(audio)), audio)
+    change = spectral.tuning(repitched, SR)["offset_cents"] - spectral.tuning(audio, SR)["offset_cents"]
+    assert abs(wrapped(change - shift)) <= 1.0

@@ -222,7 +222,9 @@ sit from the nearest A440 equal-tempered semitone. Pass `offset_semitones` to `c
 `tuning`, or use it to decide a repitch. It is not a pitch, key or chord estimate. On
 synthetic chords with known offsets it is within 4 cents, biased a few cents flat because
 upper partials sit below the semitone grid; on four 1930s–40s record transfers it was within
-7 cents of librosa's `estimate_tuning`. `concentration` runs from about 0.01 for noise to
+7 cents of librosa's `estimate_tuning`. It deliberately does not copy that definition: when the same
+records were repitched by known amounts, the circular mean followed the change within a cent,
+while a histogram-mode estimate jumped by up to 12 cents. `concentration` runs from about 0.01 for noise to
 0.15–0.25 for full-band recordings and above 0.8 for clean harmonic tones: read a low value
 as "the offset means little", and compare sections when a transfer may drift.
 
