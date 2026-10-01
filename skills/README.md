@@ -8,8 +8,8 @@ Four composable skills for making music with the separately installed Tactus Pyt
 
 | Skill | Responsibility |
 |---|---|
-| [compose](compose/SKILL.md) | Develop and maintain a work as functional, modular code; render, listen and revise. |
-| [dsp](dsp/SKILL.md) | Use or build processors and controls, validate their behavior and accelerate measured bottlenecks. |
+| [compose](compose/SKILL.md) | Develop and maintain a work as functional, modular code, choosing among synthesis, recorded material and devices; render, listen and revise. |
+| [dsp](dsp/SKILL.md) | Use or build sound sources, processors and controls, validate their behavior and accelerate measured bottlenecks. |
 | [measure](measure/SKILL.md) | Use or write analyses, evaluate their limits and supply observations for creative choices. |
 | [version](version/SKILL.md) | Explore, compare, preserve and reuse versions; use Git to connect source, refs and locks to audio. |
 

@@ -311,7 +311,8 @@ definitions — read definitions there, not here. Run with
 `tactus analyze CATEGORY NAME PATH... [--flags] [--out DIR]`; `PATH` is a WAV file or a
 run/excerpt directory (every named output measured). Each stdout line is one JSON object
 with `path`, `analysis`, `revision`, `params` and a `result` object holding the measurements;
-run/excerpt outputs also have `output`. For example, read beat times at `.result.beats_s`.
+run/excerpt outputs also have `output`. Add `--brief` to print only `path`, `output`,
+`analysis` and `result`. For example, read beat times at `.result.beats_s`.
 The library returns the measurements directly and mirrors the CLI:
 `from tactus.analysis import spectral; spectral.centroid(audio, rate, threshold_hz=2000.0)`.
 Every analysis reports values, never a verdict — apply your own thresholds.

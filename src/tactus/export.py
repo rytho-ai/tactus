@@ -4,6 +4,7 @@ Exports own their new directory and completion record. Failure removes that dire
 never the source render. Built-ins and custom exporters receive the same named arrays,
 rate and keyword-only out directory. Generated files are inventoried after execution.
 store.encode_pcm24 owns quantization; FLAC transcodes its integer samples losslessly.
+Float WAVs are written without libsndfile's timestamped PEAK chunk, so bytes repeat.
 """
 
 from __future__ import annotations

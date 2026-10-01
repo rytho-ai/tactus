@@ -29,7 +29,7 @@ Agent 可以直接用 Python、NumPy 與既有套件表達合成、取樣、MIDI
 
 普通 Python、函式與 NumPy 都是正式創作途徑。Agent 能否理解、完成並修改作品，是設計是否合適的判準。Agent 自己寫 NumPy 是正常創作，不能單憑這件事判定它繞過了 Tactus。
 
-Tactus 提供自己維護的 analysis 與 DSP：掌握演算法、數值定義、介面與測試，讓常用能力可以持續改善。核心依賴盡量少，優先以 NumPy／SciPy 實作，有量測依據時再採用 Numba 等加速工具。自有實作仍須驗證正確性與維護成本，但不要求每項都比第三方更快；pyqmdsp、pytimestretch 等高成本專門能力保留依賴。內建功能是可選工具，作品仍可自行寫 code、使用其他套件或 VST（2026-09-29）。
+Tactus 提供自己維護的 analysis、DSP、合成構件與 devices（sampler、pads、step sequencer 這類已知的做音樂方式）：掌握演算法、數值定義、介面與測試，讓常用能力可以持續改善。核心依賴盡量少，優先以 NumPy／SciPy 實作，有量測依據時再採用 Numba 等加速工具。自有實作仍須驗證正確性與維護成本，但不要求每項都比第三方更快；pyqmdsp、pytimestretch 等高成本專門能力保留依賴。內建功能是可選工具，可以直接呼叫，也可以讀原始碼、複製到作品裡改；作品仍可自行寫 code、使用其他套件或 VST（2026-09-29）。
 
 ## 4. 只要求作品真正需要的共同假設
 

@@ -60,7 +60,7 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 
 ### Agent skills
 
-The `tactus` plugin provides **compose** (write and revise works), **dsp** (use or build
+The `tactus` plugin provides **compose** (write and revise works), **dsp** (design sounds and build
 effects), **measure** (use or write analyses) and **version** (track work revisions
 with Git). Install it from this repository root
 for your agent host. Run the following commands from a clean checkout root.

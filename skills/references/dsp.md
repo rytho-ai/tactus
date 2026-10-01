@@ -2,8 +2,8 @@
 
 `analysis` reports observations; `dsp` transforms audio. Both are optional: ordinary Python,
 custom analysis commands and VST effects remain supported. Built-in calculations use
-NumPy/SciPy, with cached Numba kernels for the sequential duck, both delays and the
-automated lowpass/svf loop; beat tracking and time stretching retain pyqmdsp and pytimestretch.
+NumPy/SciPy, with cached Numba kernels for the sequential duck, both delays, the
+automated lowpass/svf loop and the ladder; beat tracking and time stretching retain pyqmdsp and pytimestretch.
 See [DSP regression tests](https://github.com/rytho-ai/tactus/blob/main/tests/test_dsp_effects.py).
 
 ```python

@@ -1,7 +1,7 @@
 """Plugin parameter discovery, unit-aware setting and stateful Pedalboard rendering.
 
-Owns valid-value matching, block automation, tail/latency handling and instrument
-warm-up. Authors choose parameters, curves and notes; helpers return Tactus layout.
+Owns valid-value matching, whole-clip processing, block automation, tail/latency
+handling and instrument warm-up. Authors choose parameters, curves and notes; helpers return Tactus layout.
 Owned signal processing lives in dsp.py. fit_rms and varispeed remain aliases here
 for existing works, with unchanged signatures and numerical behavior.
 

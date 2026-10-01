@@ -1,7 +1,7 @@
-"""Cached Numba kernels for sequential synthesis loops.
+"""Cached Numba kernels for synthesis loops: the Karplus-Strong recurrence and grain overlap-add.
 
 Callers own validation and finite-output checks. Kernels use float64 arrays without
-fastmath and keep the recurrence order documented by synth.py.
+fastmath and keep the operation order documented by synth.py.
 """
 
 from __future__ import annotations
