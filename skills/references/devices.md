@@ -68,6 +68,7 @@ Times are absolute seconds from the start of the output.
   slice cuts the previous one).
 - **tune** maps pad names to semitones. `per_pad=True` returns one stem per pad.
 - `choke` and `tune` also take one value for the whole kit: `choke=1, tune=-4`.
+- The output is mono when every pad is mono. `dsp.pan(part, position)` places it in stereo.
 - **Chopping a record to a new tempo.** Repitching by `12 * log2(bpm / source_bpm)` semitones
   makes a source beat last one beat of the work, and moves the key by the same amount.
   Old recordings drift, so cut one slice per beat with a small `tail_s`, put the whole kit
@@ -84,6 +85,8 @@ Times are absolute seconds from the start of the output.
   accent=1.0)` returns `(start_s, velocity)` for each active step.
 - A pattern is a string (`x` hit at `level`, `X` accent, `.` rest; spaces and `|` only for
   reading) or a sequence of velocities where 0 rests.
+  It may be any length: two alternating bars are one 32-step pattern,
+  `"X......x..x.....|X......x.xx....."`, with `repeats` counting that whole pattern.
 - **swing** places every second step inside its pair as `timing.swing` does: 0.5 straight,
   0.58 light, 2/3 triplet.
 - `hits(pattern, pad, *, bpm, ...)` and `notes(pattern, pitches, *, bpm, gate=0.5, ...)`

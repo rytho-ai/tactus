@@ -26,6 +26,15 @@ Tempo and key: fit material to the piece by repitching (length and pitch change 
 by time-stretching with `pytimestretch` (pitch kept), or by choosing the piece's tempo and
 key to fit the material. Each is a creative choice.
 
+Bringing in a recording from outside (a record, a download, a field recording): pin it
+with `tactus material add` before using it, and keep a note of what it is and where it came
+from. Then measure what a library sample would have told you on its label: how far it sits
+from concert pitch (old transfers are often tens of cents off, and anything you add must
+match it or it must be retuned), whether the tempo drifts, whether the two channels are the
+same signal, where voices are absent, and how much noise sits before the music starts
+(usable as a texture). Whether the result may be published is the user's decision; say what
+was sampled.
+
 Adding pitched parts to a recording: take bass roots and chords from an analysis of the
 material as it sounds in the piece (after repitching), bar by bar and half-bar by half-bar,
 not from the global key alone. Old or thin recordings may have no bass register to measure;
