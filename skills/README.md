@@ -106,6 +106,7 @@ The plugin supplies guidance, not an MCP server or Python dependency installer.
 - [Packages and integration notes](references/packages.md): tool selection, layouts, timing and state.
 - [Builtin DSP](references/dsp.md): available functions and behavior worth considering when adapting them.
 - [Synthesis building blocks](references/synth.md): oscillators, seeded noise, envelopes, resonators, plucked strings and grains.
+- [Accelerating DSP and synthesis code](references/acceleration.md): measurement steps and where Numba helps or loses.
 - [Creative connections](references/connections.md): connect observations, time changes and processing.
 - [Source regions and audio delivery](references/production.md): loop-body/tail boundaries and channel/master relationships.
 - [Runnable examples](examples/README.md): synthetic, editable starting points; no sample downloads.

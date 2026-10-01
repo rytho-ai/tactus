@@ -53,7 +53,9 @@ and compile a small numerical kernel, typically with `@njit(cache=True)`. Compar
 the clear reference implementation, including state and edges. Measure compilation/cache
 load separately from warm execution; a warm speedup can still slow a one-shot audition.
 Choose precision and tolerances deliberately. Add parallelism only where iterations are
-independent and measurements justify the overhead.
+independent and measurements justify the overhead. Before optimizing, read
+[Accelerating DSP and synthesis code](../references/acceleration.md): its steps and its
+table of which costs Numba reduces and which it does not.
 
 The [colored taps and mixed processing examples](../examples/README.md) illustrate
 local DSP beside builtin and Pedalboard effects. Their structure and sound are yours to change.
