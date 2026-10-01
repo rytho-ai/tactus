@@ -29,7 +29,8 @@ from .store import OutputStore, encode_pcm24
 def wav(outputs, sample_rate, *, out: Path, subtype: str = "PCM_24") -> dict:
     """Write WAV files: PCM_24 for delivery, FLOAT or DOUBLE for original headroom.
 
-    FLOAT casts to float32; DOUBLE casts to float64. PCM_24 uses the same clipping,
+    FLOAT casts to float32; DOUBLE casts to float64; both are written without a
+    timestamp, so the same audio gives the same bytes. PCM_24 uses the same clipping,
     float32 conversion and hashed names as run's default delivery. No resampling.
     """
     if subtype not in ("PCM_24", "FLOAT", "DOUBLE"):
@@ -42,7 +43,11 @@ def wav(outputs, sample_rate, *, out: Path, subtype: str = "PCM_24") -> dict:
             samples = np.asarray(audio, dtype=np.float32 if subtype == "FLOAT" else np.float64)
             if not np.isfinite(samples).all():
                 raise ValueError(f"output {name!r} overflows {subtype}")
-            sf.write(out / f"{name}.wav", samples, sample_rate, subtype=subtype)
+            # libsndfile stamps a timestamped PEAK chunk into float WAVs, so identical audio
+            # would give different bytes on each export; SciPy writes a plain float file.
+            from scipy.io import wavfile
+
+            wavfile.write(out / f"{name}.wav", sample_rate, samples)
     return {"subtype": subtype, "levels": levels}
 
 

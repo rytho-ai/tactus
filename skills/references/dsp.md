@@ -79,7 +79,8 @@ Reusable whole-clip effects also use ordinary arrays:
   scalar or per-frame cutoff strictly between zero and Nyquist, positive scalar Q.
   Scalar cutoff uses biquad; varying cutoff uses a topology-preserving state-variable
   filter. Controls are not automatically smoothed.
-- `svf(audio, sample_rate, *, mode, cutoff_hz, q=1/sqrt(2))`: state-variable filter with
+- `svf(audio, sample_rate, *, mode, cutoff_hz, q=1/sqrt(2))`: state-variable filter for mono
+  or `(frames, channels)` audio (each channel filtered alike, layout kept), with
   mode `lowpass`, `highpass`, `bandpass` or `notch`; cutoff and Q may each be scalar or
   per-frame (0 < cutoff < Nyquist, q > 0). Low/high pass have unity passband gain and
   resonate about `20·log10(Q)` dB at cutoff; bandpass is 0 dB at cutoff and narrows as Q
@@ -120,7 +121,8 @@ The [band processing and delay comparison](https://github.com/rytho-ai/tactus/tr
 `crossover` and `crossfade_delay` alongside the existing effects.
 
 For sound sources (oscillators, noise, envelopes, resonators, plucked strings, grains)
-see [Synthesis building blocks](synth.md).
+see [Synthesis building blocks](synth.md). Tactus has no reverb or chorus of its own: use
+Pedalboard's through `fx.process(pedalboard.Reverb(...), audio, rate, tail_seconds=2.0)`.
 
 Numba acceleration is automatic and keeps the same public API. The first call for a
 new kernel signature compiles code; later processes can load its on-disk cache. First

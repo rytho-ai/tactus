@@ -199,3 +199,18 @@ def test_flac_and_stems_preserve_default_pcm24_rounding(tmp_path, stereo):
     stems({"part": audio}, 48000, out=delivery)
     with zipfile.ZipFile(delivery / "stems.zip") as archive:
         assert archive.read("part.wav") == (tmp_path / "wav" / reference.file).read_bytes()
+
+
+@pytest.mark.parametrize("subtype", ["PCM_24", "FLOAT", "DOUBLE"])
+def test_wav_export_bytes_do_not_depend_on_when_they_are_written(tmp_path, subtype):
+    import time
+
+    audio = np.linspace(-0.5, 0.5, 96).reshape(48, 2)
+    written = []
+    for name in ("a", "b"):
+        out = tmp_path / name
+        out.mkdir()
+        wav({"mix": audio}, 8000, out=out, subtype=subtype)
+        written.append(next(iter(out.glob("*.wav"))).read_bytes())
+        time.sleep(1.1)  # libsndfile stamps whole seconds into a float WAV's PEAK chunk
+    assert written[0] == written[1] and b"PEAK" not in written[0][:200]

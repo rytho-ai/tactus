@@ -26,7 +26,11 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 **作品檢查設定：**`init` 在作品的 `pyproject.toml` 寫入可自行修改的本地 pytest／Ruff 預設：recursive checks 略過 runs、pool、analyses、exports 與 Git 恢復用的 worktree，Ruff 規則屬於作品本身，不繼承外層 repo 的 lint policy。pytest／Ruff 不是 runtime dependencies；需要固定版本時加入作品的 dev group。舊作品手動合併設定，runtime lock 不隨之升級。見 [作品測試與 lint](../skills/references/project-commands.md#test-and-lint-a-work)。
 
-**尚未定案：**targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
+**Devices：**`tactus.devices` 以普通函式提供大家認得的做音樂方式：`sampler`（把錄音當成有音高的樂器，含 root、起始位置與延音 loop）、`pads`（切片與 one-shot，含 choke）、`steps`（step sequencer，產生事件）。Device 跟音符事件有關；`dsp` 只處理音訊，`synth` 只產生聲音。每個 device 是一個自足的檔案，只依賴 NumPy 與 Tactus 公開模組，可以 import，也可以整份複製到作品裡改；輸入輸出是普通陣列、tuple 與 dict，事件時間一律是絕對秒數。Device 本身沒有音色：Tactus 提供 device，Agent 用素材與設定做出自己的 patch。理由是可見性：有說明與可抄實作的 Agent 才會把素材當樂器演奏，只給素材時它只用在鼓聲；手寫的慣例小工具也會寫錯而不自知。不屬於裝置的做法（resample 自己的輸出、loop 當底再變化、錄音與合成疊加）由 [techniques reference](../skills/references/techniques.md) 說明。不提供 device 類別、chain／rack、track 或 session 模型。契約見 [devices reference](../skills/references/devices.md)。
+
+Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整素材：保留 Tactus 的陣列排列、先 reset、可保留尾音。Tactus 不另寫 reverb。Float WAV 匯出不帶時間戳，同樣的音訊產生同樣的檔案；`tactus analyze --brief` 只印結果欄位。
+
+**尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 
@@ -52,7 +56,7 @@ Temporal abstraction 把 placement、repetition、時間變換與 automation 展
 
 ## Pattern：選用的局部規律工具
 
-Tactus 不提供 Pattern 模組；週期規律以原生 Python 加 `tactus.timing` 表達，只共用 `timing.euclid` 與 `timing.cycle` 兩個慣例。
+Tactus 不提供 Pattern 型別或必要的編排模型；週期規律以原生 Python 加 `tactus.timing` 表達，共用 `timing.euclid` 與 `timing.cycle` 兩個慣例。Step sequencing 以可選的 device（`devices.steps`）提供：它只把格子轉成普通的事件 tuple，目的是讓這種做法看得見，不是減少錯誤。
 
 Pattern 指可命名、組合與重用的規律，例如 cycle、phase、Euclidean distribution、polymeter、rotation、reverse 與週期性 transformation。一次性的 fill、section 選擇與音樂例外留在 Python；例外本身形成作品要保留的週期時，才值得用 Pattern 表達。方向是把局部 Pattern 展開成普通事件，再與手寫 Python 或其他 generator 產生的事件使用同樣的時間與 placement 能力，下游不必因事件來源不同而採用不同編排模型。
 

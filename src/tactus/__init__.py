@@ -1,7 +1,7 @@
 """Tactus: produce music with code. Built for agents.
 
-`tactus.analysis` loads on first access, so importing Tactus does not import SciPy's
-signal package until an analysis (or DSP/synthesis) needs it.
+`tactus.analysis` and `tactus.devices` load on first access, so importing Tactus does not
+import SciPy's signal package until an analysis (or DSP/synthesis) needs it.
 """
 
 import importlib
@@ -35,7 +35,14 @@ __all__ = [
 ]
 
 
+_LAZY = ("analysis", "devices", "dsp", "synth")
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_LAZY))
+
+
 def __getattr__(name):
-    if name == "analysis":
-        return importlib.import_module(".analysis", __name__)
+    if name in _LAZY:
+        return importlib.import_module("." + name, __name__)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

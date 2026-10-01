@@ -17,7 +17,8 @@ For installed/optional analysis packages and integration caveats, read
 Discover the installed runtime progressively: `tactus analyze --help`, then
 `tactus analyze CATEGORY --help`, then `tactus analyze CATEGORY NAME --help` for parameters,
 units, definitions and limitations. Call the Python function directly when composing
-calculations; use the CLI for saved files or run/excerpt directories. See
+calculations; use the CLI for saved files or run/excerpt directories, adding `--brief`
+when only the result is needed. See
 [Measuring audio](../references/runtime.md#measuring-audio) for result envelopes and paths.
 
 Choose the exact signal and interval: source, intermediate array, saved raw render or

@@ -287,6 +287,9 @@ environment variable keeps its old result when that input changes, so read input
   instrument from `mido` messages or `(bytes, seconds)` tuples in absolute seconds, after a
   silent warm-up render that removes a start transient; returns `(frames, channels)`. It renders
   in 64-frame blocks (`buffer_size`) because plugins apply pitch bend and CC at block starts.
+- `fx.process(chain, audio, rate, tail_seconds=0.0)` runs a Pedalboard plugin or chain once
+  over a complete clip in Tactus layout: no transpose, plugin reset first, float32 out.
+  `tail_seconds` appends silence so reverb and delay tails are kept; without it the tail is cut.
 - `fx.process_automated(chain, audio, rate, update, block_seconds=0.02, tail_seconds=…)`
   processes in blocks, calling `update(t)` with each block's start time so you can set
   parameters over time. It settles external-plugin latency on silence, resets once, streams

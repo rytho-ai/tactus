@@ -494,3 +494,15 @@ def test_cli_excerpt_invalid_beat_requests(tmp_path, capsys, flags):
     error = json.loads(capsys.readouterr().out)
     assert error["error"]["code"] == "invalid_request"
     assert not (tmp_path / "cut").exists()
+
+
+def test_analyze_brief_prints_only_the_result_fields(tmp_path, capsys):
+    import numpy as np
+    import soundfile as sf
+
+    wav = tmp_path / "tone.wav"
+    sf.write(wav, np.full((4800, 2), 0.25, dtype=np.float32), 48000, subtype="PCM_24")
+    assert main(["analyze", "level", "sample_peak", str(wav), "--brief"]) == 0
+    report = json.loads(capsys.readouterr().out.strip())
+    assert set(report) == {"path", "analysis", "result"}
+    assert report["analysis"] == "level.sample_peak"

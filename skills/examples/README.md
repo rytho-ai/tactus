@@ -49,6 +49,13 @@ waveform, ratio, decay and grain choice is the example's own; rewrite them freel
 
 Run them like the others, for example `tactus run voices.py --out runs/voices`.
 
+## Devices example
+
+- [devices.py](devices.py): a melody played on one sampled note with a sustain loop, a
+  break cut into eight slices and re-triggered in a new order with each slice choking the
+  last, and a swung hat line from the step sequencer. Sources are synthesized stand-ins;
+  see [Devices](../references/devices.md) and [Ways of making music](../references/techniques.md).
+
 Each render returns comparable named WAVs. Listen with your audio tools. For an objective
 check of the heard output, try `tactus analyze level sample_peak runs/warp` or write your own
 analysis using the [measure skill](../measure/SKILL.md) and

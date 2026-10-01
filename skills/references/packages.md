@@ -39,11 +39,21 @@ Native extension callables may lack an inspectable signature: try their installe
 `__doc__` or `help()` and a small validated call rather than treating introspection
 failure as an unavailable processor. See [production notes](production.md#a-valid-entry-and-processing-notes).
 
+## Writing audio files yourself
+
+`tactus run` and `tactus export` write the work's audio. When your own code writes a float
+WAV, `soundfile` (libsndfile) adds a PEAK chunk holding the time of writing, so identical
+audio gives different file bytes and hashes on every run. Compare decoded samples, or
+write with `scipy.io.wavfile.write(path, rate, array)`, which stores no timestamp.
+PCM files from `soundfile` are stable.
+
 ## Pedalboard and instrument hosts
 
 - **Layout:** Pedalboard audio effects accept frames-first arrays as used by Tactus, and can
-  infer channels-first layout. Make layout explicit at the seam and check the returned shape,
-  especially with very short blocks. A direct MIDI instrument call returns channels-first;
+  infer channels-first layout. Pass Tactus audio as it is; transposing it is unnecessary.
+  For a whole clip through a built-in effect (Reverb, Chorus, Delay, Compressor) use
+  `fx.process(chain, audio, rate, tail_seconds=...)`, which keeps the layout, resets the
+  plugin and keeps the tail. Check the returned shape with very short blocks. A direct MIDI instrument call returns channels-first;
   `fx.render_instrument` returns frames-first. Avoid applying one blanket transpose rule to both.
 - **State and tails:** create/reset instances for independent candidates. For continuous
   processing, reset explicitly before the stream and use `reset=False` on every audio block;

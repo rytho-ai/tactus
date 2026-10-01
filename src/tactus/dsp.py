@@ -479,6 +479,8 @@ def svf(
 ) -> np.ndarray:
     """Whole-clip state-variable filter with scalar or per-frame cutoff and Q.
 
+    Audio is mono or (frames, channels); every channel gets the same controls.
+
     mode is lowpass, highpass, bandpass or notch. Lowpass/highpass have unity gain in
     their passband; bandpass is normalized to 0 dB at the cutoff (peak) frequency, so
     raising Q narrows it; notch removes the cutoff frequency. Higher Q makes low/high

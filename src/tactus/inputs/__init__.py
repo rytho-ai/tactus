@@ -146,7 +146,10 @@ def _tool_matches(entry: dict[str, str]) -> bool:
 def _digest_from_ref(ref: str) -> str:
     if not isinstance(ref, str) or not ref.startswith(_REF_PREFIX):
         raise MaterialError(
-            "invalid_ref", ref, f"material ref must be 'sha256:<64 lowercase hex>': {ref!r}"
+            "invalid_ref",
+            ref,
+            f"material ref must be 'sha256:<64 lowercase hex>': {ref!r}"
+            " (to read a file directly, pass a pathlib.Path)",
         )
     digest = ref[len(_REF_PREFIX) :]
     if not pool.DIGEST_RE.match(digest):

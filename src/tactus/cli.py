@@ -153,6 +153,11 @@ def _main(argv: Sequence[str] | None = None) -> int:
             name_parser.add_argument(
                 "--out", type=Path, help="Save result JSON and array attachments"
             )
+            name_parser.add_argument(
+                "--brief",
+                action="store_true",
+                help="Print only path, output, analysis and result (omit params and provenance)",
+            )
             image_flags = set()
             if key in IMAGE_ANALYSES and command.project is None:
                 name_parser.add_argument(
@@ -171,7 +176,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 names = add_flags(
                     name_parser,
                     fn,
-                    {"paths", "out", "help", "command", "category", "name"} | image_flags,
+                    {"paths", "out", "brief", "help", "command", "category", "name"} | image_flags,
                 )
                 name_parser.set_defaults(callable_command=command, param_names=names)
     export_command = commands.add_parser(
@@ -270,6 +275,12 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 for result in measure(
                     args.paths, args.callable_command, params, args.out, visualization=visualization
                 ):
+                    if args.brief:
+                        result = {
+                            key: result[key]
+                            for key in ("path", "output", "analysis", "result")
+                            if key in result
+                        }
                     print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:

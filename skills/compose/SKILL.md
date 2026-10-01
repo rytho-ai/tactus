@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Write, run, audition or revise music as a Tactus Python work. Use for arranging clips, sampling, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates or preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
+description: Write, run, audition or revise music as a Tactus Python work. Use for arranging clips, sampling instruments, chopping loops onto pads, step sequencing, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates or preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
 ---
 
 # Compose with Tactus
@@ -12,6 +12,11 @@ equally valid building blocks; builtin source can also be studied and adapted.
 To make sounds from scratch, [synthesis building blocks](../references/synth.md) provide
 oscillators, seeded noise, envelopes, resonators, plucked strings and grains; the
 [instrument examples](../examples/README.md#synthesis-examples) are starting points, not presets.
+Recorded material and your own renders are sound sources too:
+[Ways of making music](../references/techniques.md) lists techniques such as playing a
+sample as an instrument, chopping a loop onto pads and resampling your output, and
+[Devices](../references/devices.md) provides a sampler, pads and a step sequencer to
+import or copy.
 When choosing a package or connecting its audio/MIDI to the work, read
 [Packages and integration notes](../references/packages.md) for available tools,
 installation scope, layouts, time units and state/reproducibility caveats.
@@ -19,6 +24,8 @@ installation scope, layouts, time units and state/reproducibility caveats.
 ## Develop the work
 
 1. **Start from the intended sound or revision.** Locate the existing source and inputs.
+   Before choosing sound sources, read [Ways of making music](../references/techniques.md)
+   and weigh recorded material, slices and resampling beside synthesis.
    For a new work, `tactus init DIR` creates its uv project; it does not compose a song.
    For an existing work, check `tactus --project WORK doctor` before running commands;
    read [Selecting a work's environment](../references/project-commands.md#selecting-a-works-environment)

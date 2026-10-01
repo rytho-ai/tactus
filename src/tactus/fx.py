@@ -25,6 +25,7 @@ __all__ = [
     "describe",
     "fit_rms",
     "format_table",
+    "process",
     "process_automated",
     "render_instrument",
     "set_param",
@@ -502,6 +503,30 @@ def _validate_process_args(
         raise ValueError(f"audio must be 1-D or 2-D (frames[, channels]), got shape {audio.shape}")
     if not np.all(np.isfinite(audio)):
         raise ValueError("audio must be finite (no NaN/Inf)")
+
+
+def process(chain: Any, audio: np.ndarray, sample_rate: int, *, tail_seconds: float = 0.0) -> np.ndarray:
+    """Run a Pedalboard plugin or chain once over a complete clip, in Tactus layout.
+
+    `chain` is a `pedalboard.Pedalboard` or a single plugin, such as
+    `pedalboard.Reverb(...)`; `audio` is `(frames,)` or `(frames, channels)` and is passed
+    as it is, with no transpose. The plugin is reset first, so equal input gives equal
+    output. `tail_seconds` of silence is appended before processing so reverb and delay
+    tails are kept; without it the result has the input's length and the tail is cut.
+    Returns float32 in the input's layout. For parameters that change over time use
+    `process_automated`.
+    """
+    raw = np.asarray(audio)
+    _validate_process_args(sample_rate, 1.0, tail_seconds, raw)
+    padded = _pad_frames(raw.astype(np.float32, copy=False), round(tail_seconds * sample_rate))
+    if not len(padded):
+        return padded.copy()
+    if padded.ndim == 2 and len(padded) <= padded.shape[1]:
+        raise ValueError("audio has no more frames than channels; its layout would be ambiguous")
+    output = np.asarray(chain(padded, sample_rate, reset=True), dtype=np.float32)
+    if output.shape != padded.shape:
+        raise ValueError(f"effect returned shape {output.shape}, expected {padded.shape}")
+    return output
 
 
 def process_automated(

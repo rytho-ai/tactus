@@ -11,6 +11,9 @@ available analyses, parameters and exact definitions in the installed version.
 - [Spectrograms, Q transforms, tempogram and images](#stft-mel-spectrogram-cqt-vqt-tempogram-and-images)
 - [Dynamics and spectral distribution](#dynamics-and-spectral-distribution)
 
+Add `--brief` to print only `path`, `output`, `analysis` and `result` when you need the
+number and not the parameters and provenance.
+
 To write an analysis or register a work-local command, read the
 [measure skill](../skills/measure/SKILL.md) and
 [project command contract](../skills/references/project-commands.md#analyze).

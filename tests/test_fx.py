@@ -685,3 +685,25 @@ def test_owned_dsp_aliases_preserve_existing_fx_imports():
 
     assert fx.varispeed is dsp.varispeed
     assert fx.fit_rms is dsp.fit_rms
+
+
+def test_process_keeps_tactus_layout_tail_and_determinism():
+    rng = np.random.default_rng(4)
+    stereo = rng.normal(0, 0.1, (4800, 2))
+    quiet = fx.process(pedalboard.Gain(gain_db=-6.0), stereo, 48000)
+    assert quiet.shape == (4800, 2) and quiet.dtype == np.float32
+    np.testing.assert_allclose(quiet, stereo * 10 ** (-6 / 20), atol=1e-6)
+    mono = fx.process(pedalboard.Gain(gain_db=0.0), stereo[:, 0], 48000)
+    assert mono.shape == (4800,)
+    wet = fx.process(pedalboard.Reverb(room_size=0.8), stereo, 48000, tail_seconds=0.5)
+    assert wet.shape == (4800 + 24000, 2) and np.max(np.abs(wet[4800:])) > 0
+    np.testing.assert_array_equal(
+        wet, fx.process(pedalboard.Reverb(room_size=0.8), stereo, 48000, tail_seconds=0.5)
+    )
+    chain = pedalboard.Pedalboard([pedalboard.Gain(gain_db=-6.0), pedalboard.Gain(gain_db=6.0)])
+    np.testing.assert_allclose(fx.process(chain, stereo, 48000), stereo, atol=1e-6)
+    assert fx.process(pedalboard.Gain(), stereo[:0], 48000).shape == (0, 2)
+    with pytest.raises(ValueError, match="ambiguous"):
+        fx.process(pedalboard.Gain(), np.zeros((2, 2)), 48000)
+    with pytest.raises(ValueError, match="tail_seconds"):
+        fx.process(pedalboard.Gain(), stereo, 48000, tail_seconds=-1)

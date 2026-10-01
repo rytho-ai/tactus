@@ -73,3 +73,15 @@ def test_synth_instrument_examples_run_deterministically(tmp_path, name, outputs
         assert rate == 48000 and audio.shape[1] == 2
         assert np.isfinite(audio).all() and 0.01 < np.max(np.abs(audio)) < 1
         np.testing.assert_array_equal(audio, again)
+
+
+def test_devices_example_runs_deterministically(tmp_path):
+    first = run(EXAMPLES / "devices.py", out=tmp_path / "a")
+    second = run(EXAMPLES / "devices.py", out=tmp_path / "b")
+    assert set(first["outputs"]) == {"melody", "break", "hats", "mix"}
+    for name, path in first["outputs"].items():
+        audio, rate = sf.read(path, always_2d=True)
+        again, _ = sf.read(second["outputs"][name], always_2d=True)
+        assert rate == 48000 and audio.shape == (480000, 2)
+        assert np.isfinite(audio).all() and 0.01 < np.max(np.abs(audio)) < 1
+        np.testing.assert_array_equal(audio, again)
