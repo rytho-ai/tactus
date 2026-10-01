@@ -56,8 +56,9 @@ Times are absolute seconds from the start of the output.
 
 ## pads: slices and one-shots on named pads
 
-- `slices(sample, sample_rate, *, count=None, at_s=None)` returns a list of pieces: `count`
-  equal slices, or cuts at the given source times (for example adopted onsets or beats).
+- `slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0)` returns a list of
+  pieces: `count` equal slices, or cuts at the given source times (for example adopted
+  onsets or beats). `tail_s` lets each slice run that far into the next one.
 - `play(hits, pads, sample_rate, *, frames, choke=None, tune=None, fade_s=0.005,
   per_pad=False)` triggers `pads[name]` at each hit. Sounds overlap and ring out. Pads may
   be mono or `(frames, channels)`; with any stereo pad the output is stereo and mono pads go
@@ -66,6 +67,16 @@ Times are absolute seconds from the start of the output.
   itself included, with a short fade (closed hat over open hat, or a chopped loop where each
   slice cuts the previous one).
 - **tune** maps pad names to semitones. `per_pad=True` returns one stem per pad.
+- `choke` and `tune` also take one value for the whole kit: `choke=1, tune=-4`.
+- **Chopping a record to a new tempo.** Repitching by `12 * log2(bpm / source_bpm)` semitones
+  makes a source beat last one beat of the work, and moves the key by the same amount.
+  Old recordings drift, so cut one slice per beat with a small `tail_s`, put the whole kit
+  in one choke group and trigger a slice on every beat: each rings until the next cuts it,
+  and uneven source beats leave no gaps.
+- **Keeping the pitch instead.** Stretch each slice to the work's beat before it goes on a
+  pad; pads then need no `tune` and no tail:
+  `pytimestretch.time_stretch(part, sr, duration_ratio=beat_frames / len(part), backend="rubberband")`.
+  Very short slices stretch poorly; cut by beats or bars rather than by single onsets.
 
 ## steps: a step grid as events
 

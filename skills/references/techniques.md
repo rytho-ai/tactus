@@ -25,3 +25,10 @@ suits the sampler.
 Tempo and key: fit material to the piece by repitching (length and pitch change together),
 by time-stretching with `pytimestretch` (pitch kept), or by choosing the piece's tempo and
 key to fit the material. Each is a creative choice.
+
+Adding pitched parts to a recording: take bass roots and chords from an analysis of the
+material as it sounds in the piece (after repitching), bar by bar and half-bar by half-bar,
+not from the global key alone. Old or thin recordings may have no bass register to measure;
+a chord analysis of the whole band is then the evidence. Check the result by analysing the
+added part alone and the sample part alone and comparing them over the same bars; where
+the analysis is unsure, keep to notes the candidate chords share.

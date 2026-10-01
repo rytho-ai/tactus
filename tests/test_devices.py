@@ -192,3 +192,19 @@ def test_steps_wrappers_expose_timing_arguments_and_package_lists_modules():
     assert steps.notes("x.", 60, bpm=120, steps_per_beat=2, start_s=1.0) == [(1.0, 60, 0.125, 0.7)]
     assert {"analysis", "devices", "dsp", "synth"} <= set(dir(tactus))
     assert tactus.dsp.svf and tactus.synth.saw
+
+
+def test_pads_slices_tail_and_whole_kit_tune_and_choke():
+    sample = np.arange(SR, dtype=float)
+    parts = pads.slices(sample, SR, count=4, tail_s=0.1)
+    assert [len(p) for p in parts] == [SR // 4 + SR // 10] * 3 + [SR // 4]
+    assert parts[1][0] == SR // 4
+    with pytest.raises(ValueError, match="tail_s"):
+        pads.slices(sample, SR, count=4, tail_s=-0.1)
+
+    kit = {"a": np.ones(SR), "b": np.ones(SR)}
+    hits = [(0.0, "a", 1.0), (0.25, "b", 1.0)]
+    whole = pads.play(hits, kit, SR, frames=SR, choke=1, tune=-12.0)
+    named = pads.play(hits, kit, SR, frames=SR, choke={"a": 1, "b": 1}, tune={"a": -12.0, "b": -12.0})
+    np.testing.assert_array_equal(whole, named)
+    assert whole[SR // 2] == 1.0  # pad a was cut by pad b: one voice, not two

@@ -18,12 +18,14 @@ from tactus.timing import frame_of
 __all__ = ["play", "slices"]
 
 
-def slices(sample, sample_rate, *, count=None, at_s=None):
+def slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0):
     """Cut `sample` into consecutive pieces and return them as a list.
 
     `count` gives that many equal slices (boundaries rounded to frames). `at_s` cuts at
     the given source times instead (for example adopted onsets or beats), giving
     `len(at_s) + 1` slices from the start to the end. Supply exactly one of them.
+    `tail_s` lets every slice run that much past its cut into the next one (up to the end
+    of the sample), so a slice played on a slower or uneven grid rings until a choke stops it.
     """
     sample = np.asarray(sample, dtype=np.float64)
     if (count is None) == (at_s is None):
@@ -37,7 +39,10 @@ def slices(sample, sample_rate, *, count=None, at_s=None):
         if any(c <= 0 or c >= len(sample) for c in cuts) or sorted(set(cuts)) != cuts:
             raise ValueError("at_s must be increasing times strictly inside the sample")
         edges = np.array([0, *cuts, len(sample)])
-    return [sample[a:b].copy() for a, b in pairwise(edges)]
+    if tail_s < 0:
+        raise ValueError("tail_s must be 0 or more")
+    tail = frame_of(tail_s, sample_rate)
+    return [sample[a : min(len(sample), b + tail)].copy() for a, b in pairwise(edges)]
 
 
 def _tuned(sound, semitones):
@@ -58,12 +63,14 @@ def play(hits, pads, sample_rate, *, frames, choke=None, tune=None, fade_s=0.005
     overlap and ring out unless choked. `choke` maps pad names to a group: a hit cuts any
     still-ringing earlier hit of the same group (itself included) with a linear fade of
     `fade_s`, the way a closed hat stops an open one. `tune` maps pad names to semitones
-    (repitched by resampling). Returns the summed audio, or with `per_pad=True` a dict
+    (repitched by resampling). Either may be one value instead of a dict, applying to
+    every pad: `tune=-4` repitches the whole kit, `choke=1` puts every pad in one group,
+    as for chops of one record. Returns the summed audio, or with `per_pad=True` a dict
     of one stem per pad whose sum is that audio. Output is mono only if every pad is mono.
     """
     kit = {name: np.asarray(sound, dtype=np.float64) for name, sound in pads.items()}
-    tune = tune or {}
-    choke = choke or {}
+    tune = tune if isinstance(tune, dict) else dict.fromkeys(kit, tune or 0.0)
+    choke = choke if isinstance(choke, dict) else ({} if choke is None else dict.fromkeys(kit, choke))
     kit = {name: _tuned(sound, tune.get(name, 0.0)) for name, sound in kit.items()}
     channels = max((s.shape[1] for s in kit.values() if s.ndim == 2), default=0)
     if channels:
