@@ -29,8 +29,8 @@ key to fit the material. Each is a creative choice.
 Bringing in a recording from outside (a record, a download, a field recording): pin it
 with `tactus material add` before using it, and keep a note of what it is and where it came
 from. Then measure what a library sample would have told you on its label: how far it sits
-from concert pitch (old transfers are often tens of cents off, and anything you add must
-match it or it must be retuned), whether the tempo drifts, whether the two channels are the
+from concert pitch (`tactus analyze spectral tuning`; old transfers are often tens of cents
+off, and anything you add must match it or it must be retuned), whether the tempo drifts, whether the two channels are the
 same signal, where voices are absent, and how much noise sits before the music starts
 (usable as a texture). Whether the result may be published is the user's decision; say what
 was sampled.

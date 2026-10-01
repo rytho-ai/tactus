@@ -10,7 +10,8 @@ result's meaning changes.
 
 Measurement definitions and feature-array contracts are maintained in
 docs/analysis.md. Pitch estimation is outside this category; current limits
-and the decision to omit a pitch category are recorded in docs/design.md.
+and the decision to omit a pitch category are recorded in docs/design.md. `tuning`
+reports only a whole-signal offset from A440, the input `chroma` needs.
 
 dB reference for the original five measurements: 0 dB = the power of a full-scale
 (amplitude 1.0) sine wave, i.e. mean-square 0.5. The owned feature functions `mel`,
@@ -453,7 +454,8 @@ def chroma(
 
     Uses the established chroma_stft definition on power spectra, summed mono channels, centered zero-padded
     Hann frames (even n_fft >= 4, 1 <= hop <= n_fft). No resampling or input normalization.
-    tuning is a finite semitone offset from A440 (0 fixes equal temperament; not estimated).
+    tuning is a finite semitone offset from A440 (0 fixes equal temperament); it is not
+    estimated here: `spectral.tuning` measures it and returns `offset_semitones`.
     Filters use librosa's octave weighting (ctroct=5, octwidth=2) and C-first ordering;
     each frame is divided by its largest bin. Silent frames remain zero. Short signals
     are zero-padded. Invalid/empty/nonfinite input raises ValueError.
@@ -475,6 +477,79 @@ def chroma(
         "times_s": _features.times(values.shape[1], sample_rate, hop),
         "pitch_classes": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
         "chroma": values,
+    }
+
+
+@_revision(1)
+def tuning(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    n_fft: int = 8192,
+    hop: int = 2048,
+    fmin: float = 150.0,
+    fmax: float = 4000.0,
+    threshold_db: float = -40.0,
+) -> dict[str, Any]:
+    """How far the material sits from A440 equal temperament, as one offset in cents.
+
+    Spectral peaks (local maxima of each centered Hann frame's power, refined by parabolic
+    interpolation of log power, within `threshold_db` of the frame's strongest bin and between
+    `fmin` and `fmax`) are reduced to their distance from the nearest equal-tempered semitone.
+    The magnitude-weighted circular mean of those distances is the offset; frames more than
+    60 dB below the loudest frame are ignored. Channels are summed; no resampling.
+    This is one number for the whole signal: it is not a pitch, key or chord estimate, and it
+    assumes the material keeps one reference throughout. Upper partials do not fall on the
+    semitone grid (the 5th is 14 cents flat, the 7th 31), so expect a few cents of bias and a
+    concentration below 1 on real instruments. Invalid/empty/nonfinite input raises ValueError.
+
+    Returns:
+        offset_cents (cents, -50..50): positive when the material is sharp of A440. `null`
+            when no peak qualifies (silence).
+        offset_semitones (semitones): the same value divided by 100, the unit `chroma`'s
+            `tuning` takes. `null` with offset_cents.
+        concentration (0..1): length of the weighted mean vector. About 0.01 for noise,
+            0.15-0.25 for full-band recordings, above 0.8 for clean harmonic tones; a low
+            value means the offset says little.
+        peaks (count): spectral peaks used.
+    """
+    if not (np.isfinite(threshold_db) and threshold_db < 0):
+        raise ValueError("threshold_db must be a finite negative number")
+    x = _features.mono(audio, sample_rate, average=False)
+    upper = _features.frequency_range(sample_rate, fmin, fmax)
+    power = _features.power_spectrum(x, n_fft, hop)
+    empty = {"offset_cents": None, "offset_semitones": None, "concentration": 0.0, "peaks": 0}
+    loudest = float(power.max()) if power.size else 0.0
+    if loudest <= 0.0:
+        return empty
+    log_power = 10.0 * np.log10(np.maximum(power, loudest * 1e-20))
+    left, mid, right = log_power[:-2], log_power[1:-1], log_power[2:]
+    bins = np.arange(1, power.shape[0] - 1, dtype=np.float64)[:, None]
+    frame_peak = log_power.max(axis=0, keepdims=True)
+    hz = bins * sample_rate / n_fft
+    chosen = (
+        (mid > left)
+        & (mid >= right)
+        & (mid >= frame_peak + threshold_db)
+        & (frame_peak >= 10.0 * math.log10(loudest) - 60.0)
+        & (hz >= fmin)
+        & (hz <= upper)
+    )
+    if not chosen.any():
+        return empty
+    a, b, c = left[chosen], mid[chosen], right[chosen]
+    curvature = a - 2.0 * b + c
+    shift = np.where(curvature < 0, 0.5 * (a - c) / np.where(curvature < 0, curvature, -1.0), 0.0)
+    frequency = (np.broadcast_to(bins, mid.shape)[chosen] + shift) * sample_rate / n_fft
+    cents = 1200.0 * np.log2(frequency / 440.0)
+    weights = 10.0 ** (b / 20.0)
+    vector = np.sum(weights * np.exp(2j * np.pi * cents / 100.0)) / np.sum(weights)
+    offset = float(np.angle(vector) / (2.0 * np.pi) * 100.0)
+    return {
+        "offset_cents": offset,
+        "offset_semitones": offset / 100.0,
+        "concentration": float(np.abs(vector)),
+        "peaks": int(chosen.sum()),
     }
 
 
@@ -718,6 +793,7 @@ ANALYSES = (
     stft,
     mel,
     chroma,
+    tuning,
     mfcc,
     cqt,
     vqt,

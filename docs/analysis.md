@@ -87,6 +87,7 @@ or register your own [analysis commands](project-commands.md). Owned NumPy/SciPy
 | `rhythm onsets` | `onsets_s`: candidate onset times; configurable threshold/spacing/backtracking |
 | `spectral mel` | `power`: Mel power matrix, with `times_s` and filter-center `freqs_hz` |
 | `spectral chroma` | `chroma`: 12 pitch-class rows, C through B, plus `times_s` and `pitch_classes` |
+| `spectral tuning` | `offset_cents`, `offset_semitones`, `concentration`, `peaks`: how far the material sits from A440 |
 | `spectral mfcc` | `coefficients`: MFCC rows starting at coefficient 0, plus `times_s` |
 
 ```bash
@@ -213,7 +214,17 @@ a resolved bin-centered real sine reads approximately its peak amplitude. These 
 feature magnitudes, not librosa's length-scaled coefficients. VQT defaults to the
 ERB-derived gamma and reports it. Filter bands crossing Nyquist are rejected: e.g.
 8 kHz audio needs fewer than the default seven octaves (`--n-bins 72`). Window and
-bin limits are listed in `--help`. There is no tuning estimation, inverse or phase API.
+bin limits are listed in `--help`. There is no inverse or phase API.
+
+`spectral tuning` reports one offset for the whole signal: the magnitude-weighted circular
+mean of how far spectral peaks (150 Hz to 4 kHz, parabolic-interpolated, 8192-point frames)
+sit from the nearest A440 equal-tempered semitone. Pass `offset_semitones` to `chroma`'s
+`tuning`, or use it to decide a repitch. It is not a pitch, key or chord estimate. On
+synthetic chords with known offsets it is within 4 cents, biased a few cents flat because
+upper partials sit below the semitone grid; on four 1930s–40s record transfers it was within
+7 cents of librosa's `estimate_tuning`. `concentration` runs from about 0.01 for noise to
+0.15–0.25 for full-band recordings and above 0.8 for clean harmonic tones: read a low value
+as "the offset means little", and compare sections when a transfer may drift.
 
 Tempogram averages channels, uses a 10 ms onset hop and a 4 s autocorrelation window,
 then retains positive integer lags corresponding to 30–300 BPM. Rows are ascending

@@ -200,7 +200,7 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 
 **拍點：**`tactus analyze rhythm beats FILE` 與 Python 使用同一函式，結果與直接呼叫 pyqmdsp 一致，並在驗證素材上接近原 Vamp 參考；這是特定素材的驗證，不保證所有音樂準確。有效音訊太短或全靜音時回傳空陣列與 `bpm: null`，不猜測小節或第一拍。採用後依 frozen-analysis 規則固定成素材或 source 常數。見 [拍點分析](analysis.md#beat-analysis)。
 
-**沒有 `pitch` category：**現有 fundamental 與 f0 估計方法在未見素材上不可靠（帶有比 fundamental 更大聲低八度層的 SFZ bass 讓每種方法失準），在有更可靠的方法之前不提供。
+**沒有 `pitch` category：**現有 fundamental 與 f0 估計方法在未見素材上不可靠（帶有比 fundamental 更大聲低八度層的 SFZ bass 讓每種方法失準），在有更可靠的方法之前不提供。`spectral tuning` 是範圍窄得多的量測：整段訊號只回一個相對 A440 的偏差（cents）與集中程度，供 `chroma` 的 `tuning` 與重新調音使用；它不估計音高、調性或和弦。
 
 **分析的計算路徑：**CQT／VQT 只在運算量大時改用 private cached Numba kernel，短輸入維持 SciPy FIR、不載入 compiler；STFT／Mel 保留原生 FFT 與 sparse projection，分批限制暫存記憶體。加速不更動分析的定義、時間格點或單位，呼叫結束恢復執行緒設定。見 [加速測試](../tests/test_analysis_acceleration.py)。
 
