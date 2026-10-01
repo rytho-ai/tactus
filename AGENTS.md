@@ -13,6 +13,10 @@ Use the installed small-change skill for decided fixes and the planning skill fo
 capabilities. Maintain principles in `docs/positioning.md`, current approaches in `docs/design.md`,
 grounded plans for active work in `docs/blueprints/plans/`, decision rationale by topic in
 `docs/blueprints/thoughts/`, and current status in `docs/blueprints/plan.md`.
+Write `docs/design.md` as the current decision for each topic: approach, boundaries, a short
+reason and open questions, in present tense. Record dated progress, measurements and attempts
+that were tried and reverted in blueprints or `experiments/`; tracked documents link only to
+tracked files.
 Original experiments and retired plans are archived with checksums under
 `experiments/documentation-history/`; consult them when original measurements or superseded
 proposals are needed. Current contracts stay in the maintained product documents.
