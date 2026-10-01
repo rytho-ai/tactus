@@ -23,6 +23,13 @@ proposals are needed. Current contracts stay in the maintained product documents
 Blueprints and `experiments/` are local, Git-ignored working material. Keep usage contracts
 and verification needed by a clean checkout in tracked docs, examples and tests.
 
+When a task in this repository is to make music (a song, beat, demo, probe piece or listening
+example), work as a user of Tactus: invoke the compose skill (`skills/compose/SKILL.md`)
+first, create the piece with `tactus init` under `experiments/`, render it with `tactus run`
+and deliver audio from that run directory. Deliver or publish only audio that has a run
+receipt. Friction met along the way is a finding to report, and the piece still goes through
+the same flow.
+
 The single Tactus plugin uses root `.claude-plugin/` and `.codex-plugin/` manifests.
 Its shared skills, references and examples live under `skills/`; both marketplaces target `.`.
 

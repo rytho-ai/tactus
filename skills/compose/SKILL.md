@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Write, run, audition or revise music as a Tactus Python work. Use for arranging clips, sampling instruments, chopping loops onto pads, step sequencing, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates or preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
+description: Make music with Tactus — a song, beat, track, loop, remix or sample flip — as a Python work that is written, run, auditioned and revised. Use whenever audio is to be produced, including inside the Tactus repository itself and by an agent that already knows the library. Covers arranging clips, sampling instruments, chopping loops onto pads, step sequencing, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates and preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
 ---
 
 # Compose with Tactus
@@ -22,6 +22,11 @@ When choosing a package or connecting its audio/MIDI to the work, read
 installation scope, layouts, time units and state/reproducibility caveats.
 
 ## Develop the work
+
+Every piece is a work: created with `tactus init`, rendered with `tactus run`, delivered from
+a run directory. A run's receipt is what shows the audio came from this source; audio written
+by a script of your own has none. Knowing the library is a reason to move faster through
+these steps, with the same steps.
 
 1. **Start from the intended sound or revision.** Locate the existing source and inputs.
    Before choosing sound sources, read [Ways of making music](../references/techniques.md)
