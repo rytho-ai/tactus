@@ -2,7 +2,8 @@
 
 Self-contained: copy this file into a work and change it freely. Pad sounds are mono
 `(frames,)` or `(frames, channels)` arrays at the work's sample rate; a kit may mix
-mono and stereo pads (mono is copied to every channel).
+mono and stereo pads (mono is copied to every channel). Slices may carry a tail past
+their cut; one tune or choke value applies to the whole kit.
 
 Reads: numpy · tactus.timing.frame_of
 """

@@ -301,6 +301,7 @@ environment variable keeps its old result when that input changes, so read input
 - `fx.fit_rms(audio, rate, target_dbfs, ceiling_dbfs=-1.0)` returns audio at a target
   whole-signal RMS with no sample above the ceiling, measured on what it returns; it limits
   with a smooth gain envelope instead of clipping, and raises if the target is unreachable.
+  For a target integrated loudness use `dsp.fit_loudness` ([Builtin DSP](dsp.md)).
 
 ## Measuring audio
 

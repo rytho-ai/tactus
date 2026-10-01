@@ -54,7 +54,7 @@ def render(*, swing=0.56, chop_order="0 0 3 2 4 6 3 7"):
         for bar in range(4)
         for i, index in enumerate(order if bar % 2 == 0 else order[::-1])
     ]
-    chopped = pads.play(chop_hits, kit, SR, frames=FRAMES, choke=dict.fromkeys(kit, "break"))
+    chopped = pads.play(chop_hits, kit, SR, frames=FRAMES, choke="break")
 
     # Steps: a swung hat line on two pads that choke each other.
     t = np.arange(round(0.4 * SR)) / SR
