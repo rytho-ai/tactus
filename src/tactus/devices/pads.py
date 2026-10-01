@@ -19,7 +19,7 @@ from tactus.timing import frame_of
 __all__ = ["play", "slices"]
 
 
-def slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0):
+def slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0, fade_s=0.003):
     """Cut `sample` into consecutive pieces and return them as a list.
 
     `count` gives that many equal slices (boundaries rounded to frames). `at_s` cuts at
@@ -27,6 +27,8 @@ def slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0):
     `len(at_s) + 1` slices from the start to the end. Supply exactly one of them.
     `tail_s` lets every slice run that much past its cut into the next one (up to the end
     of the sample), so a slice played on a slower or uneven grid rings until a choke stops it.
+    A cut lands mid-waveform, so every slice gets a linear fade of `fade_s` at both ends to
+    avoid a click; pass `fade_s=0` for the raw cut.
     """
     sample = np.asarray(sample, dtype=np.float64)
     if (count is None) == (at_s is None):
@@ -43,7 +45,16 @@ def slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0):
     if tail_s < 0:
         raise ValueError("tail_s must be 0 or more")
     tail = frame_of(tail_s, sample_rate)
-    return [sample[a : min(len(sample), b + tail)].copy() for a, b in pairwise(edges)]
+    if fade_s < 0:
+        raise ValueError("fade_s must be 0 or more")
+    parts = [sample[a : min(len(sample), b + tail)].copy() for a, b in pairwise(edges)]
+    for part in parts:
+        n = min(frame_of(fade_s, sample_rate), len(part) // 2)
+        if n:
+            ramp = np.linspace(0.0, 1.0, n, endpoint=False)
+            part[:n] *= ramp[:, None] if part.ndim == 2 else ramp
+            part[-n:] *= ramp[::-1, None] if part.ndim == 2 else ramp[::-1]
+    return parts
 
 
 def _tuned(sound, semitones):

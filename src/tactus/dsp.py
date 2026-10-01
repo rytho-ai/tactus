@@ -801,16 +801,23 @@ def fit_rms(
 
 
 def fit_loudness(
-    audio: np.ndarray, sample_rate: int, target_lufs: float, ceiling_dbfs: float = -1.0
+    audio: np.ndarray,
+    sample_rate: int,
+    target_lufs: float,
+    ceiling_dbfs: float = -1.0,
+    *,
+    limit: bool = False,
 ) -> np.ndarray:
     """Return audio whose integrated loudness (`analysis.level.loudness`, BS.1770 gated) is
     `target_lufs`, with every sample at or below `ceiling_dbfs`. The loudness sibling of
     `fit_rms`, for matching a mix to a delivery level or to other pieces before listening.
 
-    When a plain gain reaches the target under the ceiling, that gain is all that is applied
-    and the result is within 0.01 LU. Otherwise the same look-ahead limiter and bisection as
-    `fit_rms` are used, to within 0.1 LU; a target the ceiling cannot reach raises
-    `ValueError` naming the achieved loudness. Silence passes through unchanged. Audio too
+    One plain gain is applied, so the result is within 0.01 LU and anything scaled by the same
+    gain (stems) still sums to it. When that gain would push a peak over the ceiling, the call
+    raises `ValueError` naming the loudest target a plain gain can reach, unless `limit=True`:
+    then the same look-ahead limiter and bisection as `fit_rms` are used, to within 0.1 LU,
+    and the audio is no longer a scaled copy of the input. A target the ceiling cannot reach
+    even with limiting also raises. Silence passes through unchanged. Audio too
     short or too quiet for a gated measurement (under about 0.4 s, or below -70 LUFS) raises
     `ValueError`. Sample peaks are held, not true peaks. Returns float32 like `fit_rms`.
     """
@@ -828,8 +835,15 @@ def fit_loudness(
     if not math.isfinite(start):
         raise ValueError("fit_loudness needs audio long and loud enough for gated loudness")
     plain = x * np.float32(10.0 ** ((target_lufs - start) / 20.0))
+    peak_db = 20.0 * math.log10(float(np.max(np.abs(x))))
     if float(np.max(np.abs(plain))) <= 10.0 ** (ceiling_dbfs / 20.0):
         return plain
+    if not limit:
+        raise ValueError(
+            f"fit_loudness: a plain gain reaches at most {start + ceiling_dbfs - peak_db:.1f} LUFS "
+            f"under the {ceiling_dbfs} dBFS ceiling; lower target_lufs, reduce the peaks, "
+            "or pass limit=True to limit them"
+        )
     return _fit_level(x, sample_rate, target_lufs, ceiling_dbfs, lufs, "fit_loudness", "LUFS", 0.1)
 
 

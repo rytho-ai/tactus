@@ -172,7 +172,10 @@ the material checked on every run (a cache hit otherwise replays its earlier inp
 ## Inputs
 
 - `material("sha256:<hex>") -> Path` returns a verified path into the machine's pool
-  (`$TACTUS_POOL`, default `~/.local/share/tactus/pool`). Reading it, sample-rate conversion
+  (`$TACTUS_POOL`, default `~/.local/share/tactus/pool`). The pool is shared by every work on
+  the machine, so it lives outside the work; `tactus material add` prints the pool it wrote
+  to. To keep a work's materials beside it (a hand-off, a sandbox), export `TACTUS_POOL` for
+  both `material add` and `run`. Reading it, sample-rate conversion
   and channel layout are the work's job; a relabelled rate is not a conversion. A missing entry
   fails the run with `material_unavailable`. Changing a sample means changing its ref in
   source, which is a reviewable diff.

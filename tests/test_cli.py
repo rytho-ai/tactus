@@ -24,6 +24,7 @@ def test_material_add_imports_files_and_prints_refs(tmp_path, monkeypatch, capsy
     assert main(["material", "add", str(a), str(b)]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["status"] == "ok"
+    assert report["pool"] == str(tmp_path / "pool")
     import hashlib
 
     assert report["materials"] == {

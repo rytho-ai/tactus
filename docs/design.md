@@ -138,7 +138,7 @@ Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.2
 **內建 DSP：**`tactus.dsp` 以普通函式提供常用處理（`fx` 的同名入口轉向同一函式），VST host 與自訂 Python 路徑維持獨立可用。理由是減少跨作品重寫與重測：fresh-agent 實驗中 Agent 自寫 delay 時出現插值與 wet-only 錯誤。共同邊界如下，參數契約見 [DSP reference](../skills/references/dsp.md)：
 
 - 所有函式保留 headroom、回傳新陣列、不修改輸入；控制曲線與參數切換不自動平滑。
-- `gain`、`pan` 接受 scalar 或逐 frame 控制，`pan` 只把 mono 轉為等功率 stereo；`fade` 是整段素材的線性淡入淡出；`varispeed` 與 `fit_rms` 也由 `dsp` 實作；`fit_loudness` 是對 integrated LUFS 的對應版本，由作品在 `render` 內自行呼叫，`run` 與 `export` 仍不做任何 normalize。
+- `gain`、`pan` 接受 scalar 或逐 frame 控制，`pan` 只把 mono 轉為等功率 stereo；`fade` 是整段素材的線性淡入淡出；`varispeed` 與 `fit_rms` 也由 `dsp` 實作；`fit_loudness` 是對 integrated LUFS 的對應版本，由作品在 `render` 內自行呼叫，預設只套用單一增益、超過 ceiling 就報錯，要限幅必須明確傳 `limit=True`；`run` 與 `export` 仍不做任何 normalize。
 - 內建 DSP 中只有 `biquad` 提供跨呼叫 state：回傳 `(audio, state)`，state 由作品明確傳遞，固定參數下分塊與整段結果相同。
 - 其餘效果（`duck`、`delay`、`lowpass`、`svf`、`ladder`、`saturate`、`crossover`、`crossfade_delay`、`spectral` 等）每次呼叫從零開始處理完整素材，不提供跨呼叫 state，不承諾分塊等價。`delay` 的時間變動會改變音高；`crossfade_delay` 以固定讀取位置的 crossfade 切換，可能干涉或抵消，不宣稱與 Faust `sdelay` 逐 sample 相同；`crossover` 相加幅頻平坦但相位改變；`saturate` 預設 8 倍 oversampling 以降低 aliasing，clip／fold 在 `oversample=1` 時與 SuperCollider `clip2`／`fold2` 數值相同。範例見 [dsp-components](../examples/dsp-components/README.md)，驗證見 [DSP 回歸測試](../tests/test_dsp_effects.py) 與 [響應與切換測試](../tests/test_dsp_components.py)。
 

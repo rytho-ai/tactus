@@ -56,9 +56,11 @@ Times are absolute seconds from the start of the output.
 
 ## pads: slices and one-shots on named pads
 
-- `slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0)` returns a list of
-  pieces: `count` equal slices, or cuts at the given source times (for example adopted
-  onsets or beats). `tail_s` lets each slice run that far into the next one.
+- `slices(sample, sample_rate, *, count=None, at_s=None, tail_s=0.0, fade_s=0.003)` returns a
+  list of pieces: `count` equal slices, or cuts at the given source times (for example adopted
+  onsets or beats). `tail_s` lets each slice run that far into the next one. Each slice is
+  faded over `fade_s` at both ends, since a cut lands mid-waveform; `fade_s=0` gives raw cuts.
+  One-shots you pass to `play` yourself are used as they are.
 - `play(hits, pads, sample_rate, *, frames, choke=None, tune=None, fade_s=0.005,
   per_pad=False)` triggers `pads[name]` at each hit. Sounds overlap and ring out. Pads may
   be mono or `(frames, channels)`; with any stereo pad the output is stereo and mono pads go

@@ -40,11 +40,13 @@ next_filtered, state = dsp.biquad(
   [RBJ Cookbook equations](https://www.w3.org/TR/audio-eq-cookbook/).
   Start with `state=None`, carry returned state between blocks, and process zeros for a
   tail. Parameter changes are not smoothed. Whole/block equality assumes fixed parameters.
-- `fit_loudness(audio, sample_rate, target_lufs, ceiling_dbfs=-1.0)` brings a mix to an integrated
-  loudness (for a delivery level, or to match pieces before listening). A plain gain is used
-  when it stays under the ceiling; otherwise the `fit_rms` limiter. Call it in `render` when
-  the work wants it: `run` and `export` never normalize. To keep stems summing to the mix,
-  apply the same gain to them (`np.abs(fitted).max() / np.abs(mix).max()` when no limiting occurred).
+- `fit_loudness(audio, sample_rate, target_lufs, ceiling_dbfs=-1.0, *, limit=False)` brings a mix
+  to an integrated loudness (for a delivery level, or to match pieces before listening) with one
+  plain gain. If that gain would exceed the ceiling it raises, naming the loudest target a plain
+  gain can reach; `limit=True` uses the `fit_rms` limiter instead, and the result is then no
+  longer a scaled copy. Call it in `render` when the work wants it: `run` and `export` never
+  normalize. To keep stems summing to the mix, apply the same gain to them
+  (`np.abs(fitted).max() / np.abs(mix).max()`), which holds only without limiting.
 - `varispeed` and `fit_rms` are implemented in `dsp`; existing `tactus.fx` imports
   resolve to those same functions. Their float32 behavior and signatures are preserved.
 

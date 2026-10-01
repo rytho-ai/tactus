@@ -82,10 +82,10 @@ def test_sampler_stereo_and_play_places_notes_and_keeps_inputs():
 
 def test_pads_slices_by_count_and_times():
     sample = np.arange(1000, dtype=float)
-    parts = pads.slices(sample, SR, count=4)
+    parts = pads.slices(sample, SR, count=4, fade_s=0)
     assert [len(p) for p in parts] == [250, 250, 250, 250]
     np.testing.assert_array_equal(np.concatenate(parts), sample)
-    cut = pads.slices(np.arange(SR, dtype=float), SR, at_s=[0.25, 0.5])
+    cut = pads.slices(np.arange(SR, dtype=float), SR, at_s=[0.25, 0.5], fade_s=0)
     assert [len(p) for p in cut] == [12000, 12000, 24000] and cut[1][0] == 12000
     parts[0][:] = -1
     assert sample[0] == 0
@@ -196,7 +196,7 @@ def test_steps_wrappers_expose_timing_arguments_and_package_lists_modules():
 
 def test_pads_slices_tail_and_whole_kit_tune_and_choke():
     sample = np.arange(SR, dtype=float)
-    parts = pads.slices(sample, SR, count=4, tail_s=0.1)
+    parts = pads.slices(sample, SR, count=4, tail_s=0.1, fade_s=0)
     assert [len(p) for p in parts] == [SR // 4 + SR // 10] * 3 + [SR // 4]
     assert parts[1][0] == SR // 4
     with pytest.raises(ValueError, match="tail_s"):
@@ -208,3 +208,14 @@ def test_pads_slices_tail_and_whole_kit_tune_and_choke():
     named = pads.play(hits, kit, SR, frames=SR, choke={"a": 1, "b": 1}, tune={"a": -12.0, "b": -12.0})
     np.testing.assert_array_equal(whole, named)
     assert whole[SR // 2] == 1.0  # pad a was cut by pad b: one voice, not two
+
+
+def test_pads_slices_fade_both_ends_by_default_and_raw_on_request():
+    sample = np.ones((SR, 2))
+    faded = pads.slices(sample, SR, count=4)[1]
+    n = round(0.003 * SR)
+    assert faded[0, 0] == 0.0 and faded[n, 0] == 1.0 and faded[-1, 0] < 0.01
+    assert np.all(np.diff(faded[: n + 1, 1]) >= 0)
+    np.testing.assert_array_equal(pads.slices(sample, SR, count=4, fade_s=0)[1], sample[: SR // 4])
+    with pytest.raises(ValueError, match="fade_s"):
+        pads.slices(sample, SR, count=4, fade_s=-1)

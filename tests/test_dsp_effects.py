@@ -441,7 +441,9 @@ def test_fit_loudness_limits_when_the_ceiling_is_in_the_way():
     rng = np.random.default_rng(1)
     x = (rng.standard_normal(48000 * 3) * 0.05).astype(np.float32)
     x[::4800] = 0.9  # sparse tall peaks: a plain gain to the target would exceed the ceiling
-    y = dsp.fit_loudness(x, 48000, -14.0, ceiling_dbfs=-1.0)
+    with pytest.raises(ValueError, match=r"plain gain reaches at most -?\d+\.\d LUFS"):
+        dsp.fit_loudness(x, 48000, -14.0, ceiling_dbfs=-1.0)
+    y = dsp.fit_loudness(x, 48000, -14.0, ceiling_dbfs=-1.0, limit=True)
     assert float(np.max(np.abs(y))) <= 10 ** (-1.0 / 20) + 1e-6
     assert abs(loudness(y, 48000)["integrated_lufs"] + 14.0) <= 0.1
 
@@ -453,4 +455,4 @@ def test_fit_loudness_silence_short_and_unreachable_inputs():
         dsp.fit_loudness(np.full(1000, 0.1, dtype=np.float32), 48000, -16.0)
     tone = (0.5 * np.sin(2 * np.pi * 1000 * np.arange(48000 * 2) / 48000)).astype(np.float32)
     with pytest.raises(ValueError, match="fit_loudness could not reach"):
-        dsp.fit_loudness(tone, 48000, 0.0, ceiling_dbfs=-12.0)
+        dsp.fit_loudness(tone, 48000, 0.0, ceiling_dbfs=-12.0, limit=True)

@@ -246,7 +246,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
                     )
             except ValueError as exc:
                 raise RunError("invalid_request", "request", str(exc)) from exc
-            print(json.dumps({"status": "ok", "materials": materials}, sort_keys=True))
+            report = {"status": "ok", "materials": materials, "pool": str(pool.default_pool_dir())}
+            print(json.dumps(report, sort_keys=True))
             return 0
         if args.command in ("analyze", "export"):
             params = {name: getattr(args, name) for name in args.param_names}
