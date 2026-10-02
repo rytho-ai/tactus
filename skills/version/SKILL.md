@@ -110,6 +110,10 @@ use `git worktree add --detach PATH COMMIT`, `uv sync --frozen` there, restore i
 materials, and render to a new directory outside that temporary worktree. Compare every
 output hash before claiming identical reproduction. Check user edits before cleanup and
 keep all audio already handed to a listener available after removing the worktree.
+When the work pins Tactus by a local path (`tactus init --tactus-path`), put the worktree beside
+the work, at the same directory depth: `uv.lock` stores that path relatively, and a worktree at
+another depth is refused as an out-of-date lock. A rebuild matches the old audio only while
+Tactus and the other packages match the old receipt; the pinned audio is the lasting record.
 
 A local commit is local history. Push, remote creation, branch merging and history rewriting
 require authorization for that action; preserve unrelated work and existing history.

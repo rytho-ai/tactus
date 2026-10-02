@@ -36,19 +36,19 @@ from . import revision
 from ._contracts import RunError
 from ._source import direct_url as _direct_url
 
-_GITIGNORE = "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
+_GITIGNORE = "runs/\nexcerpts/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
 _WORK_TOOL_CONFIG = """
 [tool.pytest.ini_options]
 norecursedirs = [
     "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}",
-    "runs", "pool", "analyses", "exports",
+    "runs", "excerpts", "pool", "analyses", "exports",
 ]
 
 [tool.ruff]
 line-length = 100
 src = ["."]
-extend-exclude = ["runs", "pool", "analyses", "exports"]
+extend-exclude = ["runs", "excerpts", "pool", "analyses", "exports"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]

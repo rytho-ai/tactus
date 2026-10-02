@@ -76,7 +76,7 @@ def test_init_writes_pyproject_and_gitignore_and_locks(tmp_path, _fake_uv):
     assert 'git = "https://example.com/tactus"' in pyproject
     assert 'rev = "abc123"' in pyproject
 
-    assert (work / ".gitignore").read_text() == "runs/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
+    assert (work / ".gitignore").read_text() == "runs/\nexcerpts/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
     assert _fake_uv == [(["/usr/bin/uv", "lock"], work)]
 
@@ -87,7 +87,7 @@ def test_work_pytest_discovers_source_tests_without_generated_copies(tmp_path, _
     (work / "test_song.py").write_text("def test_song():\n    assert True\n")
     (work / "tests").mkdir()
     (work / "tests/test_dsp.py").write_text("def test_dsp():\n    assert True\n")
-    for name in ("runs", "pool", "analyses", "exports"):
+    for name in ("runs", "excerpts", "pool", "analyses", "exports"):
         generated = work / name / "old-work"
         generated.mkdir(parents=True)
         (generated / "test_song.py").write_text("raise RuntimeError('generated copy imported')\n")

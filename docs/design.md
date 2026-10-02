@@ -24,7 +24,7 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 **執行環境選擇：**launcher 與 CLI 共用 project selection，依序採用明確 `--project`、父 launcher 傳遞的 work、可辨識的 uv `.venv` owner，最後才由 cwd 找最近的專案；單純 activate 不覆蓋 cwd 選擇，檔案參數仍以呼叫 cwd 解析。這避免 `uv run --project WORK` 保留 cwd 時跳回另一個 runtime。自訂／共享環境明確使用 `--project`，不靠自動猜測；`doctor` 顯示選擇結果。見 [環境選擇](../skills/references/project-commands.md#selecting-a-works-environment)。
 
-**作品檢查設定：**`init` 在作品的 `pyproject.toml` 寫入可自行修改的本地 pytest／Ruff 預設：recursive checks 略過 runs、pool、analyses、exports 與 Git 恢復用的 worktree，Ruff 規則屬於作品本身，不繼承外層 repo 的 lint policy。pytest／Ruff 不是 runtime dependencies；需要固定版本時加入作品的 dev group。舊作品手動合併設定，runtime lock 不隨之升級。見 [作品測試與 lint](../skills/references/project-commands.md#test-and-lint-a-work)。
+**作品檢查設定：**`init` 在作品的 `pyproject.toml` 寫入可自行修改的本地 pytest／Ruff 預設：recursive checks 略過 runs、excerpts、pool、analyses、exports 與 Git 恢復用的 worktree，Ruff 規則屬於作品本身，不繼承外層 repo 的 lint policy。pytest／Ruff 不是 runtime dependencies；需要固定版本時加入作品的 dev group。舊作品手動合併設定，runtime lock 不隨之升級。見 [作品測試與 lint](../skills/references/project-commands.md#test-and-lint-a-work)。
 
 **Devices：**`tactus.devices` 以普通函式提供大家認得的做音樂方式：`sampler`（把錄音當成有音高的樂器，含 root、起始位置與延音 loop）、`pads`（切片與 one-shot，含 choke）、`steps`（step sequencer，產生事件）。Device 跟音符事件有關；`dsp` 只處理音訊，`synth` 只產生聲音。每個 device 是一個自足的檔案，只依賴 NumPy 與 Tactus 公開模組，可以 import，也可以整份複製到作品裡改；輸入輸出是普通陣列、tuple 與 dict，事件時間一律是絕對秒數。Device 本身沒有音色：Tactus 提供 device，Agent 用素材與設定做出自己的 patch。理由是可見性：有說明與可抄實作的 Agent 才會把素材當樂器演奏，只給素材時它只用在鼓聲；手寫的慣例小工具也會寫錯而不自知。不屬於裝置的做法（resample 自己的輸出、loop 當底再變化、錄音與合成疊加）由 [techniques reference](../skills/references/techniques.md) 說明。不提供 device 類別、chain／rack、track 或 session 模型。契約見 [devices reference](../skills/references/devices.md)。
 
