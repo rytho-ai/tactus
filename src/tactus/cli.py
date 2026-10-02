@@ -63,6 +63,11 @@ def _main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Reuse unchanged @stage results from prior runs on unchanged source",
     )
+    run_command.add_argument(
+        "--no-checkpoint",
+        action="store_true",
+        help="Do not save the original arrays; keep only the published PCM (throwaway candidates)",
+    )
     take_command = commands.add_parser("take", help="Save and transfer immutable performances")
     take_commands = take_command.add_subparsers(dest="take_command", required=True)
     save_command = take_commands.add_parser(
@@ -207,7 +212,11 @@ def _main(argv: Sequence[str] | None = None) -> int:
         args = parser.parse_args(arguments)
         if args.command == "run":
             result = run(
-                args.source, out=args.out, params=parse_params(args.params), reuse=args.reuse
+                args.source,
+                out=args.out,
+                params=parse_params(args.params),
+                reuse=args.reuse,
+                checkpoint=not args.no_checkpoint,
             )
             print(json.dumps(result, sort_keys=True))
             return 0

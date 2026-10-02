@@ -257,3 +257,28 @@ def test_prune_refuses_what_it_cannot_leave_readable(rendered, tmp_path, capsys)
     next(output.glob("mix-*.wav")).write_bytes(b"damaged")
     assert main(["prune", str(output)]) != 0
     assert (output / "render.json").exists() and any((output / "render").iterdir())
+
+
+def test_run_reports_checkpoint_size_and_can_skip_it(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
+    source = tmp_path / "work" / "song.py"
+    source.parent.mkdir()
+    source.write_text("""import numpy as np
+def render():
+    raw = np.linspace(-0.5, 0.5, 4800)
+    return {"sample_rate": 48000, "outputs": {"mix": raw, "bass": raw * 0.5}, "takes": {"raw": raw}}
+""")
+    kept = run(source, out=tmp_path / "kept")
+    arrays = sum(f.stat().st_size for f in (tmp_path / "kept/render").glob("*.npy"))
+    assert kept["render_bytes"] == arrays > 2 * 4800 * 8
+    assert kept["render"] == str(tmp_path / "kept/render.json")
+
+    assert main(["run", str(source), "--out", str(tmp_path / "lean"), "--no-checkpoint"]) == 0
+    lean = json.loads(capsys.readouterr().out)
+    assert lean["render"] is None and lean["render_bytes"] == 0
+    assert not (tmp_path / "lean/render.json").exists() and not (tmp_path / "lean/render").exists()
+    assert read(tmp_path / "lean").origin["kind"] == "published-pcm"
+    assert save_take(tmp_path / "lean", "raw")["status"] == "ok"
+    kept_mix = sf.read(next((tmp_path / "kept").glob("mix-*.wav")))[0]
+    lean_mix = sf.read(next((tmp_path / "lean").glob("mix-*.wav")))[0]
+    np.testing.assert_array_equal(kept_mix, lean_mix)

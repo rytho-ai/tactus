@@ -88,6 +88,9 @@ existing source without Git, and `tactus doctor` reports the environment without
    If this changes what ran, render again and compare every output hash before identifying
    it as the selected result. Use [Saved takes](../references/runtime.md#saved-takes) when
    a performance varies between runs. Measurements alone do not establish musical approval.
+   After adopting, free the candidates that were not chosen: `tactus prune RUN_DIR...` removes
+   their original arrays (often over a gigabyte per run) and keeps their audio and receipts.
+   Keep the arrays of the adopted run and of any run you may continue from.
 4. **Preserve audio and commit the revision.** Follow
    [Keeping a candidate](../references/runtime.md#keeping-a-candidate) to pin the approved
    audio and name its run/hash in the commit message. Review/stage only the intended source,

@@ -404,7 +404,10 @@ stretching and reproducibility caveats, including clipping that the run report c
 ## Run results
 
 Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, "receipt":
-path, "render": render_checkpoint_path, "levels": {name: {peak_dbfs, clipped_samples}}}`.
+path, "render": render_checkpoint_path, "render_bytes": int, "levels": {name: {peak_dbfs,
+clipped_samples}}}`. `render_bytes` is the size of the saved original arrays; read it, because
+it is usually the largest part of the run. With `--no-checkpoint`, `render` is `null` and
+`render_bytes` is 0.
 
 `render.json` (`kind` `tactus.render`, `format_version` 1) is written before audition
 encoding. It records `sample_rate`, original `outputs` (`file`, `sha256`, `shape`, `dtype`),
@@ -420,6 +423,10 @@ When a run's original precision is no longer needed, `tactus prune RUN_DIR...` r
 freed. A pruned run keeps its WAVs, manifest, receipt and take candidates; `analyze`,
 `excerpt`, `take save` and PCM export still work, and the run reads as `published-pcm`.
 It can no longer export the original float precision or be imported for `load_render`.
+For candidates known in advance to be throwaway (a parameter sweep, a probe that renders
+many variants), `tactus run ... --no-checkpoint` never writes the arrays; the run is then in
+the same PCM-only state. The default keeps them, because which candidate will be adopted is
+only known afterwards and arrays cannot be recovered once skipped.
 Remove these files only through `prune`: `render/` gone with `render.json` left behind
 reads as a corrupt checkpoint and blocks export. Keep the checkpoint of any run you may
 continue from or deliver at full precision.

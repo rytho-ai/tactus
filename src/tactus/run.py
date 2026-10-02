@@ -64,6 +64,7 @@ def run(
     out: str | Path,
     params: dict[str, Any] | None = None,
     reuse: bool = False,
+    checkpoint: bool = True,
 ) -> dict[str, Any]:
     """Execute source's render(**params), returning paths to a completed new run.
 
@@ -73,6 +74,10 @@ def run(
 
     `reuse=True` lets `@stage`-marked functions reuse an unchanged prior call's result
     (see `stage.py`); without it, `@stage` is a transparent call.
+
+    `checkpoint=False` skips saving the original arrays (`render.json` and `render/`): the
+    run keeps only its published PCM, as a pruned run does. The result's `render_bytes`
+    reports what the checkpoint occupies, 0 without one.
     """
     try:
         source = Path(source).resolve()
@@ -107,6 +112,7 @@ def run(
                     "out": str(out),
                     "params": params,
                     "reuse": bool(reuse),
+                    "checkpoint": bool(checkpoint),
                 },
             )
             # Load this installed Tactus before adding the author's import directory.
@@ -297,7 +303,9 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             if "takes" in result
             else {}
         )
-        render_store.publish(out, rate, outputs, take_refs)
+        checkpoint = bool(request.get("checkpoint", True))
+        if checkpoint:
+            render_store.publish(out, rate, outputs, take_refs)
         # A completed render is durable before the optional default delivery can fail.
         store = OutputStore(out, rate)
         references = {}
@@ -322,7 +330,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "outputs": {name: str(out / ref["file"]) for name, ref in references.items()},
             "manifest": str(out / "manifest.json"),
             "receipt": str(out / "receipt.json"),
-            "render": str(out / "render.json"),
+            "render": str(out / "render.json") if checkpoint else None,
+            "render_bytes": sum(f.stat().st_size for f in (out / "render").glob("*.npy")),
             "levels": levels,
         }
     except (MaterialError, ToolError) as exc:
