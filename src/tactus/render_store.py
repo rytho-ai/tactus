@@ -4,6 +4,7 @@ render.json marks a complete original render. Original-array reads verify arrays
 receipt bytes; export never falls back to PCM if an existing checkpoint is corrupt.
 read_published owns legacy run/excerpt manifests and their PCM verification.
 read prefers original arrays, falling back to published PCM only for legacy runs.
+prune removes a run's original arrays after verifying its published PCM, marker first.
 """
 
 from __future__ import annotations
@@ -127,6 +128,31 @@ def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> 
         manifest["takes"] = takes
     write_json(root / "render.json", manifest)
     return root / "render.json"
+
+
+def prune(root: Path) -> dict:
+    """Remove a completed run's original arrays, keeping its published audio and records.
+
+    The published PCM is verified first, so the run stays readable as `published-pcm`.
+    `render.json` goes before `render/`: a marker without its arrays reads as a corrupt
+    checkpoint, a missing marker as a run that never had one. Takes, the receipt and the
+    manifest are untouched. Returns the bytes freed (0 when there was no checkpoint).
+    """
+    root = Path(root)
+    if not (root / "manifest.json").is_file():
+        raise RunError("invalid_request", "request", f"not a completed run or excerpt: {root}")
+    read_published(root)
+    marker, arrays = root / "render.json", root / "render"
+    if arrays.is_symlink() or marker.is_symlink():
+        raise RunError("invalid_request", "request", f"render files must not be symlinks: {root}")
+    files = sorted(arrays.glob("*.npy")) if arrays.is_dir() else []
+    freed = sum(f.stat().st_size for f in files) + (marker.stat().st_size if marker.is_file() else 0)
+    marker.unlink(missing_ok=True)
+    for file in files:
+        file.unlink()
+    if arrays.is_dir() and not any(arrays.iterdir()):
+        arrays.rmdir()
+    return {"freed_bytes": freed, "kind": "published-pcm"}
 
 
 def _checkpoint(

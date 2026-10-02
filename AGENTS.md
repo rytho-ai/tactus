@@ -20,6 +20,8 @@ tracked files.
 Original experiments and retired plans are archived with checksums under
 `experiments/documentation-history/`; consult them when original measurements or superseded
 proposals are needed. Current contracts stay in the maintained product documents.
+Experiments that render many candidates run `tactus prune` on their run directories once the
+results are recorded: each run's original arrays can exceed a gigabyte.
 Blueprints and `experiments/` are local, Git-ignored working material. Keep usage contracts
 and verification needed by a clean checkout in tracked docs, examples and tests.
 

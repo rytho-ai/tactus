@@ -103,6 +103,10 @@ def _main(argv: Sequence[str] | None = None) -> int:
         "--tactus-path", type=Path, help="Pin an editable local Tactus checkout"
     )
     init_source.add_argument("--tactus", help="Pin an explicit Tactus source as URL@REV")
+    prune_command = commands.add_parser(
+        "prune", help="Remove completed runs' original arrays, keeping their published audio"
+    )
+    prune_command.add_argument("run_dirs", nargs="+", type=Path, help="Completed run directories")
     material_command = commands.add_parser("material", help="Manage the shared input material pool")
     material_subcommands = material_command.add_subparsers(dest="material_command", required=True)
     add_command = material_subcommands.add_parser(
@@ -229,6 +233,13 @@ def _main(argv: Sequence[str] | None = None) -> int:
         if args.command == "init":
             result = init(args.directory, tactus_path=args.tactus_path, tactus=args.tactus)
             print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.command == "prune":
+            from . import render_store
+
+            runs = {str(path): render_store.prune(path) for path in args.run_dirs}
+            freed = sum(run["freed_bytes"] for run in runs.values())
+            print(json.dumps({"status": "ok", "freed_bytes": freed, "runs": runs}, sort_keys=True))
             return 0
         if args.command == "material" and args.material_command == "add":
             for path in args.paths:

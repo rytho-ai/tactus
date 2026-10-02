@@ -13,7 +13,7 @@ from tactus import RunError, run
 from tactus.cli import main
 from tactus.commands import Command
 from tactus.export import deliver, wav
-from tactus.render_store import read, read_published
+from tactus.render_store import prune, read, read_published
 from tactus.takes import save_take
 
 
@@ -226,3 +226,34 @@ def test_wav_export_bytes_do_not_depend_on_when_they_are_written(tmp_path, subty
         written.append(next(iter(out.glob("*.wav"))).read_bytes())
         time.sleep(1.1)  # libsndfile stamps whole seconds into a float WAV's PEAK chunk
     assert written[0] == written[1] and b"PEAK" not in written[0][:200]
+
+
+def test_prune_keeps_published_audio_and_takes_and_frees_the_checkpoint(rendered, tmp_path, capsys):
+    _, output = rendered
+    before = sum(f.stat().st_size for f in (output / "render").iterdir())
+    marker = (output / "render.json").stat().st_size
+    take = (output / "takes/raw/audio.npy").read_bytes()
+    assert main(["prune", str(output)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["freed_bytes"] == before + marker
+    assert report["runs"][str(output)] == {"freed_bytes": before + marker, "kind": "published-pcm"}
+    assert not (output / "render.json").exists() and not (output / "render").exists()
+    assert (output / "takes/raw/audio.npy").read_bytes() == take
+    assert (output / "receipt.json").is_file()
+    assert read(output).origin["kind"] == "published-pcm"
+    assert main(["export", "wav", str(output), "--out", str(tmp_path / "pcm")]) == 0
+    capsys.readouterr()
+    assert main(["export", "wav", str(output), "--subtype", "DOUBLE", "--out", str(tmp_path / "f64")]) == 0
+    capsys.readouterr()
+    # original float64 precision is gone: the DOUBLE export now carries the PCM24 values
+    assert sf.read(tmp_path / "f64/mix.wav", dtype="float64")[0][0] != pytest.approx(0.123456789123, abs=1e-9)
+    assert prune(output) == {"freed_bytes": 0, "kind": "published-pcm"}
+
+
+def test_prune_refuses_what_it_cannot_leave_readable(rendered, tmp_path, capsys):
+    _, output = rendered
+    assert main(["prune", str(tmp_path / "work")]) != 0
+    assert "not a completed run" in capsys.readouterr().out
+    next(output.glob("mix-*.wav")).write_bytes(b"damaged")
+    assert main(["prune", str(output)]) != 0
+    assert (output / "render.json").exists() and any((output / "render").iterdir())

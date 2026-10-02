@@ -413,6 +413,17 @@ encoding. It records `sample_rate`, original `outputs` (`file`, `sha256`, `shape
 value or 8 per float64 value, alongside the PCM24 files. Legacy runs without a checkpoint
 export from their saved PCM only, explicitly recorded as `published-pcm`.
 
+That checkpoint is the largest part of a run: sixteen 92-second stereo float64 outputs take
+about 1.1 GB per run, so a session that renders dozens of candidates fills tens of gigabytes.
+When a run's original precision is no longer needed, `tactus prune RUN_DIR...` removes
+`render.json` and `render/` after verifying the published audio, and reports the bytes
+freed. A pruned run keeps its WAVs, manifest, receipt and take candidates; `analyze`,
+`excerpt`, `take save` and PCM export still work, and the run reads as `published-pcm`.
+It can no longer export the original float precision or be imported for `load_render`.
+Remove these files only through `prune`: `render/` gone with `render.json` left behind
+reads as a corrupt checkpoint and blocks export. Keep the checkpoint of any run you may
+continue from or deliver at full precision.
+
 `manifest.json` (`format_version` 2) identifies the saved audio: `kind`, `sample_rate`, and
 `outputs` as `{name: {sha256, frames, channels, file, peak_dbfs, clipped_samples}}`. Each
 `file` is `<name>-<sha256[:8]>.wav`, written directly under `--out`; the full `sha256` in the
