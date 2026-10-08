@@ -126,6 +126,11 @@ Each output directory must be new. The command returns WAV paths, levels and exe
 records. Play the WAVs with your audio tools. Parameters let you compare candidates without
 editing source; adopt the values you choose in the work's code.
 
+Each run also keeps its original arrays for lossless export and reuse; `render_bytes` in the
+result reports their size, which can exceed a gigabyte for a full multi-stem song. Free
+candidates you no longer need with `tactus prune runs/b`, or skip saving them for throwaway
+candidates with `tactus run ... --no-checkpoint`. See [run results](skills/references/runtime.md#run-results).
+
 ## Listen to a section
 
 Extract saved audio without rendering again:
