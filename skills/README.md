@@ -24,20 +24,22 @@ From a clean Tactus checkout root, with Codex:
 
 ```bash
 codex plugin marketplace add .
-codex plugin add tactus@tactus-local
+codex plugin add tactus@tactus
 ```
 
 With Claude Code:
 
 ```bash
 claude plugin marketplace add "$PWD"
-claude plugin install tactus@tactus-local
+claude plugin install tactus@tactus
 ```
 
 Start a new session after installation. The skills are under the `tactus` plugin namespace
 (for example, `/tactus:compose` in Claude Code). Existing `tactus-authoring` installations
 should be removed after verifying the replacement, including any old skill symlinks; keep
 user-authored copies until their changes have been migrated.
+Installations from the earlier `tactus-local` marketplace (`tactus@tactus-local`) are replaced
+by removing that marketplace, adding this one and installing `tactus@tactus`.
 
 Both marketplaces point at the repository root, following the single-product layout used
 by Rytho and My-wiki. Host manifests live in `.claude-plugin/plugin.json` and
@@ -114,7 +116,7 @@ The plugin supplies guidance, not an MCP server or Python dependency installer.
 - [Runnable examples](examples/README.md): synthetic, editable starting points; no sample downloads.
 
 To verify the package in its repository, run `uv run pytest tests/test_skill.py tests/test_plugin.py`
-and `claude plugin validate . --strict` for the marketplace. Validate the plugin itself
+and `claude plugin validate .claude-plugin/marketplace.json --strict` for the marketplace. Validate the plugin itself
 with `claude plugin validate .claude-plugin/plugin.json`. Its warning about root `CLAUDE.md`
 is expected: repository development instructions are separate from the installed skills.
 Plugin loading and example execution

@@ -71,14 +71,14 @@ For an active development checkout containing local pools or dogfood runs, use t
 
 ```bash
 codex plugin marketplace add .
-codex plugin add tactus@tactus-local
+codex plugin add tactus@tactus
 ```
 
 **Claude Code:**
 
 ```bash
 claude plugin marketplace add "$PWD"
-claude plugin install tactus@tactus-local
+claude plugin install tactus@tactus
 ```
 
 Start a new session to load the skills. Platform manifests and marketplace catalogs

@@ -25,7 +25,7 @@ def test_marketplaces_resolve_the_same_versioned_plugin():
     [claude_entry] = claude["plugins"]
     assert (ROOT / codex_entry["source"]["path"]).resolve() == PLUGIN
     assert (ROOT / claude_entry["source"]).resolve() == PLUGIN
-    assert codex["name"] == claude["name"] == "tactus-local"
+    assert codex["name"] == claude["name"] == "tactus"
     assert codex_entry["name"] == claude_entry["name"] == name
     assert codex_entry["source"]["source"] == "local"
     assert claude_entry["version"] == version

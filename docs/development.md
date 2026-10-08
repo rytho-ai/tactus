@@ -84,11 +84,11 @@ at the repository root in `.claude-plugin/` and `.codex-plugin/`:
 
 ```bash
 uv run pytest tests/test_plugin.py tests/test_skill.py
-claude plugin validate . --strict
+claude plugin validate .claude-plugin/marketplace.json --strict
 claude plugin validate .claude-plugin/plugin.json
 ```
 
-The first command validates the marketplace. The plugin check reports that root
+The second command validates the marketplace. The plugin check reports that root
 `CLAUDE.md` is not loaded as plugin context: that file imports repository development
 instructions, while installed guidance is carried by `skills/`. This expected warning
 means `--strict` is reserved for the marketplace check here.
