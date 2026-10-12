@@ -1,6 +1,6 @@
 # Development
 
-Run these commands from the Tactus checkout with Python 3.12 and
+Run these commands from the Tactus checkout with Python 3.12 or newer and
 [uv](https://docs.astral.sh/uv/):
 
 ```bash
@@ -10,6 +10,21 @@ uv run tactus doctor
 uv run pytest
 uv run ruff check .
 ```
+
+The checkout's `.python-version` defaults to 3.12. Verify Python 3.13 in a
+separate environment without replacing that default:
+
+```bash
+UV_PROJECT_ENVIRONMENT=/tmp/tactus-py313 uv sync --python 3.13 --locked --group dev
+UV_PROJECT_ENVIRONMENT=/tmp/tactus-py313 uv run --python 3.13 --locked pytest
+```
+
+Pedalboard 0.9.26 or newer is required for CPU-compatible Linux wheels.
+For an existing work that needs Python 3.13, update its `requires-python` if it
+still contains `<3.13`, deliberately upgrade its Tactus source to this version,
+then run `uv python pin 3.13` and `uv lock`. Existing work locks are not upgraded
+automatically. If a work adds a dependency requiring Python 3.13, set the work's
+own `requires-python = ">=3.13"` so its declared minimum matches its dependencies.
 
 Default development adds pytest/Ruff; librosa is optional and pyloudnorm is removed.
 Numba remains a runtime dependency for accelerated DSP and long CQT/VQT analyses.

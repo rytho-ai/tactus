@@ -118,7 +118,7 @@ Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都
 
 Tactus 以少數 base dependencies 涵蓋常用工作，其餘算法自有或由作品選裝。Base environment 包含 NumPy、SciPy、SoundFile、Numba、Pedalboard、pytimestretch、pyqmdsp 與 Mido，讓 production code 可以直接使用。Librosa 以 `tactus[librosa]` optional extra 提供，預設不安裝，內建分析也不呼叫它；作品以 `uv add "tactus[librosa]"` 選裝，開發比對用 `uv run --extra librosa pytest -m reference`；dev 額外安裝 pytest／Ruff。Global CLI 與作品環境分開，extra 不自動帶入新作品。Pyloudnorm 不在任何 dependency group；loudness 以保存的獨立參考答案、數學測試與 EBU 素材驗證。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代，套件選定也不代表 runtime 已完成整合。
 
-Python 限制在 3.12（`requires-python = ">=3.12,<3.13"`）：Pedalboard 0.9.24 與 0.9.25 的 cp313 Linux wheel 含未經 CPU 檢查的 AVX-512 指令，在不支援 AVX-512 的 CPU 上以 illegal instruction 崩潰；cp312 正常。上游修正（spotify/pedalboard PR #511）發佈成新版並在不支援 AVX-512 的機器上驗證後再放寬。
+Python 要求 `>=3.12`，不預先限制未來的 minor version；實際可安裝範圍也受依賴套件支援影響。Checkout 的 `.python-version` 只選擇開發預設 3.12，作品可選擇 3.13 以共用其他套件的環境。Pedalboard 要求 `>=0.9.26`：此版包含 [Linux wheel CPU 相容性修正](https://github.com/spotify/pedalboard/releases/tag/v0.9.26)，以 AVX baseline 編譯，解決舊 cp313 wheel 在不支援 AVX-512 的 CPU 上崩潰的問題，因此不再用 Python 上限避開它。驗證方式見 [development](development.md)。
 
 | 工作 | 目前做法 | 理由與邊界 |
 | --- | --- | --- |

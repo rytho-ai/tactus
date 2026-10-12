@@ -24,7 +24,7 @@ execution and records what produced each result; the author makes the musical de
 ### CLI and dependencies
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Git first.
-Tactus uses Python **3.12**; uv can install it. Git-sourced native dependencies also need
+Tactus requires Python **3.12 or newer**; uv can install it. Git-sourced native dependencies also need
 C and C++20 compilers, such as GCC or Clang.
 
 ```bash
@@ -37,6 +37,10 @@ tactus doctor
 The editable install follows this checkout;
 see [fixed-revision installation](skills/references/project-commands.md#install-and-select-a-work)
 for a portable setup.
+
+Use `--python 3.13` to install on Python 3.13, including when sharing a work's
+environment with packages that require it. The checkout defaults to 3.12;
+this is a development default, not a package compatibility limit.
 
 ### Core dependencies
 
