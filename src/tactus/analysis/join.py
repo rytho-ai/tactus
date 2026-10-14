@@ -185,8 +185,8 @@ def _residual_ratio(pre, post, order, fit_n):
     if len(fit) <= 2 * order or len(post) < 1:
         return None
     a = _lpc(fit, order)
-    if a is None:
-        return None
+    if a is None:  # digital silence: it predicts silence, so any sample past it is the error
+        return 20 * math.log10(max(float(np.max(np.abs(post[:_PREDICTED]))), _FLOOR) / _FLOOR)
     inverse = np.concatenate(([1.0], -a))
     inside = lfilter(inverse, 1, fit)[order:]
     sigma = max(math.sqrt(float(np.mean(np.square(inside)))), _FLOOR)
@@ -259,7 +259,7 @@ def _seams_schema(result, rate):
         ),
         "residual_db": schema.value(
             "prediction_error", "dB re fit-region residual RMS", sentinel="null",
-            meaning="silent_or_insufficient_context", channels="max",
+            meaning="insufficient_context", channels="max",
         ),
         "hf_burst_db": schema.value(
             "high_frequency_burst", "dB re baseline high-passed power", sentinel="null",
@@ -297,7 +297,7 @@ def _seams_schema(result, rate):
     return fields, [], parameters
 
 
-@_revision(1)
+@_revision(2)  # 2: sound entering from digital silence is measured, not null
 @_declared(_seams_schema)
 def seams(
     audio: np.ndarray,
@@ -327,8 +327,8 @@ def seams(
     residual_db = an order-`lpc_order` autocorrelation-method linear predictor (Hann-windowed,
     fitted on the `lpc_fit_s` before the boundary) predicts the first sample after it; |error|
     relative to the RMS error inside the fit region, in dB; the same backwards from the other
-    side, the larger reported (residual RMS floored at -120 dBFS, so sound entering from near
-    silence reads very high rather than infinite). It responds to amplitude and slope breaks
+    side, the larger reported (residual RMS floored at -120 dBFS, so sound entering from silence,
+    digital or near, reads very high rather than infinite; silence after silence reads 0). It responds to amplitude and slope breaks
     that a step alone misses, and to impulses. One sample's error varies by 10-20 dB between
     ordinary positions of real music: compare with references, not with zero. Only the
     boundary sample is predicted; later samples would measure how new the following material
@@ -344,7 +344,7 @@ def seams(
             resolved frame / rate; a wrap sits at its end frame), frame (frames), to_s (s,
             wrap target or null), window_samples (samples, level window used), step (FS),
             slope_step (FS/sample, null without two samples each side), residual_db (dB, null
-            for a silent or too short fit region), hf_burst_db (dB, null when either energy is
+            for a too short fit region), hf_burst_db (dB, null when either energy is
             zero), level_before_dbfs / level_after_dbfs (dBFS, null for zero energy),
             level_change_db (dB, after minus before), peak_dbfs (dBFS over both windows).
         references (records): the same fields at reference_s, kind "reference".

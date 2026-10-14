@@ -76,8 +76,39 @@ def seam_arguments(time_map, rate, segment):
 ```
 
 Read `map.json` and `manifest.json` from the run, then call
-`join.seams(audio, rate, **arguments)` on that output's WAV. A join between two outputs needs
-the audio as the player overlaps them: render or assemble that performance and measure it.
+`join.seams(audio, rate, **arguments)` on that output's WAV. That covers joins inside one
+output. An exit into another segment joins two clips, and is often where the click is (a clip
+ending on a held value into one starting at another): join them as the player does and measure
+the seam. This joins them as a hard switch; change it to your player's rule:
+
+```python
+def switches(time_map, outputs, segment):
+    """Every exit from `segment` into another segment, joined as a hard switch: yields
+    (target, audio, frame). Change the joining to your player's rule (crossfades, overlaps)."""
+    segments = time_map["segments"]
+    seg = segments[segment]
+    grid = time_map.get("outputs", {}).get(seg["output"], {}).get("grid", {})
+    x = outputs[seg["output"]]
+    for exit_point in seg["joins"]:
+        if exit_point["at"] == "bars":
+            points = [*grid.get("bars", []), grid.get("end", seg["end"])]
+        else:
+            points = [seg["start"] + f for f in exit_point["at"]]
+        to = exit_point["to"]
+        if isinstance(to, dict):
+            to = [n for n, s in segments.items() if set(to["tags"]) & set(s["tags"])]
+        for target in to or []:  # null: the player decides; list those targets yourself
+            t = segments[target]
+            for p in sorted({p for p in points if seg["start"] < p <= seg["end"]}):
+                enter = t["start"] + (p - seg["start"] if exit_point["keep_phase"] else 0)
+                after = outputs[t["output"]][enter : t["tail_end"]].copy()
+                if p == seg["end"]:  # leaving at the body's end: its tail rings over the next
+                    tail = x[seg["end"] : seg["tail_end"]][: len(after)]
+                    after[: len(tail)] += tail
+                yield target, np.concatenate([x[seg["start"] : p], after]), p - seg["start"]
+```
+
+Call `join.seams(audio, rate, at_s=[frame / rate])` on each yielded pair.
 Measure whole outputs rather than excerpts, whose summaries cover only the excerpt. A codec
 can break an exact loop: `tactus export web` AAC files keep the source length, so decode a
 delivered file to WAV outside Tactus (with the decoder that matters, such as the browser's)

@@ -114,9 +114,19 @@ def test_level_change_and_digital_silence():
     assert all(
         seam[key] is None
         for seam in silence["joins"]
-        for key in ("residual_db", "hf_burst_db", "level_before_dbfs", "peak_dbfs")
+        for key in ("hf_burst_db", "level_before_dbfs", "peak_dbfs")
     )
+    assert {seam["residual_db"] for seam in silence["joins"]} == {0.0}   # silence after silence
     json.dumps(silence, allow_nan=False)
+
+
+def test_a_hit_out_of_digital_silence_reads_as_unpredictable():
+    # dig's *_stab stems: a loop ending in exact zeros wraps to a hit on its downbeat. Silence
+    # predicts silence, so the hit is the error, as loud as it is (here 0.1 FS -> 100 dB).
+    hit = np.concatenate((np.zeros(SR), 0.1 * np.exp(-np.arange(SR) / 2000.0)))
+    (seam,) = join.seams(hit, SR, at_s=[1.0])["joins"]
+    assert seam["step"] == pytest.approx(0.1)
+    assert seam["residual_db"] == pytest.approx(100, abs=0.01)
 
 
 def test_references_show_what_one_max_step_ratio_hides():
@@ -321,6 +331,32 @@ def seam_arguments(time_map, rate, segment):
     return seg["output"], arguments
 
 
+def switches(time_map, outputs, segment):
+    """Every exit from `segment` into another segment, joined as a hard switch: yields
+    (target, audio, frame). Change the joining to your player's rule (crossfades, overlaps)."""
+    segments = time_map["segments"]
+    seg = segments[segment]
+    grid = time_map.get("outputs", {}).get(seg["output"], {}).get("grid", {})
+    x = outputs[seg["output"]]
+    for exit_point in seg["joins"]:
+        if exit_point["at"] == "bars":
+            points = [*grid.get("bars", []), grid.get("end", seg["end"])]
+        else:
+            points = [seg["start"] + f for f in exit_point["at"]]
+        to = exit_point["to"]
+        if isinstance(to, dict):
+            to = [n for n, s in segments.items() if set(to["tags"]) & set(s["tags"])]
+        for target in to or []:  # null: the player decides; list those targets yourself
+            t = segments[target]
+            for p in sorted({p for p in points if seg["start"] < p <= seg["end"]}):
+                enter = t["start"] + (p - seg["start"] if exit_point["keep_phase"] else 0)
+                after = outputs[t["output"]][enter : t["tail_end"]].copy()
+                if p == seg["end"]:  # leaving at the body's end: its tail rings over the next
+                    tail = x[seg["end"] : seg["tail_end"]][: len(after)]
+                    after[: len(tail)] += tail
+                yield target, np.concatenate([x[seg["start"] : p], after]), p - seg["start"]
+
+
 WORK = """import numpy as np
 
 def render():
@@ -328,15 +364,18 @@ def render():
     t = np.arange(4 * rate) / rate
     loop = 0.5 * np.sin(2 * np.pi * 441.3 * t)
     tape = np.concatenate([0.5 * np.sin(2 * np.pi * 440 * t), loop])
+    stop = np.concatenate([0.5 * np.sin(2 * np.pi * 220 * t[:rate - 4800]), np.full(4800, 0.25)])
     bars = [0, rate, 2 * rate, 3 * rate]
     return {"sample_rate": rate,
-            "outputs": {"loop": loop, "tape": tape},
+            "outputs": {"loop": loop, "tape": tape, "stop": stop},
             "map": {"outputs": {"loop": {"grid": {"bars": bars, "end": 4 * rate}}},
                     "segments": {
                         "loop": {"output": "loop", "start": 0, "end": 4 * rate, "loop": True,
                                  "joins": [{"at": "bars", "to": ["verse"]}]},
                         "verse": {"output": "tape", "start": 4 * rate, "end": 8 * rate,
-                                  "joins": [{"at": [rate // 2]}]}}}}
+                                  "joins": [{"at": [rate // 2]}]},
+                        "stop": {"output": "stop", "start": 0, "end": rate,
+                                 "joins": [{"at": [rate], "to": ["loop"]}]}}}}
 """
 
 
@@ -364,16 +403,26 @@ def test_map_recipe_measures_a_runs_wraps_and_joins(tmp_path, capsys):
     verse_args, verse = measured["verse"]
     assert verse_args == {"at_s": [4.5], "reference_s": []}
     assert [j["frame"] for j in verse["joins"]] == [round(4.5 * rate)]
+    # Switches into another segment are measured on the two clips joined. A turntable stop
+    # holding 0.25 FS (dig's falls) into a loop starting at 0 is a 0.25 step.
+    outputs = {n: sf.read(run / e["file"])[0] for n, e in manifest["outputs"].items()}
+    found = {}
+    for name in time_map["segments"]:
+        for target, audio, frame in switches(time_map, outputs, name):
+            (seam,) = join.seams(audio, rate, at_s=[frame / rate])["joins"]
+            found.setdefault((name, target), []).append(round(seam["step"], 3))
+    assert found[("stop", "loop")] == [0.25]
+    assert len(found[("loop", "verse")]) == 4   # three inner bar lines and the loop's end
     # The same positions through the CLI, on the run directory (every output measured).
     assert main(["analyze", "join", "seams", str(run), "--wrap", "--brief"]) == 0
     reports = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert [r["output"] for r in reports] == ["loop", "tape"]
+    assert [r["output"] for r in reports] == ["loop", "stop", "tape"]
     assert all(r["result"]["joins"][0]["kind"] == "wrap" for r in reports)
     assert main(
-        ["analyze", "join", "seams", str(run), "--at-s", "[1.0, 2.0]", "--brief"]
+        ["analyze", "join", "seams", str(run), "--at-s", "[0.25, 0.5]", "--brief"]
     ) == 0
     reports = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
-    assert [j["frame"] for j in reports[0]["result"]["joins"]] == [rate, 2 * rate]
+    assert [j["frame"] for j in reports[0]["result"]["joins"]] == [rate // 4, rate // 2]
 
 
 def test_cli_rejects_positions_without_a_traceback(tmp_path, capsys):
@@ -390,5 +439,5 @@ def test_cli_rejects_positions_without_a_traceback(tmp_path, capsys):
 @pytest.mark.parametrize("document", ["docs/analysis.md", "skills/measure/SKILL.md"])
 def test_documented_map_recipe_is_the_tested_one(document):
     text = (Path(__file__).resolve().parents[1] / document).read_text(encoding="utf-8")
-    source = inspect.getsource(seam_arguments)
-    assert source in text
+    assert inspect.getsource(seam_arguments) in text
+    assert inspect.getsource(switches) in text

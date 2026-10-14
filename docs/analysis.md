@@ -554,8 +554,10 @@ channel is reported; levels average channel powers like `level.rms`.
   larger kept. Only the boundary sample is predicted, because errors further on measure how
   new the next material is: a kick starting over a quiet bed would read higher than a click.
   One sample's error varies by 10–20 dB between ordinary positions of real music, so read it
-  against references. The residual RMS has a −120 dBFS floor: sound entering from near
-  silence reads very high but finite.
+  against references. The residual RMS has a −120 dBFS floor: sound entering from silence,
+  digital or near, reads very high but finite (from exact zeros the error is the entering
+  sample itself; silence after silence reads 0 dB). Revision 2 of `seams`; revision 1
+  reported null from digital silence.
 - `hf_burst_db` is power above `hf_hz` (8 kHz, zero-phase 4th-order Butterworth) within
   ±`click_window_s` (1 ms) of the boundary, relative to the median at the references, or at
   windows every 50 ms of the input when no references are given (`hf_baseline`).
@@ -634,9 +636,47 @@ for name in time_map["segments"]:
 ```
 
 A segment covering a whole loop output gives `wrap_range_s=[0, length]`, the same as
-`wrap=True`. Joins between two different outputs (clip B laid over clip A's tail) need the
-joined audio: the player's rule decides how they overlap, so assemble or render that
-performance, then pass the join's position on its clock. The recipe is exercised by
+`wrap=True`. An exit into another segment (a fill into the next loop, a door into the next
+room) is a join between two clips, and often the one that clicks: measure it on the two clips
+joined as the player joins them. This helper joins them as a hard switch, with the tail of a
+body-end exit laid over what follows; change the joining to your player's rule:
+
+```python
+def switches(time_map, outputs, segment):
+    """Every exit from `segment` into another segment, joined as a hard switch: yields
+    (target, audio, frame). Change the joining to your player's rule (crossfades, overlaps)."""
+    segments = time_map["segments"]
+    seg = segments[segment]
+    grid = time_map.get("outputs", {}).get(seg["output"], {}).get("grid", {})
+    x = outputs[seg["output"]]
+    for exit_point in seg["joins"]:
+        if exit_point["at"] == "bars":
+            points = [*grid.get("bars", []), grid.get("end", seg["end"])]
+        else:
+            points = [seg["start"] + f for f in exit_point["at"]]
+        to = exit_point["to"]
+        if isinstance(to, dict):
+            to = [n for n, s in segments.items() if set(to["tags"]) & set(s["tags"])]
+        for target in to or []:  # null: the player decides; list those targets yourself
+            t = segments[target]
+            for p in sorted({p for p in points if seg["start"] < p <= seg["end"]}):
+                enter = t["start"] + (p - seg["start"] if exit_point["keep_phase"] else 0)
+                after = outputs[t["output"]][enter : t["tail_end"]].copy()
+                if p == seg["end"]:  # leaving at the body's end: its tail rings over the next
+                    tail = x[seg["end"] : seg["tail_end"]][: len(after)]
+                    after[: len(tail)] += tail
+                yield target, np.concatenate([x[seg["start"] : p], after]), p - seg["start"]
+```
+
+```python
+outputs = {n: sf.read(run / e["file"])[0] for n, e in manifest["outputs"].items()}
+for name in time_map["segments"]:
+    for target, audio, frame in switches(time_map, outputs, name):
+        (seam,) = join.seams(audio, rate, at_s=[frame / rate])["joins"]
+```
+
+A clip that ends holding a value (a turntable stop) into one that starts at another is a
+step there, however clean each clip's own wrap is. The recipe is exercised by
 [the join tests](../tests/test_join_analysis.py).
 
 **Measure on whole outputs.** An excerpt starts its own clock at zero and its whole-input
