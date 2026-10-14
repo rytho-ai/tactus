@@ -1,8 +1,10 @@
 """`@stage`: opt-in reuse of an unchanged stage's result across parameter candidates.
 
-Owns the reuse key end to end: a stage's qualified name and source file, the run-level
-source/dependency/runtime identity `run.py` computes once before `render` and hands in
-via `_begin_run`, and a canonical hash of the call's own arguments. One encoder
+Owns the reuse key end to end: a stage's qualified name and source file, the work
+files and plain values the function reaches (`_reach`; every inventoried file when that
+cannot be attributed), the run-level source/dependency/runtime identity `run.py`
+computes once before `render` and hands in via `_begin_run`, and a canonical hash of
+the call's own arguments. One encoder
 (`_canon`) builds a type-tagged, JSON-stable form of both the key's parts and a stored
 result, so the same "what counts as the same value" rule governs a cache hit and a
 cache write; anything it cannot tag (a random `Generator`, a plugin object, a callable,
@@ -21,7 +23,7 @@ renamed into place, following `inputs/tree.py`'s pattern.
 Versioned entries verify their metadata and array bytes before replay. Existing corrupt
 or unversioned entries fail explicitly: silently rerunning a VST could change the take.
 
-Reads: tactus/inputs/__init__.py (_begin_capture/_end_capture/_replay/_tool_matches) ·
+Reads: tactus/_reach.py · tactus/inputs/__init__.py (_begin_capture/_end_capture/_replay/_tool_matches) ·
 tactus/inputs/pool.py (default_pool_dir)
 """
 
@@ -42,6 +44,7 @@ from typing import Any
 
 import numpy as np
 
+from . import _reach
 from ._contracts import RunError
 from .inputs import _begin_capture, _end_capture, _replay, _tool_matches
 from .inputs.pool import default_pool_dir, hash_file
@@ -116,8 +119,10 @@ class _RunParts:
         "calls",
         "created",
         "dependency_lock",
+        "entry",
         "python_version",
         "reuse",
+        "root",
         "source_files",
         "tactus_version",
     )
@@ -130,9 +135,13 @@ class _RunParts:
         dependency_lock: dict[str, str] | None,
         python_version: str,
         tactus_version: str,
+        root: Path,
+        entry: Path,
     ) -> None:
         self.reuse = reuse
         self.source_files = source_files
+        self.root = root
+        self.entry = entry
         self.dependency_lock = dependency_lock
         self.python_version = python_version
         self.tactus_version = tactus_version
@@ -169,8 +178,13 @@ def _begin_run(
     dependency_lock: dict[str, str] | None,
     python_version: str,
     tactus_version: str,
+    root: Path,
+    entry: Path,
 ) -> None:
-    """Set this run's key parts; called once by run.py before `render`, reuse or not."""
+    """Set this run's key parts; called once by run.py before `render`, reuse or not.
+
+    `root` is the entry directory `source_files` is relative to; `entry` the entry file.
+    """
     global _context
     _context = _RunParts(
         reuse=reuse,
@@ -178,6 +192,8 @@ def _begin_run(
         dependency_lock=dependency_lock,
         python_version=python_version,
         tactus_version=tactus_version,
+        root=root,
+        entry=entry,
     )
 
 
@@ -347,20 +363,54 @@ def _store(
             shutil.rmtree(staging, ignore_errors=True)
 
 
-def _stage_key(func: Callable[..., Any], arguments: dict[str, Any]) -> str:
+def _stage_source(func: Callable[..., Any]) -> tuple[dict[str, str], Any, str | None]:
+    """The source files (and reached plain values) a stage's key uses, and why if all files.
+
+    Keyed on what the function reaches (`_reach`); when that cannot be attributed, every
+    inventoried file, as before, with the reason.
+    """
     assert _context is not None
+    try:
+        files, values = _reach.reach(
+            func,  # type: ignore[arg-type]
+            root=_context.root,
+            inventory=set(_context.source_files),
+            entry=_context.entry,
+            canon=_canon,
+        )
+    except _reach.Unreachable as exc:
+        return _context.source_files, None, f"keyed on every source file: {exc}"
+    except RecursionError:
+        return _context.source_files, None, "keyed on every source file: reach too deep"
+    except Exception as exc:  # noqa: BLE001 - an odd object must not fail the run
+        return (
+            _context.source_files,
+            None,
+            f"keyed on every source file: {type(exc).__name__}: {exc}",
+        )
+    reached = {path: _context.source_files[path] for path in sorted(files)}
+    return reached, sorted(values.items()), None
+
+
+def _stage_key(
+    func: Callable[..., Any], arguments: dict[str, Any]
+) -> tuple[str, dict[str, str], str | None]:
+    """The reuse key, the source files it used, and why it used every file (or None)."""
+    assert _context is not None
+    files, values, source_reason = _stage_source(func)
     payload = _canon(
         {
             "qualname": func.__qualname__,
             "file": func.__code__.co_filename,
             "python": _context.python_version,
             "tactus": _context.tactus_version,
-            "source_files": _context.source_files,
+            "source_files": files,
+            "values": values,
             "dependency_lock": _context.lock_identity(),
             "arguments": arguments,
         }
     )
-    return _digest(payload)
+    return _digest(payload), files, source_reason
 
 
 def stage[F: Callable[..., Any]](func: F) -> F:
@@ -381,12 +431,15 @@ def stage[F: Callable[..., Any]](func: F) -> F:
 
         reason: str | None
         key: str | None
+        files: dict[str, str] = context.source_files
+        source_reason: str | None = None
         try:
-            key = _stage_key(func, dict(bound.arguments))
+            key, files, source_reason = _stage_key(func, dict(bound.arguments))
             reason = None
         except _NotKeyable as exc:
             key = None
             reason = str(exc)
+        source = {"source": sorted(files), "source_reason": source_reason}
 
         if key is not None:
             directory = _stage_dir(key)
@@ -413,6 +466,7 @@ def stage[F: Callable[..., Any]](func: F) -> F:
                         "reused": True,
                         "seconds": round(time.perf_counter() - started, 3),
                         "reason": None,
+                        **source,
                     }
                 )
                 return result
@@ -430,12 +484,19 @@ def stage[F: Callable[..., Any]](func: F) -> F:
                 arrays: list[np.ndarray] = []
                 structure = _encode_for_storage(result, arrays)
                 if _store(_stage_dir(key), structure, arrays, captured):
-                    context.created.append((_stage_dir(key), frozenset(context.source_files)))
+                    context.created.append((_stage_dir(key), frozenset(files)))
             except _NotStorable as exc:
                 reason = str(exc)
 
         context.calls.append(
-            {"name": name, "key": key, "reused": False, "seconds": elapsed, "reason": reason}
+            {
+                "name": name,
+                "key": key,
+                "reused": False,
+                "seconds": elapsed,
+                "reason": reason,
+                **source,
+            }
         )
         return result
 

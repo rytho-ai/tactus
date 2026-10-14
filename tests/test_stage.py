@@ -334,3 +334,131 @@ def test_entry_written_while_its_source_changed_is_discarded(tmp_path):
     [stage_entry] = receipt["stages"]
     assert receipt["source_changed"]["stage_entries_discarded"] == [stage_entry["key"]]
     assert not (tmp_path / "pool" / "stages" / stage_entry["key"]).exists()
+
+
+MODULAR_FILES = {
+    "song.py": """\
+import numpy as np
+import mix
+import stretch
+
+def render(*, level: float = 1.0):
+    stretch.LEVEL = level
+    return {"sample_rate": 8000, "outputs": {"mix": mix.mix(stretch.stretch(gain=0.5))}}
+""",
+    "stretch.py": """\
+import numpy as np
+from pathlib import Path
+from tactus import stage
+from config import FACTOR
+import helpers
+
+COUNTS = Path({counts!r})
+LEVEL = 1.0
+
+@stage
+def stretch(*, gain: float):
+    with COUNTS.open("a", encoding="utf-8") as handle:
+        handle.write("x")
+    return helpers.shape(np.full(8, gain * FACTOR * LEVEL, dtype=np.float32))
+""",
+    "helpers.py": "def shape(audio):\n    return audio\n",
+    "config.py": "FACTOR = 1.0\n",
+    "mix.py": "def mix(audio):\n    return audio * 0.5\n",
+}
+
+
+def write_modular(tmp_path: Path, counts: Path) -> Path:
+    root = tmp_path / "work"
+    root.mkdir()
+    for name, text in MODULAR_FILES.items():
+        (root / name).write_text(text.replace("{counts!r}", repr(str(counts))), encoding="utf-8")
+    return root / "song.py"
+
+
+def append(path: Path, text: str) -> None:
+    path.write_text(path.read_text(encoding="utf-8") + text, encoding="utf-8")
+
+
+def test_stage_key_follows_the_source_it_reaches(tmp_path):
+    counts = tmp_path / "counts.txt"
+    entry = write_modular(tmp_path, counts)
+    root = entry.parent
+    first = read(run(entry, out=tmp_path / "r1", reuse=True)["receipt"])
+    [call] = first["stages"]
+    assert call["source"] == ["helpers.py", "stretch.py"]
+    assert call["source_reason"] is None
+
+    # Neither the mixer, the entry, nor a comment beside an imported constant is reached.
+    append(root / "mix.py", "\n# louder mixer\n")
+    append(root / "song.py", "\n# arrangement note\n")
+    append(root / "config.py", "# a note\n")
+    second = read(run(entry, out=tmp_path / "r2", reuse=True)["receipt"])
+    assert counts.read_text() == "x"
+    assert second["stages"][0]["reused"] is True
+
+    # A reached helper's edit, an imported value and a value set at runtime all miss.
+    for step, change in enumerate(
+        [
+            lambda: append(root / "helpers.py", "\n# helper edit\n"),
+            lambda: (root / "config.py").write_text("FACTOR = 2.0\n"),
+        ]
+    ):
+        change()
+        receipt = read(run(entry, out=tmp_path / f"miss-{step}", reuse=True)["receipt"])
+        assert receipt["stages"][0]["reused"] is False
+    receipt = read(
+        run(entry, out=tmp_path / "level", params={"level": 0.5}, reuse=True)["receipt"]
+    )
+    assert receipt["stages"][0]["reused"] is False
+    assert counts.read_text() == "xxxx"
+
+
+def test_stage_that_imports_in_its_body_is_keyed_on_every_file(tmp_path):
+    counts = tmp_path / "counts.txt"
+    entry = write_modular(tmp_path, counts)
+    stretch = entry.parent / "stretch.py"
+    stretch.write_text(
+        stretch.read_text().replace("    with COUNTS", "    import helpers\n    with COUNTS")
+    )
+    first = read(run(entry, out=tmp_path / "r1", reuse=True)["receipt"])
+    [call] = first["stages"]
+    assert "imports inside its body" in call["source_reason"]
+    assert call["source"] == sorted(MODULAR_FILES)
+    append(entry.parent / "mix.py", "\n# louder mixer\n")
+    second = read(run(entry, out=tmp_path / "r2", reuse=True)["receipt"])
+    assert second["stages"][0]["reused"] is False
+    assert counts.read_text() == "xx"
+
+
+def test_unattributable_global_is_keyed_on_every_file(tmp_path):
+    counts = tmp_path / "counts.txt"
+    entry = write_modular(tmp_path, counts)
+    stretch = entry.parent / "stretch.py"
+    stretch.write_text(
+        stretch.read_text()
+        .replace("LEVEL = 1.0", "LEVEL = 1.0\nRNG = np.random.default_rng(0)")
+        .replace("    with COUNTS", "    RNG\n    with COUNTS")
+    )
+    [call] = read(run(entry, out=tmp_path / "r1", reuse=True)["receipt"])["stages"]
+    assert "Generator" in call["source_reason"]
+    assert call["source"] == sorted(MODULAR_FILES)
+
+
+def test_object_that_breaks_the_reach_walk_falls_back_without_failing_the_run(tmp_path):
+    counts = tmp_path / "counts.txt"
+    entry = write_modular(tmp_path, counts)
+    stretch = entry.parent / "stretch.py"
+    stretch.write_text(
+        stretch.read_text()
+        .replace(
+            "LEVEL = 1.0",
+            "LEVEL = 1.0\nclass Proxy:\n    def __call__(self):\n        pass\n"
+            "    def __getattr__(self, name):\n"
+            "        raise RuntimeError('lazy proxy')\nPROXY = Proxy()",
+        )
+        .replace("    with COUNTS", "    PROXY\n    with COUNTS")
+    )
+    [call] = read(run(entry, out=tmp_path / "r1", reuse=True)["receipt"])["stages"]
+    assert "RuntimeError" in call["source_reason"]
+    assert call["source"] == sorted(MODULAR_FILES)

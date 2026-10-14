@@ -316,6 +316,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             dependency_lock=before["dependency_lock"],
             python_version=sys.version.split()[0],
             tactus_version=version("tactus"),
+            root=source.parent,
+            entry=source,
         )
         sys.path.insert(0, str(source.parent))
         namespace = runpy.run_path(str(source), run_name="__tactus__")
