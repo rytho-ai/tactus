@@ -178,6 +178,9 @@ time value, except `width_axis: "y"` denotes one width per grid row (CQT/VQT). C
 row selector form is described above. `hop` is the analysis grid step in seconds, not
 the distance between detected events. Window-end boundaries are exclusive. Padding,
 where declared, describes the windowing stage, not all prior filtering support.
+One builtin axis declares a different `origin`: `join.fades`'s `curve` uses
+`origin: "position"`, window ends relative to each declared boundary; that boundary's
+input-clock time is in the matching `positions` record. Read `origin` before plotting.
 
 Centered timestamps denote the algorithm's frame center. Discrete windows can have
 odd lengths, and Q filters have different lengths by frequency. Do not reinterpret
