@@ -39,6 +39,14 @@ Git history. It contains refs generated in your pool, so these examples carry no
   excluding an off-grid tail; deliver post-channel stems, their pre-master sum and a final
   gain stage. Read [Source regions and audio delivery](../references/production.md).
 
+## Interactive example
+
+- [route.py](route.py): a walk through three rooms rendered from a route given as a JSON
+  performance (`--param-file route=walk.json`). It rejects an invalid route with
+  `tactus.InvalidParameters`, and returns a map: bar lines, the route as spans, and each
+  room's loop as a segment a player may leave at any bar line. Deliver it with
+  `tactus export web`; see the [interactive skill](../interactive/SKILL.md).
+
 ## Synthesis examples
 
 Instruments assembled from [synthesis building blocks](../references/synth.md). Every

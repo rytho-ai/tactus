@@ -2,7 +2,10 @@
 
 This work turns a variable-tempo recording into two 27-second, 160 BPM candidates:
 fixed-ratio stretch and beat-marker warp, with identical authored percussion. It uses the
-existing `pytimestretch.time_warp` through ordinary Python; no new Tactus runtime API is needed.
+existing `pytimestretch.time_warp` through ordinary Python; no new Tactus runtime API was needed.
+Since then `tactus.timing.fit_tempo` fits a constant grid to adopted beats and
+`timing.warp_markers` builds the bar-line marker map
+([Fitting a recording to a constant grid](../../skills/references/runtime.md#fitting-a-recording-to-a-constant-grid)).
 
 **Status:** accepted by Paul on 2026-09-29 (「那很ok啊，直接用」).
 Use the existing beat-marker warp candidate (`runs/final/warp`) and its frozen beat map
@@ -89,5 +92,5 @@ the page supports human audition of those qualities.
 For this production, existing Tactus + pyqmdsp + pytimestretch cover the workflow. The missing
 step was composing a frozen marker map with the existing engine, not adding another warp
 implementation. Paul accepted the current warp candidate and map for this production;
-whether repeated works justify a shared authoring helper remains open. This acceptance
+repeated works later justified the shared helpers `timing.fit_tempo` and `timing.warp_markers`. This acceptance
 does not establish a general beat-accuracy or audio-quality verdict.

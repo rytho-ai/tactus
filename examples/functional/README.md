@@ -7,8 +7,9 @@ coercion. Put production work inside the function; Tactus loads the file under a
 non-`__main__` name before calling it.
 
 Return `{"sample_rate": positive_integer, "outputs": {name: numpy_array}}`, optionally
-with `takes: {name: numpy_array}` to preserve original intermediate samples. See
-[Saved takes](../../skills/references/runtime.md#saved-takes).
+with `takes: {name: numpy_array}` to preserve original intermediate samples (see
+[Saved takes](../../skills/references/runtime.md#saved-takes)) and `map` to give out the
+work's time structure (see [the time map](../../skills/references/runtime.md#the-time-map-optional)).
 Each named output is nonempty mono `(frames,)` or mono/stereo `(frames, channels)`,
 real numeric and finite. Outputs beyond [-1, 1] are clipped on PCM24 delivery and reported. All outputs share the rate; lengths can
 differ and no name is mandatory. Tactus stores float32-to-PCM24 WAVs without
@@ -60,7 +61,7 @@ Automatic promotion and stateful range computation are not implemented.
 
 ## Attribution and saved results
 
-`manifest.json` has kind `tactus.functional-run`, format version 2 (3 with optional `takes`), sample rate and
+`manifest.json` has kind `tactus.functional-run`, format version 2 (3 with `takes`, 4 with a `map`), sample rate and
 named AudioRefs (`sha256`, `frames`, `channels`, `file`). WAVs live at
 `<out>/<name>-<sha256[:8]>.wav`; identical output bytes under the same name share
 the same file. Saved WAVs remain playable without the original source. This format

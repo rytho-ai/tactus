@@ -107,7 +107,8 @@ Install/select the runtime using [Creating a work](references/runtime.md#creatin
 The plugin supplies guidance, not an MCP server or Python dependency installer.
 
 - [Runtime contract](references/runtime.md): materials, render, candidates, takes, receipts.
-- [Project commands](references/project-commands.md): custom analysis/export and environment selection.
+- [Project commands](references/project-commands.md): custom analysis/export, delivery with the map and environment selection.
+- [Rendering on request](references/serve.md): `tactus serve` for works that render while they play.
 - [Packages and integration notes](references/packages.md): tool selection, layouts, timing and state.
 - [Builtin DSP](references/dsp.md): available functions and behavior worth considering when adapting them.
 - [Synthesis building blocks](references/synth.md): oscillators, seeded noise, envelopes, resonators, plucked strings and grains.

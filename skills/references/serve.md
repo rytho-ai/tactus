@@ -3,15 +3,17 @@
 For a work that is played while it renders (an interactive piece that needs the next bars
 just before they sound), keep the work loaded and send it requests instead of starting
 `tactus run` each time. A cold `tactus run` pays for a new Python process, imports and the
-source inventory on every request (about 2 s of Island's 3.9 s step); the service pays them
+source inventory on every request (about 2 s of Island's 4 s step); the service pays them
 once per load.
 
 The service is an optional extra; works that only render offline do not need it:
 
 ```bash
 uv add 'tactus[serve]'            # in the work
-tactus serve song.py --out runs/serve --port 4300 [--no-checkpoint] [--retain 40] [--reuse]
+tactus serve song.py --out runs/serve --port 4300 [--host 127.0.0.1] [--no-checkpoint] [--retain 40] [--reuse]
 ```
+
+Without `--port` the system chooses a free port; the printed address names it.
 
 It prints `tactus serve: http://127.0.0.1:4300 (session …)` on stderr and serves until
 Ctrl-C, then prints a JSON summary on stdout. It binds only loopback addresses.

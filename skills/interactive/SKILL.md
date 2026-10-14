@@ -20,6 +20,8 @@ player and its UI belong to the work's own code or a downstream tool. A music vi
 needs only part 1; an interactive piece needs all three. Make the piece with
 [compose](../compose/SKILL.md) as any other work: `tactus init`, `tactus run`, receipts.
 
+[route.py](../examples/route.py) is a small runnable example of all three parts.
+
 ## Decide what stays open
 
 Write a piece worth hearing first, then ask which decision deserves to stay open. Interaction
@@ -83,7 +85,7 @@ frame lists; a work without bars returns lanes only. Contract and example:
 | Heavy processing, light live mixing | heavy parts offline; the player only levels, filters or crossfades rendered stems | `tactus export web` |
 
 [`tactus serve`](../references/serve.md) keeps the work loaded and answers `POST /render`
-with an ordinary receipted run per request (Island: 1.4 s per step against 3.9 s for a cold
+with an ordinary receipted run per request (Island: 1.4 s per step against about 4 s for a cold
 `tactus run`). Budget a request against the music: it must finish before the bar that needs
 it, so ask one step ahead. Real-time DSP inside the player and exporting Tactus DSP to plug-ins
 are outside Tactus today.

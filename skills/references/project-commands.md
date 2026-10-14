@@ -312,7 +312,7 @@ Exporters without them are called as before. `export.json` records `source.map` 
 
 ### Delivering with the map: `web`, `srt`, `curves`
 
-None of these resamples, normalizes, mixes or trims.
+None of these resamples, normalizes, mixes or trims; `web --bit-depth 16` rounds samples only when asked.
 
 - **`web --codec wav|flac|aac|opus [--bitrate 224k] [--bit-depth 16] [--names JSON] [--peaks 2000 | 0]`** writes
   `audio/<name>-<sha8>.<ext>` (`sha8` from the PCM24 WAV's sha256, the run's own WAV name) and
@@ -329,7 +329,7 @@ None of these resamples, normalizes, mixes or trims.
   `export.json`), not refused. `offset_frames` is a cross-correlation estimate over the first
   seconds: quiet or strictly periodic material can make it pick a neighbouring lag, so compare
   the samples before treating a few frames as a real shift. ffmpeg decodes AAC's last
-  packet whole (One Tape: 838656 frames for 837818), so AAC is first trimmed to the length the
+  packet whole (One Tape: 838656 frames for 837818), so the decoded AAC is first trimmed (for the check; the delivered file is unchanged) to the length the
   MP4 declares (sample table minus the edit list's priming), which is what browsers play; the
   surplus is `padding_frames`. `wav` writes the
   run's PCM24 bytes; `flac` decodes to the same samples, or with `--bit-depth 16` to them rounded

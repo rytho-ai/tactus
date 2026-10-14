@@ -81,6 +81,9 @@ these steps, with the same steps.
   boundaries: source energy could change phrase lengths, then move a filter after stretching;
   onset candidates could guide chopping; a custom descriptor could control another voice.
   Decide the musical mapping yourself. These are starting points to alter or discard.
+- Read [interactive](../interactive/SKILL.md) when players, pages, pictures or a live set will
+  read the work's timing or change it: time maps, performances as input, rendering on
+  request, checked joins and browser delivery.
 
 The [runnable examples](../examples/README.md) combine local DSP, Tactus, Pedalboard and
 analysis-driven time warping. They are optional vocabulary, not a required production sequence.

@@ -12,8 +12,10 @@ Installed with the current Tactus runtime:
 |---|---|---|
 | `tactus.dsp` | Gain, fades, pan, filters, ducking, delays, saturation and band splitting | [DSP contracts](dsp.md): whole-clip reset versus explicit biquad state; output shape and tails. |
 | `tactus.fx` | Plugin parameters, MIDI instrument rendering, block automation, varispeed and RMS fitting | [Helpers](runtime.md#helpers-from-tactus-import-fx) and the MIDI/plugin notes below. |
-| `tactus.timing` | Optional clocks, placement, envelopes, groove and rhythmic helpers | [Musical time](runtime.md#musical-time-optional): 0-based quarter-note beats, bar numbering and rounding. |
-| `tactus.analysis` | Defined level/spectral observations, beat/onset estimates and curves | [measure](../measure/SKILL.md); installed `tactus analyze ... --help` supplies definitions. |
+| `tactus.timing` | Optional clocks, placement, envelopes, groove and rhythmic helpers; `Clock.grid` for a map, `fit_tempo`, `warp_markers` and `fold` to fit a recording to a grid | [Musical time](runtime.md#musical-time-optional): 0-based quarter-note beats, bar numbering and rounding. |
+| `tactus.analysis` | Defined level/spectral observations, beat/onset estimates and curves, and `join` measurements at seams and loop wraps | [measure](../measure/SKILL.md); installed `tactus analyze ... --help` supplies definitions. |
+| `tactus.synth`, `tactus.devices` | Synthesis building blocks; a sampler, pads and a step sequencer | [Synthesis](synth.md) and [Devices](devices.md). |
+| `tactus.timemap` | Checking and converting a render's time map | [The time map](runtime.md#the-time-map-optional): frames of an output, validated at `run`. |
 | NumPy | Audio arrays, synthesis, slicing, mixing, modulation and event data | Views can alias their source; preserve caller arrays. Align a per-frame curve with stereo as `curve[:, None]`. |
 | SciPy | Filters, resampling, FFT/STFT, interpolation and numerical algorithms | Set the time axis explicitly for frames-first audio. Carry filter state for continuity; zero-phase filtering has different timing from a causal filter. |
 | SoundFile (`soundfile`) | Read/write audio files | `sf.read` returns audio and rate, normally mono 1-D or frames-first multichannel; `always_2d=True` makes mono a column. Choose dtype/subtype deliberately; changing metadata alone does not resample. |
@@ -25,7 +27,7 @@ Installed with the current Tactus runtime:
 
 Other libraries are welcome. Add them with `uv add PACKAGE` in the work so its lock records
 them. Librosa is optional via `uv add "tactus[librosa]"`; builtin Tactus analyses do not require
-or call it. Pyloudnorm is not installed by Tactus; `uv add pyloudnorm` if your work needs it.
+or call it. `uv add "tactus[serve]"` adds FastAPI and uvicorn for [`tactus serve`](serve.md). Pyloudnorm is not installed by Tactus; `uv add pyloudnorm` if your work needs it.
 Librosa commonly uses the last axis for time, so inspect its callable before passing
 frames-first stereo. Installed Python packages do not imply installed VSTs, SFZ instruments,
 sample libraries or external executables: declare those with `material()` or `tool()` as

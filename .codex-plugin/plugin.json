@@ -8,7 +8,7 @@
   "interface": {
     "displayName": "Tactus",
     "shortDescription": "Produce music with code. Built for agents.",
-    "longDescription": "Arrange, render, analyze, and refine. Four composable skills for producing music with code, using or building DSP, analyzing audio, and versioning works with Git. Includes shared runtime contracts and adaptable examples.",
+    "longDescription": "Arrange, render, analyze, and refine. Five composable skills for producing music with code, using or building DSP, analyzing audio, versioning works with Git, and giving works an interface (time maps, performances as input, rendering on request, browser delivery). Includes shared runtime contracts and adaptable examples.",
     "brandColor": "#FFD700",
     "composerIcon": "./design/assets/favicon-32.png",
     "logo": "./design/assets/tactus-icon-512.png",

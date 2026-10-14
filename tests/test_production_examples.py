@@ -85,3 +85,33 @@ def test_devices_example_runs_deterministically(tmp_path):
         assert rate == 48000 and audio.shape == (480000, 2)
         assert np.isfinite(audio).all() and 0.01 < np.max(np.abs(audio)) < 1
         np.testing.assert_array_equal(audio, again)
+
+
+def test_route_example_takes_a_performance_and_gives_out_its_map(tmp_path):
+    import json
+
+    from tactus import RunError
+    from tactus.analysis import join
+
+    walk = tmp_path / "walk.json"
+    walk.write_text('{"steps": [{"room": "hall", "bars": 2}, {"room": "stair", "bars": 3}]}')
+    result = run(EXAMPLES / "route.py", out=tmp_path / "walk", param_files={"route": walk})
+    time_map = json.loads(Path(result["map"]).read_text())
+    rate = 48000
+    bar = round(rate * 60 / 96 * 4)
+    assert time_map["outputs"]["walk"]["grid"]["bars"] == [i * bar for i in range(5)]
+    assert [s["label"] for s in time_map["outputs"]["walk"]["lanes"]["route"]["items"]] == [
+        "hall", "stair"]
+    assert set(time_map["segments"]) == {"hall", "stair", "roof"}
+    for name in ("hall", "stair", "roof"):
+        loop, _ = sf.read(result["outputs"][name])
+        assert len(loop) == 2 * bar == time_map["segments"][name]["end"]
+        # each room loops cleanly: its wrap steps no more than its own bar line
+        (wrap,) = join.seams(loop, rate, wrap=True)["joins"]
+        assert wrap["step"] < 0.01
+    bad = tmp_path / "bad.json"
+    bad.write_text('{"steps": [{"room": "cellar", "bars": 1}]}')
+    with pytest.raises(RunError) as failure:
+        run(EXAMPLES / "route.py", out=tmp_path / "bad", param_files={"route": bad})
+    assert failure.value.code == "invalid_parameters" and "room must be one of" in str(
+        failure.value)
