@@ -319,3 +319,18 @@ def test_damaged_cache_fails_without_regenerating_performance(tmp_path, damage):
     # Explicitly choosing not to reuse still works, without mutating the old cache.
     run(entry, out=tmp_path / "regenerated")
     assert counts.read_text() == "xx"
+
+
+def test_entry_written_while_its_source_changed_is_discarded(tmp_path):
+    counts = tmp_path / "counts.txt"
+    text = COUNTER_SOURCE.format(counts=str(counts)).replace(
+        '    return {"sample_rate"',
+        '    Path(__file__).write_text(Path(__file__).read_text() + "\\n# edited\\n")\n'
+        '    return {"sample_rate"',
+    )
+    entry = write_source(tmp_path, text)
+    result = run(entry, out=tmp_path / "first", reuse=True)
+    receipt = read(result["receipt"])
+    [stage_entry] = receipt["stages"]
+    assert receipt["source_changed"]["stage_entries_discarded"] == [stage_entry["key"]]
+    assert not (tmp_path / "pool" / "stages" / stage_entry["key"]).exists()

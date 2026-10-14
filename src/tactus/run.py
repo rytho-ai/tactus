@@ -1,6 +1,7 @@
 """Execute functional productions in fresh processes and coordinate publication.
 
 Owns request/process lifetime, render binding, receipts and failed-run cleanup.
+Source edited during a run is reported in the receipt (`source_changed`), not fatal.
 Original arrays are committed before PCM delivery; completed renders survive a
 delivery failure. Stage reuse, saved takes and output formats have dedicated owners.
 Shared errors/JSON/audio contracts live in _contracts; source and environment
@@ -232,6 +233,73 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
     return rate, outputs
 
 
+def _source_changes(
+    before: source_info.SourceInventory,
+    after: source_info.SourceInventory,
+    entry: Path,
+    stage_entries: list[tuple[Path, frozenset[str]]],
+) -> dict[str, Any] | None:
+    """Describe source/lock edits made while `render` ran, or None when nothing changed.
+
+    The run keeps its start inventory as its identity (what `source.patch` and take
+    snapshots hold). An edited file that this run never imported did not affect the audio;
+    one it imported ran its start bytes unless it was imported after the edit, which a
+    hash comparison cannot tell, so such a file is reported as uncertain. Stage entries
+    this run wrote with a changed file in their key are removed rather than kept under
+    start hashes they may not match.
+    """
+    if after == before:
+        return None
+    root = entry.parent
+    imported = {entry.relative_to(root).as_posix()}
+    for module in list(sys.modules.values()):
+        file = getattr(module, "__file__", None)
+        if isinstance(file, str):
+            path = Path(file).resolve()
+            if path.is_relative_to(root):
+                imported.add(path.relative_to(root).as_posix())
+    start, end = before["source_files"], after["source_files"]
+    files = [
+        {
+            "path": path,
+            "start_sha256": start.get(path),
+            "end_sha256": end.get(path),
+            "imported": path in imported,
+        }
+        for path in sorted(start.keys() | end.keys())
+        if start.get(path) != end.get(path)
+    ]
+    lock = (
+        None
+        if before["dependency_lock"] == after["dependency_lock"]
+        else {"start": before["dependency_lock"], "end": after["dependency_lock"]}
+    )
+    uncertain = [item["path"] for item in files if item["imported"]]
+    if lock is not None:
+        uncertain.append((before["dependency_lock"] or after["dependency_lock"])["path"])
+    if uncertain:
+        message = (
+            f"{', '.join(uncertain)} changed while this run was using it; the receipt "
+            "records the start of the run, but the audio may come from the edited "
+            "version. Re-render to attribute the audio to the current source."
+        )
+    else:
+        message = (
+            f"{', '.join(item['path'] for item in files)} changed, but this run never "
+            "imported it; the receipt's source_files is the source the audio came from."
+        )
+    discarded = stage._discard(
+        stage_entries, {item["path"] for item in files}, lock_changed=lock is not None
+    )
+    return {
+        "files": files,
+        "dependency_lock": lock,
+        "certain": not uncertain,
+        "stage_entries_discarded": discarded,
+        "message": message,
+    }
+
+
 def _execute(request: dict[str, Any]) -> dict[str, Any]:
     """Worker-only execution; phase labels keep diagnostics useful to callers."""
     source, out = Path(request["source"]), Path(request["out"])
@@ -258,7 +326,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
         result = factory(**arguments)
         elapsed_seconds = round(time.perf_counter() - started, 3)
-        stages = stage._end_run()
+        stages, stage_entries = stage._end_run()
         inputs_used = _record_snapshot()
         python_packages = source_info.python_packages()
         environment = source_info.environment()
@@ -268,9 +336,13 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         phase = "validate"
         rate, outputs = _validate(result)
         phase = "publish"
-        if source_info.inventory(source.parent, out) != before:
-            raise RunError(
-                "source_changed", phase, "source or nearest uv.lock changed during execution"
+        source_changed = _source_changes(
+            before, source_info.inventory(source.parent, out), source, stage_entries
+        )
+        if source_changed is not None:
+            print(
+                f"tactus: source changed during the run: {source_changed['message']}",
+                file=sys.stderr,
             )
         identity = {"kind": "tactus.functional-run"}
         receipt = {
@@ -280,6 +352,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "parameters": effective,
             **before,
             "git": git,
+            "source_changed": source_changed,
             "materials": inputs_used["materials"],
             "tools": inputs_used["tools"],
             "python_packages": python_packages,
@@ -333,6 +406,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "render": str(out / "render.json") if checkpoint else None,
             "render_bytes": sum(f.stat().st_size for f in (out / "render").glob("*.npy")),
             "levels": levels,
+            **({"source_changed": source_changed} if source_changed is not None else {}),
         }
     except (MaterialError, ToolError) as exc:
         code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"

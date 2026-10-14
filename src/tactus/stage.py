@@ -114,6 +114,7 @@ class _RunParts:
         "_lock_identity",
         "_lock_identity_set",
         "calls",
+        "created",
         "dependency_lock",
         "python_version",
         "reuse",
@@ -138,6 +139,8 @@ class _RunParts:
         self._lock_identity: Any = None
         self._lock_identity_set = False
         self.calls: list[dict[str, Any]] = []
+        # Entries this run wrote, with the source files their keys used (see `_discard`).
+        self.created: list[tuple[Path, frozenset[str]]] = []
 
     def lock_identity(self) -> Any:
         """The lock's hash, or a sorted `(distribution, version)` fallback with no lock."""
@@ -178,12 +181,34 @@ def _begin_run(
     )
 
 
-def _end_run() -> list[dict[str, Any]]:
-    """Return this run's `stages` receipt entries, in call order; clears the context."""
+def _end_run() -> tuple[list[dict[str, Any]], list[tuple[Path, frozenset[str]]]]:
+    """Return this run's `stages` receipt entries, in call order, and the entries it wrote.
+
+    Clears the context. `run.py` hands the written entries to `_discard` when source
+    changed during the run.
+    """
     global _context
     calls = _context.calls if _context is not None else []
+    created = _context.created if _context is not None else []
     _context = None
-    return calls
+    return calls, created
+
+
+def _discard(
+    created: list[tuple[Path, frozenset[str]]], changed: set[str], *, lock_changed: bool
+) -> list[str]:
+    """Remove entries this run wrote whose key used a file that changed during the run.
+
+    The key holds the hashes from the start of the run, but a file edited before it was
+    imported executed its new bytes; such an entry could be replayed for the wrong source.
+    A changed lock is part of every key. Returns the removed keys.
+    """
+    removed = []
+    for directory, files in created:
+        if lock_changed or files & changed:
+            shutil.rmtree(directory, ignore_errors=True)
+            removed.append(directory.name)
+    return removed
 
 
 def _stage_dir(key: str) -> Path:
@@ -293,10 +318,13 @@ def _encode_for_storage(value: Any, arrays: list[np.ndarray]) -> Any:
 
 def _store(
     directory: Path, structure: Any, arrays: list[np.ndarray], record: dict[str, Any]
-) -> None:
-    """Write a stage hit's arrays and sidecar atomically; a same-key entry is left as-is."""
+) -> bool:
+    """Write a stage's arrays and sidecar atomically; a same-key entry is left as-is.
+
+    Returns whether this call created the entry.
+    """
     if directory.is_dir():
-        return
+        return False
     directory.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f"{directory.name}.building-", dir=directory.parent))
     try:
@@ -312,6 +340,8 @@ def _store(
         if not directory.is_dir():
             staging.rename(directory)
             staging = None
+            return True
+        return False
     finally:
         if staging is not None:
             shutil.rmtree(staging, ignore_errors=True)
@@ -399,7 +429,8 @@ def stage[F: Callable[..., Any]](func: F) -> F:
             try:
                 arrays: list[np.ndarray] = []
                 structure = _encode_for_storage(result, arrays)
-                _store(_stage_dir(key), structure, arrays, captured)
+                if _store(_stage_dir(key), structure, arrays, captured):
+                    context.created.append((_stage_dir(key), frozenset(context.source_files)))
             except _NotStorable as exc:
                 reason = str(exc)
 

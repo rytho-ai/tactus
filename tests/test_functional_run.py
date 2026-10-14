@@ -259,7 +259,7 @@ def test_existing_destination_is_untouched_before_source_loading(tmp_path):
 
 
 @pytest.mark.parametrize("target", ["song.py", "uv.lock"])
-def test_changed_source_or_lock_fails_attribution(tmp_path, target):
+def test_source_or_lock_edited_during_a_run_keeps_the_run_and_says_so(tmp_path, target):
     entry = source(
         tmp_path,
         f"""import numpy as np
@@ -270,10 +270,54 @@ def render():
     return {{"sample_rate": 8000, "outputs": {{"a": np.zeros(8)}}}}
 """,
     )
-    with pytest.raises(RunError) as failure:
-        run(entry, out=tmp_path / "out")
-    assert failure.value.code == "source_changed"
-    assert not (tmp_path / "out").exists()
+    if target == "uv.lock":
+        (entry.parent / "uv.lock").write_text("version = 1\n")
+    start = hashlib.sha256((entry.parent / target).read_bytes()).hexdigest()
+    result = run(entry, out=tmp_path / "out")
+    receipt = read(result["receipt"])
+    changed = receipt["source_changed"]
+    assert result["source_changed"] == changed
+    assert changed["certain"] is False and target in changed["message"]
+    if target == "song.py":
+        # The receipt keeps the start inventory: the bytes this run loaded.
+        assert receipt["source_files"]["song.py"] == start
+        [edit] = changed["files"]
+        assert edit["path"] == "song.py" and edit["imported"] is True
+        assert edit["start_sha256"] == start != edit["end_sha256"]
+        assert changed["dependency_lock"] is None
+    else:
+        assert receipt["dependency_lock"]["sha256"] == start
+        assert changed["files"] == []
+        assert changed["dependency_lock"]["start"]["sha256"] == start
+    assert Path(result["outputs"]["a"]).is_file()
+
+
+def test_edit_to_an_unimported_file_is_reported_as_not_affecting_the_audio(tmp_path):
+    entry = source(
+        tmp_path,
+        """import numpy as np
+from pathlib import Path
+def render():
+    Path("scratch.py").write_text("print('changed')\\n")
+    return {"sample_rate": 8000, "outputs": {"a": np.zeros(8)}}
+""",
+    )
+    (entry.parent / "scratch.py").write_text("print('start')\n")
+    result = run(entry, out=tmp_path / "out")
+    changed = read(result["receipt"])["source_changed"]
+    assert changed["certain"] is True
+    assert [(f["path"], f["imported"]) for f in changed["files"]] == [("scratch.py", False)]
+
+
+def test_unchanged_source_reports_no_change(tmp_path):
+    entry = source(
+        tmp_path,
+        "import numpy as np\ndef render():\n"
+        "    return {'sample_rate': 8000, 'outputs': {'a': np.zeros(8)}}\n",
+    )
+    result = run(entry, out=tmp_path / "out")
+    assert read(result["receipt"])["source_changed"] is None
+    assert "source_changed" not in result
 
 
 def test_partial_delivery_is_cleaned_but_completed_render_survives(tmp_path):
