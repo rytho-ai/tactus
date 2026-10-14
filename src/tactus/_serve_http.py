@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import signal
 import socket
 from collections.abc import Callable
 from typing import Any
@@ -141,6 +142,10 @@ def bind(host: str, port: int) -> socket.socket:
     return sock
 
 
+def _interrupt(_signum: int, _frame: object) -> None:
+    raise KeyboardInterrupt
+
+
 def serve(
     service: Service,
     *,
@@ -148,10 +153,14 @@ def serve(
     port: int = 0,
     announce: Callable[[str], None] = lambda url: None,
 ) -> dict[str, Any]:
-    """Start the service, serve HTTP until interrupted, stop the worker; return a summary."""
+    """Start the service, serve HTTP until SIGINT/SIGTERM, stop the worker; return a summary."""
     import uvicorn
 
     sock = bind(host, port)
+    url = None
+    # uvicorn shuts down gracefully on SIGINT/SIGTERM, then re-raises the signal to the
+    # handler it found; this one ends serving (also while loading) so the worker stops too.
+    previous = signal.signal(signal.SIGTERM, _interrupt)
     try:
         service.start()
         address = sock.getsockname()
@@ -161,12 +170,11 @@ def serve(
         server = uvicorn.Server(
             uvicorn.Config(create_app(service), log_level="warning", access_log=False)
         )
-        try:
-            server.run(sockets=[sock])
-        except KeyboardInterrupt:
-            # uvicorn re-raises the Ctrl-C it handled once it has shut down.
-            pass
-        return {"url": url, **service.status()}
+        server.run(sockets=[sock])
+    except KeyboardInterrupt:
+        pass
     finally:
+        signal.signal(signal.SIGTERM, previous)
         service.close()
         sock.close()
+    return {"url": url, **service.status()}

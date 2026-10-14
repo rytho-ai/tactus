@@ -72,9 +72,9 @@ def test_launcher_dispatch_honors_uv_owner_and_keeps_caller_paths(projects, monk
 
     def execute(command, **kwargs):
         calls.append((command, kwargs))
-        return type("Completed", (), {"returncode": 0})()
+        return type("Started", (), {"wait": lambda self: 0, "send_signal": lambda self, n: None})()
 
-    monkeypatch.setattr(launcher.subprocess, "run", execute)
+    monkeypatch.setattr(launcher.subprocess, "Popen", execute)
     assert launcher.main() == 0
     command, options = calls[0]
     assert command[3] == str(projects[1])
@@ -88,7 +88,7 @@ def test_uv_work_missing_lock_does_not_dispatch_elsewhere(projects, monkeypatch,
     (projects[1] / "uv.lock").unlink()
     monkeypatch.setenv("UV_RUN_RECURSION_DEPTH", "1")
     monkeypatch.setattr(sys, "argv", ["tactus", "doctor"])
-    monkeypatch.setattr(launcher.subprocess, "run", lambda *a, **k: pytest.fail("fallback"))
+    monkeypatch.setattr(launcher.subprocess, "Popen", lambda *a, **k: pytest.fail("fallback"))
     assert launcher.main() == 2
     assert str(projects[1]) in json.loads(capsys.readouterr().out)["error"]["message"]
 
@@ -129,9 +129,9 @@ def dispatched(monkeypatch, argv):
 
     def execute(command, **kwargs):
         calls.append((command, kwargs))
-        return type("Completed", (), {"returncode": 0})()
+        return type("Started", (), {"wait": lambda self: 0, "send_signal": lambda self, n: None})()
 
-    monkeypatch.setattr(launcher.subprocess, "run", execute)
+    monkeypatch.setattr(launcher.subprocess, "Popen", execute)
     return launcher.main(), calls
 
 

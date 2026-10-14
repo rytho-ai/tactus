@@ -128,7 +128,8 @@ def test_only_loopback_hosts_bind():
     assert refused.value.code == "invalid_request"
 
 
-def test_cli_serves_until_interrupted(tmp_path):
+@pytest.mark.parametrize("stop", [signal.SIGINT, signal.SIGTERM])
+def test_cli_serves_until_interrupted(tmp_path, stop):
     root = tmp_path / "work"
     root.mkdir()
     (root / "song.py").write_text(WORK)
@@ -147,7 +148,7 @@ def test_cli_serves_until_interrupted(tmp_path):
         port = int(line.split()[2].rsplit(":", 1)[1])
         status, result = call(port, "POST", "/render", {"params": {"level": 0.1}})
         assert status == 200 and result["render"] is None
-        process.send_signal(signal.SIGINT)
+        process.send_signal(stop)
         out, _ = process.communicate(timeout=20)
     finally:
         if process.poll() is None:
@@ -166,3 +167,23 @@ def test_cli_refuses_a_non_loopback_host(tmp_path, capsys):
     code = main(["serve", str(root / "song.py"), "--out", str(tmp_path / "s"), "--host", "0.0.0.0"])
     assert code == 2
     assert json.loads(capsys.readouterr().out)["error"]["code"] == "invalid_request"
+
+
+def test_launcher_forwards_sigterm_and_waits_for_the_work(tmp_path):
+    script = (
+        "import signal, sys, time\n"
+        "signal.signal(signal.SIGTERM, lambda *a: sys.exit(7))\n"
+        "print('ready', flush=True)\n"
+        "time.sleep(30)\n"
+    )
+    driver = (
+        "import sys\n"
+        "from tactus.launcher import _delegate\n"
+        f"sys.exit(_delegate([sys.executable, '-c', {script!r}], dict(__import__('os').environ)))\n"
+    )
+    process = subprocess.Popen(
+        [sys.executable, "-c", driver], stdout=subprocess.PIPE, text=True, cwd=tmp_path
+    )
+    assert process.stdout.readline().strip() == "ready"
+    process.send_signal(signal.SIGTERM)
+    assert process.wait(timeout=10) == 7

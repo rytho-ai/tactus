@@ -160,14 +160,15 @@ def test_launcher_uses_locked_project_interpreter_without_recursion(work, monkey
     monkeypatch.setattr(sys, "argv", ["tactus", "analyze", "stereo", "width", "audio.wav"])
     calls = []
 
-    class Completed:
-        returncode = 7
+    class Started:
+        def wait(self):
+            return 7
 
     def run(command, **kwargs):
         calls.append((command, kwargs))
-        return Completed()
+        return Started()
 
-    monkeypatch.setattr(launcher.subprocess, "run", run)
+    monkeypatch.setattr(launcher.subprocess, "Popen", run)
     assert launcher.main() == 7
     command, kwargs = calls[0]
     assert command[1:5] == ["run", "--project", str(work), "--locked"]

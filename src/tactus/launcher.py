@@ -11,11 +11,32 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 from .project import environment_root, selected_project
+
+
+def _delegate(command: list[str], env: dict[str, str]) -> int:
+    """Run the work's command and wait for it, even through Ctrl-C.
+
+    A terminal's Ctrl-C reaches the whole process group, so the child handles it itself
+    (a `tactus serve` shuts down and prints its summary); the launcher keeps waiting
+    instead of abandoning it. SIGTERM, which a program sends to the launcher alone, is
+    forwarded.
+    """
+    process = subprocess.Popen(command, env=env)
+    previous = signal.signal(signal.SIGTERM, lambda signum, _frame: process.send_signal(signum))
+    try:
+        while True:
+            try:
+                return process.wait()
+            except KeyboardInterrupt:
+                continue
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
 def main() -> int:
@@ -61,7 +82,7 @@ def main() -> int:
                 "tactus.cli",
                 *args,
             ]
-            return subprocess.run(command, env=env, check=False).returncode
+            return _delegate(command, env)
         from .cli import main as cli_main
 
         return cli_main(args)
