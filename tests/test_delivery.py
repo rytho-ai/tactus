@@ -144,7 +144,7 @@ def test_web_lossy_reports_decoded_length_and_records_ffmpeg(rendered, tmp_path,
     assert entry["file"].endswith(suffix) and entry["bitrate"] == "96k"
     assert isinstance(entry["decoded"]["frames"], int) and entry["decoded"]["frames"] > 0
     assert isinstance(entry["decoded"]["offset_frames"], int)
-    assert entry["decoded"]["decoder"] == "ffmpeg"
+    assert entry["decoded"]["decoder"].startswith("ffmpeg")
     assert [tool["name"] for tool in record["provenance"]["inputs"]["tools"]] == ["ffmpeg"]
     mismatch = record["result"]["decoded_mismatch"]
     assert isinstance(mismatch, list)
@@ -266,3 +266,28 @@ def test_web_and_curves_on_a_run_without_a_map(tmp_path):
     with pytest.raises(RunError) as failure:
         export(tmp_path / "run", tmp_path / "srt", "srt", output="mix", lane="lyrics")
     assert "has no map" in str(failure.value)
+
+
+NOISE = """import numpy as np
+
+def render():
+    noise = np.random.default_rng(7).standard_normal(100_003) * 0.2
+    return {"sample_rate": 48000, "outputs": {"mix": noise}}
+"""
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+def test_web_aac_reports_the_length_a_browser_plays(tmp_path):
+    # ffmpeg's decoder emits the last AAC packet whole; the MP4 declares the real length
+    # (Chrome's decodeAudioData returns exactly it).
+    entry = tmp_path / "work" / "song.py"
+    entry.parent.mkdir()
+    entry.write_text(NOISE)
+    run(entry, out=tmp_path / "run")
+    record = export(tmp_path / "run", tmp_path / "aac", "web", codec="aac", bitrate="224k")
+    decoded = json.loads((tmp_path / "aac" / "bundle.json").read_text())["outputs"]["mix"]["decoded"]
+    assert decoded["frames"] == 100_003
+    assert decoded["offset_frames"] == 0
+    assert decoded["padding_frames"] > 0
+    assert decoded["decoder"] == "ffmpeg, trimmed to the MP4's declared length"
+    assert record["result"]["decoded_mismatch"] == []

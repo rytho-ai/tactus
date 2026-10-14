@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import io
 import math
+import struct
 import subprocess
 import tempfile
 from bisect import bisect_right
@@ -69,6 +70,49 @@ def _offset(source: np.ndarray, decoded: np.ndarray, rate: int) -> int | None:
     return index if index <= span else index - len(lags)
 
 
+def _mp4_frames(path: Path, rate: int) -> int | None:
+    """Frames an MP4 declares it plays: the sample table minus the edit list's priming.
+
+    ffmpeg's encoder truncates the last packet's duration to the real length and starts the
+    edit list after the encoder delay; players that honor both (browsers) play exactly that,
+    while ffmpeg's decoder still emits the whole last packet. None when the file does not
+    say (no track, or a media timescale other than the sample rate).
+    """
+    data = path.read_bytes()
+    found: dict[str, int] = {}
+
+    def walk(start: int, end: int) -> None:
+        while start + 8 <= end:
+            size, kind = struct.unpack(">I4s", data[start : start + 8])
+            header = 8
+            if size == 1:
+                size, header = struct.unpack(">Q", data[start + 8 : start + 16])[0], 16
+            elif size == 0:
+                size = end - start
+            if size < header:
+                return
+            body = start + header
+            if kind in (b"moov", b"trak", b"mdia", b"edts"):
+                walk(body, start + size)
+            elif kind == b"mdhd" and "duration" not in found:
+                wide = data[body] == 1
+                fields = data[body + 20 : body + 32] if wide else data[body + 12 : body + 20]
+                found["timescale"], found["duration"] = struct.unpack(
+                    ">IQ" if wide else ">II", fields
+                )
+            elif kind == b"elst" and "media_time" not in found:
+                wide = data[body] == 1
+                if struct.unpack(">I", data[body + 4 : body + 8])[0]:  # entry count
+                    layout, width = (">Qq", 16) if wide else (">Ii", 8)
+                    found["media_time"] = struct.unpack(layout, data[body + 8 : body + 8 + width])[1]
+            start += size
+
+    walk(0, len(data))
+    if found.get("timescale") != rate or "duration" not in found:
+        return None
+    return found["duration"] - max(found.get("media_time", 0), 0)
+
+
 def _decode(path: Path, codec: str, channels: int, ffmpeg: Path | None) -> np.ndarray:
     if ffmpeg is None:
         return sf.read(path, dtype="float32", always_2d=True)[0]
@@ -100,7 +144,9 @@ def web(
     ffmpeg, recorded as a tool. Files are audio/<name>-<sha8>.<ext>, sha8 being the first 8
     hex of the PCM24 WAV sha256 (the run's own WAV name). Each encoded file is decoded again
     and its frame count and offset against the source are reported, not refused; this is
-    that decoder's view (ffmpeg keeps AAC's end padding, browsers may trim it). The map is
+    that decoder's view. For AAC the decoded audio is first trimmed to the length the MP4
+    declares (its sample table minus the edit list's priming), which is what browsers play;
+    ffmpeg alone would add the last packet's padding (`padding_frames`). The map is
     copied as frames (`map`) and as seconds (`map_seconds`). No resampling, normalization,
     mixing or trimming. Pass --names as a JSON list to bundle only those outputs.
     """
@@ -143,6 +189,14 @@ def web(
                 )
                 source.unlink()
             decoded = _decode(file, codec, channels, ffmpeg)
+            decoder = "ffmpeg" if lossy else "soundfile"
+            padding = None
+            if codec == "aac":
+                declared = _mp4_frames(file, sample_rate)
+                if declared is not None and declared <= len(decoded):
+                    padding = len(decoded) - declared
+                    decoded = decoded[:declared]
+                    decoder = "ffmpeg, trimmed to the MP4's declared length"
             reference = pcm.astype(np.float64) / 2**31
             offset = 0 if not lossy else _offset(reference, decoded, sample_rate)
             frames = len(audio)
@@ -159,7 +213,8 @@ def web(
                 "decoded": {
                     "frames": len(decoded),
                     "offset_frames": offset,
-                    "decoder": "ffmpeg" if lossy else "soundfile",
+                    "decoder": decoder,
+                    **({} if padding is None else {"padding_frames": padding}),
                 },
                 **levels,
                 "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[

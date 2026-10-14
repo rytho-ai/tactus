@@ -320,11 +320,13 @@ None of these resamples, normalizes, mixes or trims.
   `receipt_sha256`, `map_sha256`), `sample_rate`, per output `file`, `codec`, `bitrate`,
   `frames`, `seconds`, `channels`, `source_sha256`, `peak_dbfs`, `clipped_samples`,
   `integrated_lufs` (`null` when too short), `peaks` (largest absolute sample per bucket) and
-  `decoded` (`frames`, `offset_frames`, `decoder`), plus `map` (frames) and `map_seconds`
+  `decoded` (`frames`, `offset_frames`, `decoder`; AAC adds `padding_frames`), plus `map` (frames) and `map_seconds`
   (every position divided by the rate). The codec is required; `aac` (.m4a) and `opus` need
   `--bitrate` and run `ffmpeg`, recorded as a tool. Each file is decoded again and differences
-  are reported in the result's `decoded_mismatch`, not refused; ffmpeg keeps AAC's end padding
-  (One Tape: 838656 decoded frames for 837818), which browsers may trim. `wav` writes the
+  are reported in the result's `decoded_mismatch`, not refused. ffmpeg decodes AAC's last
+  packet whole (One Tape: 838656 frames for 837818), so AAC is first trimmed to the length the
+  MP4 declares (sample table minus the edit list's priming), which is what browsers play; the
+  surplus is `padding_frames`. `wav` writes the
   run's PCM24 bytes; `flac` decodes to the same samples.
 - **`srt --output NAME --lane NAME [--text-field text]`** writes `<lane>.srt` from a spans lane;
   frames become the nearest millisecond (an exact half goes later). Items without text are
