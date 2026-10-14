@@ -15,10 +15,12 @@ from __future__ import annotations
 import hashlib
 import io
 import math
+import os
 import struct
 import subprocess
 import tempfile
 from bisect import bisect_right
+from concurrent.futures import ThreadPoolExecutor
 from itertools import pairwise
 from pathlib import Path
 
@@ -182,68 +184,76 @@ def web(
 
     (out / "audio").mkdir()
     entries, mismatched = {}, []
+    def deliver_one(name: str, audio: np.ndarray, temporary: str) -> tuple[str, bool, dict]:
+        payload, levels = encode_pcm24(audio, sample_rate)
+        digest = hashlib.sha256(payload).hexdigest()
+        file = out / "audio" / f"{name}-{digest[:8]}.{CODECS[codec]}"
+        pcm, _ = sf.read(io.BytesIO(payload), dtype="int32", always_2d=True)
+        channels = pcm.shape[1]
+        if codec == "wav":
+            file.write_bytes(payload)
+        elif codec == "flac" and depth == 16:
+            # Round PCM24 to 16 bits (half to even), no dither: a choice the caller made.
+            rounded = np.clip(np.round(pcm / 65536.0), -32768, 32767).astype(np.int16)
+            sf.write(file, rounded, sample_rate, subtype="PCM_16")
+        elif codec == "flac":
+            sf.write(file, pcm, sample_rate, subtype="PCM_24")
+        else:
+            source = Path(temporary) / f"{name}.wav"
+            source.write_bytes(payload)
+            subprocess.run(
+                [str(ffmpeg), "-v", "error", "-nostdin", "-y", "-i", str(source),
+                 *_FFMPEG[codec], "-b:a", bitrate, str(file)],
+                check=True,
+                capture_output=True,
+            )
+            source.unlink()
+        decoded = _decode(file, codec, channels, ffmpeg)
+        decoder = "ffmpeg" if lossy else "soundfile"
+        padding = None
+        if codec == "aac":
+            declared = _mp4_frames(file, sample_rate)
+            if declared is not None and declared <= len(decoded):
+                padding = len(decoded) - declared
+                decoded = decoded[:declared]
+                decoder = "ffmpeg, trimmed to the MP4's declared length"
+        reference = pcm.astype(np.float64) / 2**31
+        offset = 0 if not lossy else _offset(reference, decoded, sample_rate)
+        frames = len(audio)
+        mismatch = len(decoded) != frames or offset not in (0, None)
+        return name, mismatch, {
+            "file": file.relative_to(out).as_posix(),
+            "codec": codec,
+            "bitrate": bitrate,
+            "bit_depth": depth,
+            "frames": frames,
+            "seconds": frames / sample_rate,
+            "channels": channels,
+            "source_sha256": digest,
+            "decoded": {
+                "frames": len(decoded),
+                "offset_frames": offset,
+                "decoder": decoder,
+                **({} if padding is None else {"padding_frames": padding}),
+            },
+            **levels,
+            "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[
+                "integrated_lufs"
+            ],
+            "peaks": None
+            if peaks == 0
+            else {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
+        }
+
     with tempfile.TemporaryDirectory(prefix="tactus-web-") as temporary:
-        for name, audio in selected.items():
-            payload, levels = encode_pcm24(audio, sample_rate)
-            digest = hashlib.sha256(payload).hexdigest()
-            file = out / "audio" / f"{name}-{digest[:8]}.{CODECS[codec]}"
-            pcm, _ = sf.read(io.BytesIO(payload), dtype="int32", always_2d=True)
-            channels = pcm.shape[1]
-            if codec == "wav":
-                file.write_bytes(payload)
-            elif codec == "flac" and depth == 16:
-                # Round PCM24 to 16 bits (half to even), no dither: a choice the caller made.
-                rounded = np.clip(np.round(pcm / 65536.0), -32768, 32767).astype(np.int16)
-                sf.write(file, rounded, sample_rate, subtype="PCM_16")
-            elif codec == "flac":
-                sf.write(file, pcm, sample_rate, subtype="PCM_24")
-            else:
-                source = Path(temporary) / f"{name}.wav"
-                source.write_bytes(payload)
-                subprocess.run(
-                    [str(ffmpeg), "-v", "error", "-nostdin", "-y", "-i", str(source),
-                     *_FFMPEG[codec], "-b:a", bitrate, str(file)],
-                    check=True,
-                    capture_output=True,
-                )
-                source.unlink()
-            decoded = _decode(file, codec, channels, ffmpeg)
-            decoder = "ffmpeg" if lossy else "soundfile"
-            padding = None
-            if codec == "aac":
-                declared = _mp4_frames(file, sample_rate)
-                if declared is not None and declared <= len(decoded):
-                    padding = len(decoded) - declared
-                    decoded = decoded[:declared]
-                    decoder = "ffmpeg, trimmed to the MP4's declared length"
-            reference = pcm.astype(np.float64) / 2**31
-            offset = 0 if not lossy else _offset(reference, decoded, sample_rate)
-            frames = len(audio)
-            if len(decoded) != frames or offset not in (0, None):
-                mismatched.append(name)
-            entries[name] = {
-                "file": file.relative_to(out).as_posix(),
-                "codec": codec,
-                "bitrate": bitrate,
-                "bit_depth": depth,
-                "frames": frames,
-                "seconds": frames / sample_rate,
-                "channels": channels,
-                "source_sha256": digest,
-                "decoded": {
-                    "frames": len(decoded),
-                    "offset_frames": offset,
-                    "decoder": decoder,
-                    **({} if padding is None else {"padding_frames": padding}),
-                },
-                **levels,
-                "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[
-                    "integrated_lufs"
-                ],
-                "peaks": None
-                if peaks == 0
-                else {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
-            }
+        # Encoding runs in ffmpeg or libsndfile, outside the GIL: outputs in parallel, order kept.
+        workers = max(1, min(len(selected), os.cpu_count() or 1, 8))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            done = list(pool.map(lambda item: deliver_one(*item, temporary), selected.items()))
+    for name, mismatch, entry in done:
+        entries[name] = entry
+        if mismatch:
+            mismatched.append(name)
     identity = run_identity or {}
     bundle = {
         "kind": "tactus.web-bundle",
