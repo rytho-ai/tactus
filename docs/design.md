@@ -128,6 +128,20 @@ Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都
 
 **尚未定案：**source rebuild 的完整依賴與隨機性契約、超出現有 receipt 的歸因範圍。不能從素材 hash 相同推定所有重新執行都可重現。
 
+## 作品的介面：交出時間、收進決定、接得起來
+
+MV、互動作品與現場演出用到的功能是同一個介面的三個部分（原則見 [positioning](positioning.md#8-作品可以有介面座標是音樂的時間)），座標都是某個 output 的 frames：
+
+| 部分 | 作品做的事 | Tactus 提供 |
+|---|---|---|
+| 交出時間 | `render` 回傳 `"map"`：grid、lanes、segments 與 `joins` | 驗證與 `map.json`（見時間地圖）；`export` 的 `web`／`srt`／`curves` 把同一份地圖轉成網頁、字幕與逐格曲線（見帶地圖的交付） |
+| 收進決定 | 以參數或演奏檔案接受決定，不合法時丟 `InvalidParameters` | `--params`／`--param-file`，演奏隨 run 保存（見演奏檔案作為輸入）；要在播放中算下一段時用 `tactus serve`（見常駐的渲染服務） |
+| 接得起來 | 在地圖宣告可循環、可離開的位置與可接的片段 | 結構與參照檢查已提供；逐一量測接點的 `join` 分析（不連續、交叉淡化、拍點相位）是待實作的方向，只回報數值 |
+
+一首只交付聲音的作品三件都不需要；MV 通常只用第一件；互動作品三件都用。畫面、遊戲規則、狀態轉移與播放器 UI 留在作品或下游：Tactus 不知道「玩家剛才去過哪裡」，作品從演奏紀錄自己算。理由：五件互動作品與三支 MV 各自重寫同一套 `world.json`、速度常數、轉檔與接點檢查，《一卷帶子》改用地圖與 `export web` 後不再有自己的轉檔、雜湊與速度常數，Island 改用 `tactus serve` 後每步從 3.97 秒降到 1.38 秒，兩者聲音逐 byte 相同。
+
+**尚未定案：**`join` 分析的介面；多份 receipt 組成的一場演奏是否需要 Tactus 的 session 格式；互動作品的 skill 是否獨立於 compose。
+
 ## 套件與工具邊界：自有算法與專門引擎
 
 Tactus 以少數 base dependencies 涵蓋常用工作，其餘算法自有或由作品選裝。Base environment 包含 NumPy、SciPy、SoundFile、Numba、Pedalboard、pytimestretch、pyqmdsp 與 Mido，讓 production code 可以直接使用。Librosa 以 `tactus[librosa]` optional extra 提供，預設不安裝，內建分析也不呼叫它；作品以 `uv add "tactus[librosa]"` 選裝，開發比對用 `uv run --extra librosa pytest -m reference`；dev 額外安裝 pytest／Ruff。Global CLI 與作品環境分開，extra 不自動帶入新作品。Pyloudnorm 不在任何 dependency group；loudness 以保存的獨立參考答案、數學測試與 EBU 素材驗證。這是可用性上的產品選擇，不宣稱每個套件在數學上都不可取代，套件選定也不代表 runtime 已完成整合。
