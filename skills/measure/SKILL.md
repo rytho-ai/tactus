@@ -1,6 +1,6 @@
 ---
 name: measure
-description: Use or write objective audio analyses for Tactus. Use for loudness, peaks, spectra, rhythm estimates, interpreting analysis coordinates and images, custom descriptors, analysis-function validation, registering work-local tactus analyze commands, comparing renders or turning observations into creative control data.
+description: Use or write objective audio analyses for Tactus. Use for loudness, peaks, spectra, rhythm estimates, joins and loop wraps, interpreting analysis coordinates and images, custom descriptors, analysis-function validation, registering work-local tactus analyze commands, comparing renders or turning observations into creative control data.
 ---
 
 # Measure audio and write analyses
@@ -39,6 +39,49 @@ feature against numerical data and the selected audio; an image does not establi
 audibility. Tactus supplies basic matrix views; annotation and diagnostic workflows
 belong to downstream tools. When judging annotated material independently, inspect the
 unmarked view first; use marks afterward to communicate locations.
+
+## Check joins and loop wraps
+
+Where the work says audio is joined, measure the joined signal at the declared positions
+with `tactus analyze join seams` (step, prediction error and high-frequency burst), `fades`
+(dip or bump through a crossfade) and `onset_phase` (onsets against a beat grid you give).
+Positions are seconds on the input's clock; nothing is estimated. Compare each join with
+ordinary positions of the same music, passed as `--reference-s` (usually bar lines), not
+with "the largest step inside": that is one drum attack and hid 0.15–0.25 FS wrap steps in
+One Tape. The threshold belongs to the work; the analysis only reports.
+
+```bash
+tactus analyze join seams runs/a --wrap --reference-s '[1.5, 3.0, 4.5]' --brief  # loop run
+```
+
+A run whose `render` returned a map already holds the positions. Join `at` stays relative to
+the segment start after `timemap.to_seconds`, and `"bars"` means that output's bar lines:
+
+```python
+def seam_arguments(time_map, rate, segment):
+    """seams keyword arguments for one map segment: joins, bar lines and the loop wrap."""
+    m = timemap.to_seconds(time_map, rate)
+    seg = m["segments"][segment]
+    start, end = seg["start"], seg["end"]
+    grid = m.get("outputs", {}).get(seg["output"], {}).get("grid", {})
+    inner = [b for b in grid.get("bars", []) if start < b < end]
+    at = set()
+    for exit_point in seg["joins"]:
+        points = inner if exit_point["at"] == "bars" else [start + t for t in exit_point["at"]]
+        at.update(p for p in points if start < p < end)
+    arguments = {"at_s": sorted(at), "reference_s": inner}
+    if seg["loop"]:
+        arguments["wrap_range_s"] = [start, end]
+    return seg["output"], arguments
+```
+
+Read `map.json` and `manifest.json` from the run, then call
+`join.seams(audio, rate, **arguments)` on that output's WAV. A join between two outputs needs
+the audio as the player overlaps them: render or assemble that performance and measure it.
+Measure whole outputs rather than excerpts, whose summaries cover only the excerpt. A codec
+can break an exact loop: `tactus export web` AAC files keep the source length, so decode a
+delivered file to WAV outside Tactus (with the decoder that matters, such as the browser's)
+and measure it with `--wrap`. `analyze` itself does not read AAC.
 
 ## Write an analysis when the question needs one
 

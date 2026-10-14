@@ -11,6 +11,7 @@ available analyses, parameters and exact definitions in the installed version.
 - [Onsets and feature arrays](#onsets-and-feature-arrays)
 - [Spectrograms, Q transforms, tempogram and images](#stft-mel-spectrogram-cqt-vqt-tempogram-and-images)
 - [Dynamics and spectral distribution](#dynamics-and-spectral-distribution)
+- [Joins and loops](#joins-and-loops)
 
 Add `--brief` to print only `path`, `output`, `analysis` and `result` when you need the
 number and not the parameters and provenance.
@@ -239,6 +240,9 @@ The declarations are checked against the computation and serialization in
 | `rhythm.onsets` | Estimated time-point events on envelope grid | Empty list if no estimates; no window-center claim |
 | `rhythm.onset_strength` | Series of compensated grid points; frontend/delay/lag declared | Mean positive Mel dB difference or log10(1+magnitude) difference; silence zero |
 | `rhythm.tempogram` | Grid [tempo, time], centered window_frames*hop_samples/rate; nonuniform BPM from integer lags | Relative periodicity 0–1; zero-lag normalization; silence zero |
+| `join.seams` | Point-event records at declared positions (`time_s`, input start; a wrap sits at its end frame with `to_s`), reference records, whole-input/reference summaries | FS steps; dB prediction error and HF burst; dBFS levels; null for zero energy, silent fit regions or no references |
+| `join.fades` | Point-event records per position, plus a records series of window ends relative to each position (`origin: "position"`, window_samples/rate) | dBFS contour, dB dip/bump; null for zero energy |
+| `join.onset_phase` | Onset point events on the onset hop grid with range/grid attributes; range spans with `end_key` | ms and subdivision offsets from the declared grid; empty when no estimates; null medians for empty ranges |
 
 ## Beat analysis
 
@@ -505,3 +509,138 @@ change in gain does not change the descriptor. Uniform spectra approach 1; conce
 spectra approach 0. Zero-power frames return null for all three. Opposite-phase channels
 can cancel. These values describe distributions; they do not identify instruments or grade
 mix quality. See [descriptor regression tests](../tests/test_analysis_descriptors.py).
+
+## Joins and loops
+
+`tactus analyze join` measures what happens where a work says audio is joined: a loop's
+wrap, a bar line where lanes change, a crossfade. The work declares the positions; nothing
+is estimated, and no map is read. Results are numbers only: whether a join is acceptable is
+the work's threshold.
+
+| Command after `tactus analyze join` | Observation |
+| --- | --- |
+| `seams` | Step, slope change, boundary prediction error, high-frequency burst, levels and peak at each position, beside references |
+| `fades` | RMS contour through each position, with its dip and bump |
+| `onset_phase` | Onset candidates in given ranges as offsets from a given beat grid |
+
+Positions are seconds on the input's own clock, resolved with `timing.frame_of`; a join at
+frame `j` is the boundary between samples `j-1` and `j`. `at_s` lists joins inside the input,
+`wrap` measures a loop file's last frame running into frame 0, and `wrap_range_s=[start, end]`
+a loop inside a longer file (end may equal the file length). A wrap is measured on the tail
+and head concatenated, which is what a looping player plays; its context is clipped to half
+the loop. `reference_s` lists ordinary positions of the same music, usually bar lines, which
+are measured the same way. With no positions the result is empty.
+
+```bash
+tactus analyze join seams runs/a --wrap --brief         # every output of a loop run
+tactus analyze join seams tape.wav --at-s '[21.82, 27.27]' --reference-s '[10.91, 16.36]'
+tactus analyze join fades tape.wav --at-s '[21.82]' --span-s 0.2
+tactus analyze join onset_phase tape.wav --ranges-s '[[21.82, 24.55]]' --bpm 88 --origin-s 0
+```
+
+`seams` takes the maximum over channels for steps and prediction errors, so a click in one
+channel is reported; levels average channel powers like `level.rms`.
+
+- `step` is `|x[j] - x[j-1]|` and `slope_step` the change of the first difference across the
+  boundary. A step alone misses breaks in smooth material: in One Tape's atlanta `*_b0` loops
+  the wrap step equals an ordinary bar line's (0.002–0.003 FS), while `residual_db` and
+  `hf_burst_db` read about 30 and 20 dB above every bar line of the same loop.
+- `residual_db` fits a linear predictor (autocorrelation method, `lpc_order` 16, Hann
+  window over the preceding `lpc_fit_s` 10 ms) and predicts the first sample after the
+  boundary; the error relative to the predictor's own RMS error, in dB, backwards as well,
+  larger kept. Only the boundary sample is predicted, because errors further on measure how
+  new the next material is: a kick starting over a quiet bed would read higher than a click.
+  One sample's error varies by 10–20 dB between ordinary positions of real music, so read it
+  against references. The residual RMS has a −120 dBFS floor: sound entering from near
+  silence reads very high but finite.
+- `hf_burst_db` is power above `hf_hz` (8 kHz, zero-phase 4th-order Butterworth) within
+  ±`click_window_s` (1 ms) of the boundary, relative to the median at the references, or at
+  windows every 50 ms of the input when no references are given (`hf_baseline`).
+- `level_before_dbfs`/`level_after_dbfs` use `window_s` (0.5 s) each side, shortened equally
+  near the input's or loop's edges. A downbeat is louder than the beat before it; pass one
+  bar when short windows are unfair. Zero energy gives null.
+- `typical_step_p999` and `typical_step_max` describe the whole input. The maximum is usually
+  one drum attack, which is why checks that compared a wrap with "the largest step inside"
+  passed One Tape's cruise and basement wraps: their steps are 0.15–0.25 FS against bar-line
+  steps (median) of 0.001–0.009 FS and a maximum inside of 0.20–0.33 FS.
+- `reference_*` summarize the reference records (median and maximum step and prediction
+  error, largest HF burst and largest absolute level change).
+
+These defaults were chosen on synthetic clicks, a phase flip and a kick with an equal "max
+step in ±5 ms" ratio, and on the One Tape and Door loops: every predictor order (8–32) and
+fit window (10–40 ms) tried separated One Tape's broken wraps from all of their bar lines by
+at least 16 dB. Order 16 over 10 ms stays within 2 dB of the best combination on both the
+click/kick pair (20 dB apart) and the broken wraps (21 dB minimum margin). Predicting four
+samples instead of one narrowed both margins. Nobody has yet listened to which measured
+breaks are audible: a number here says where to listen, not what is heard.
+
+`fades` windows end at the boundary plus multiples of the hop, all within ±`span_s`, with
+rectangular windows like `level.rms_curve`. `curve` is a long table of `position` index,
+`offset_s` (window end relative to the boundary) and `rms_dbfs`. `before_dbfs`/`after_dbfs` are
+the outer quarter of windows on each side; `dip_db` is the minimum minus the quieter side and
+`bump_db` the maximum minus the louder side, so a plain level step reads near zero. An
+equal-gain crossfade of uncorrelated material dips about 3 dB and equal-power stays near 0;
+the analysis does not know the material's correlation and does not judge a crossfade law.
+
+`onset_phase` takes a grid as `beat_s` (frozen beats, at least two) or `bpm` with `origin_s`,
+and `subdivision` (2 for eighths): each onset is compared with the nearest point of that grid,
+so eighth-note material reads near zero with `subdivision=2` instead of half a beat. Onsets
+come from `rhythm.onsets` over the whole input. They are candidates on its envelope grid, so
+a click at a known time reads up to one hop early or late; `resolution_ms` reports that hop.
+A range without onsets gives `count: 0` and null medians.
+
+**Positions from a run's map.** A work that returns a map (see
+[the time map](../skills/references/runtime.md#the-time-map-optional)) already has every position. Its join `at` stays
+relative to the segment start after `timemap.to_seconds`, and `"bars"` means the bar lines
+of that output's grid inside the segment:
+
+```python
+import json
+from pathlib import Path
+
+import soundfile as sf
+from tactus import timemap
+from tactus.analysis import join
+
+
+def seam_arguments(time_map, rate, segment):
+    """seams keyword arguments for one map segment: joins, bar lines and the loop wrap."""
+    m = timemap.to_seconds(time_map, rate)
+    seg = m["segments"][segment]
+    start, end = seg["start"], seg["end"]
+    grid = m.get("outputs", {}).get(seg["output"], {}).get("grid", {})
+    inner = [b for b in grid.get("bars", []) if start < b < end]
+    at = set()
+    for exit_point in seg["joins"]:
+        points = inner if exit_point["at"] == "bars" else [start + t for t in exit_point["at"]]
+        at.update(p for p in points if start < p < end)
+    arguments = {"at_s": sorted(at), "reference_s": inner}
+    if seg["loop"]:
+        arguments["wrap_range_s"] = [start, end]
+    return seg["output"], arguments
+
+
+run = Path("runs/a")
+manifest = json.loads((run / "manifest.json").read_text())
+time_map = json.loads((run / "map.json").read_text())
+rate = manifest["sample_rate"]
+for name in time_map["segments"]:
+    output, arguments = seam_arguments(time_map, rate, name)
+    audio, _ = sf.read(run / manifest["outputs"][output]["file"])
+    result = join.seams(audio, rate, **arguments)  # a loop segment's wrap is the last join
+```
+
+A segment covering a whole loop output gives `wrap_range_s=[0, length]`, the same as
+`wrap=True`. Joins between two different outputs (clip B laid over clip A's tail) need the
+joined audio: the player's rule decides how they overlap, so assemble or render that
+performance, then pass the join's position on its clock. The recipe is exercised by
+[the join tests](../tests/test_join_analysis.py).
+
+**Measure on whole outputs.** An excerpt starts its own clock at zero and its whole-input
+summaries describe only the excerpt; give positions on that clock if you must measure one.
+
+**Delivered files.** A codec can break a loop that was exact in the run. `tactus export web`
+with AAC trims each file to the length a browser plays, equal to the source frames, so a
+delivered loop can be checked by decoding it to WAV outside Tactus (with the decoder whose
+trimming matters, such as the browser's) and measuring that WAV with `--wrap`. `analyze`
+reads through libsndfile and does not decode AAC or M4A itself.

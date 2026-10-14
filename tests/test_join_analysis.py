@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -383,3 +385,10 @@ def test_cli_rejects_positions_without_a_traceback(tmp_path, capsys):
     error = json.loads(captured.out)["error"]
     assert error["code"] == "analysis_failed" and "at_s 5.0 s" in error["message"]
     assert "Traceback" not in captured.err
+
+
+@pytest.mark.parametrize("document", ["docs/analysis.md", "skills/measure/SKILL.md"])
+def test_documented_map_recipe_is_the_tested_one(document):
+    text = (Path(__file__).resolve().parents[1] / document).read_text(encoding="utf-8")
+    source = inspect.getsource(seam_arguments)
+    assert source in text

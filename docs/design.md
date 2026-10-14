@@ -136,11 +136,11 @@ MV、互動作品與現場演出用到的功能是同一個介面的三個部分
 |---|---|---|
 | 交出時間 | `render` 回傳 `"map"`：grid、lanes、segments 與 `joins` | 驗證與 `map.json`（見時間地圖）；`export` 的 `web`／`srt`／`curves` 把同一份地圖轉成網頁、字幕與逐格曲線（見帶地圖的交付） |
 | 收進決定 | 以參數或演奏檔案接受決定，不合法時丟 `InvalidParameters` | `--params`／`--param-file`，演奏隨 run 保存（見演奏檔案作為輸入）；要在播放中算下一段時用 `tactus serve`（見常駐的渲染服務） |
-| 接得起來 | 在地圖宣告可循環、可離開的位置與可接的片段 | 結構與參照檢查已提供；逐一量測接點的 `join` 分析（不連續、交叉淡化、拍點相位）是待實作的方向，只回報數值 |
+| 接得起來 | 在地圖宣告可循環、可離開的位置與可接的片段，把位置交給量測 | 結構與參照檢查；`join` 分析在宣告的位置量測不連續（`seams`）、交叉淡化（`fades`）與拍點相位（`onset_phase`），只回報數值（見驗證與觀察的接縫與循環） |
 
 一首只交付聲音的作品三件都不需要；MV 通常只用第一件；互動作品三件都用。畫面、遊戲規則、狀態轉移與播放器 UI 留在作品或下游：Tactus 不知道「玩家剛才去過哪裡」，作品從演奏紀錄自己算。理由：五件互動作品與三支 MV 各自重寫同一套 `world.json`、速度常數、轉檔與接點檢查，《一卷帶子》改用地圖與 `export web` 後不再有自己的轉檔、雜湊與速度常數，Island 改用 `tactus serve` 後每步從 3.97 秒降到 1.38 秒，兩者聲音逐 byte 相同。
 
-**尚未定案：**`join` 分析的介面；多份 receipt 組成的一場演奏是否需要 Tactus 的 session 格式；互動作品的 skill 是否獨立於 compose。
+**尚未定案：**多份 receipt 組成的一場演奏是否需要 Tactus 的 session 格式；互動作品的 skill 是否獨立於 compose。
 
 ## 套件與工具邊界：自有算法與專門引擎
 
@@ -215,6 +215,7 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 - `level`：`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`、`crest_factor`，以及 `momentary_loudness`、`short_term_loudness`、`loudness_range`、`rms_curve`、`peak_curve`、`crest_factor_curve`。
 - `spectral`：`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`、`bandwidth`、`rolloff`、`flatness`、`mel`、`chroma`、`mfcc`、`cqt`、`vqt`、`tuning`。
 - `rhythm`：`beats`、`onset_strength`、`onsets`、`tempogram`。
+- `join`：`seams`、`fades`、`onset_phase`。
 
 數值定義、單位與限制由 [analysis 文件](analysis.md) 維護；以下只記錄設計邊界。
 
@@ -229,6 +230,8 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 **Q transforms、tempogram 與矩陣圖片：**CQT／VQT 是直接濾波器定義，不承諾與 librosa 逐值相同。Tempogram 保留半速／倍速候選，不推定唯一 BPM。DTW 不納入。`analysis.image(result, ...)` 從既有矩陣產生 SVG，不增加繪圖依賴，供所有矩陣分析共用；STFT 從 revision 2 起直接回傳陣列，取代舊的摘要與 Python `out=` 寫檔介面，CLI 需要 `--out`。不同分析的 dB 單位不同（Q 與 Mel 是特徵單位、非 dBFS），色階不能直接當成相同音量比較。Python 始終能取得完整矩陣。見 [STFT、Mel、Q transforms 與圖片](analysis.md#stft-mel-spectrogram-cqt-vqt-tempogram-and-images) 與 [Q-transform 測試](../tests/test_q_transforms.py)。
 
 **拍點：**`tactus analyze rhythm beats FILE` 與 Python 使用同一函式，結果與直接呼叫 pyqmdsp 一致，並在驗證素材上接近原 Vamp 參考；這是特定素材的驗證，不保證所有音樂準確。有效音訊太短或全靜音時回傳空陣列與 `bpm: null`，不猜測小節或第一拍。採用後依 frozen-analysis 規則固定成素材或 source 常數。見 [拍點分析](analysis.md#beat-analysis)。
+
+**接縫與循環：**`join` 在作品宣告的位置量測接點：`at_s`（輸入內的接點秒數）、`wrap`／`wrap_range_s`（loop 繞回開頭，量測尾端接上開頭的虛擬串接）與 `reference_s`（同一段音樂的一般位置，通常是小節線）。秒數以 `timing.frame_of` 換成 frame，與音樂擺放、excerpt 邊界同一規則；不估計 tempo、小節或強拍，也不讀地圖：從地圖取位置是作品幾行程式的事，文件附上經測試的寫法。兩段 clip 怎麼疊接是播放規則，屬於作品或地圖，`join` 只量已接好的聲音。`seams` 同時回報 sample step、斜率變化、邊界樣本的線性預測誤差與高頻爆量，旁邊放整段與參照位置的同一組數字，由作品自己比較，不給單一比值或門檻。理由：互動作品各自寫的「wrap step 不大於 loop 內最大一步」以一下鼓聲為準，放過了《一卷帶子》cruise 與 basement 0.15–0.25 FS 的 wrap 跳動（同一 loop 小節線只有 0.001–0.009）；album 的單一比值分不出爆音與強拍，onset 折疊有固定偏一格的誤差。Render 時的週期性（算三個循環比較）需要 renderer，不在分析內。數值定義、預設值的依據與從地圖取位置的寫法見 [joins and loops](analysis.md#joins-and-loops)。
 
 **沒有 `pitch` category：**現有 fundamental 與 f0 估計方法在未見素材上不可靠（帶有比 fundamental 更大聲低八度層的 SFZ bass 讓每種方法失準），在有更可靠的方法之前不提供。`spectral tuning` 是範圍窄得多的量測：整段訊號只回一個相對 A440 的偏差（cents）與集中程度，供 `chroma` 的 `tuning` 與重新調音使用；它不估計音高、調性或和弦。
 
