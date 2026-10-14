@@ -99,7 +99,8 @@ def web(
     (.m4a) or opus (.opus); aac and opus need --bitrate (e.g. 224k) and are encoded with
     ffmpeg, recorded as a tool. Files are audio/<name>-<sha8>.<ext>, sha8 being the first 8
     hex of the PCM24 WAV sha256 (the run's own WAV name). Each encoded file is decoded again
-    and its frame count and offset against the source are reported, not refused. The map is
+    and its frame count and offset against the source are reported, not refused; this is
+    that decoder's view (ffmpeg keeps AAC's end padding, browsers may trim it). The map is
     copied as frames (`map`) and as seconds (`map_seconds`). No resampling, normalization,
     mixing or trimming. Pass --names as a JSON list to bundle only those outputs.
     """
@@ -155,7 +156,11 @@ def web(
                 "seconds": frames / sample_rate,
                 "channels": channels,
                 "source_sha256": digest,
-                "decoded": {"frames": len(decoded), "offset_frames": offset},
+                "decoded": {
+                    "frames": len(decoded),
+                    "offset_frames": offset,
+                    "decoder": "ffmpeg" if lossy else "soundfile",
+                },
                 **levels,
                 "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[
                     "integrated_lufs"

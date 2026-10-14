@@ -105,7 +105,8 @@ def test_web_wav_reproduces_the_published_pcm(rendered, tmp_path):
         assert entry["file"] == f"audio/{item['file'].replace('.wav', '')}.wav"
         assert (tmp_path / "web" / entry["file"]).read_bytes() == (rendered / item["file"]).read_bytes()
         assert entry["source_sha256"] == item["sha256"] and entry["frames"] == item["frames"]
-        assert entry["decoded"] == {"frames": item["frames"], "offset_frames": 0}
+        assert entry["decoded"] == {"frames": item["frames"], "offset_frames": 0,
+                                    "decoder": "soundfile"}
         assert entry["seconds"] == item["frames"] / 8000
         assert len(entry["peaks"]["values"]) == 100 and entry["peaks"]["buckets"] == 100
         assert entry["peak_dbfs"] == item["peak_dbfs"]
@@ -143,6 +144,7 @@ def test_web_lossy_reports_decoded_length_and_records_ffmpeg(rendered, tmp_path,
     assert entry["file"].endswith(suffix) and entry["bitrate"] == "96k"
     assert isinstance(entry["decoded"]["frames"], int) and entry["decoded"]["frames"] > 0
     assert isinstance(entry["decoded"]["offset_frames"], int)
+    assert entry["decoded"]["decoder"] == "ffmpeg"
     assert [tool["name"] for tool in record["provenance"]["inputs"]["tools"]] == ["ffmpeg"]
     mismatch = record["result"]["decoded_mismatch"]
     assert isinstance(mismatch, list)
