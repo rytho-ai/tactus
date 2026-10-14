@@ -7,6 +7,8 @@ Original arrays are committed before PCM delivery; completed renders survive a
 delivery failure. Stage reuse, saved takes and output formats have dedicated owners.
 Shared errors/JSON/audio contracts live in _contracts; source and environment
 identities live in _source. RunError and parse_params remain available here.
+A worker loads the work (`_load`: inventory, Git record, take snapshot, import) and then
+renders one request (`_render`); a resident service (serve.py) keeps one load for many.
 
 Reads: _contracts · _source · inputs · stage · takes/render_store · store/revision
 """
@@ -24,6 +26,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass, field
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
@@ -41,7 +44,7 @@ from ._contracts import (
     validate_audio_mapping,
     write_json,
 )
-from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
+from .inputs import MaterialError, ToolError, _record_snapshot, _replay, _reset_record
 from .inputs.pool import hash_file
 from .store import OutputStore
 
@@ -203,19 +206,28 @@ def run(
         if not completed:
             if process is not None:
                 _stop(process)
-            if (out / "render.json").is_file():
-                # Keep the complete original arrays/receipt/takes, remove partial default WAVs.
-                for path in out.glob("*.wav"):
-                    path.unlink(missing_ok=True)
-                (out / "manifest.json").unlink(missing_ok=True)
-            else:
-                shutil.rmtree(out, ignore_errors=True)
+            _clean_failed(out)
+
+
+def _clean_failed(out: Path) -> None:
+    """Remove a failed run's directory, or only its partial WAVs once render.json exists."""
+    if (out / "render.json").is_file():
+        # Keep the complete original arrays/receipt/takes, remove partial default WAVs.
+        for path in out.glob("*.wav"):
+            path.unlink(missing_ok=True)
+        (out / "manifest.json").unlink(missing_ok=True)
+    else:
+        shutil.rmtree(out, ignore_errors=True)
 
 
 def _parameter_files(
-    param_files: dict[str, str | Path], inline: dict[str, Any]
+    param_files: dict[str, str | Path | bytes], inline: dict[str, Any]
 ) -> dict[str, tuple[Any, bytes, dict[str, Any]]]:
-    """Read and strictly parse each NAME=FILE once: (value, exact bytes, receipt record)."""
+    """Read and strictly parse each NAME=FILE once: (value, exact bytes, receipt record).
+
+    A `bytes` value is a file's content sent without a path (a service request); its
+    record's `path` is null.
+    """
     if not isinstance(param_files, dict):
         raise TypeError("param_files must map parameter names to JSON files")
     files = {}
@@ -224,13 +236,15 @@ def _parameter_files(
             raise ValueError(f"parameter file name must be a parameter name, got {name!r}")
         if name in inline:
             raise ValueError(f"parameter {name!r} is given both inline and as a file")
+        given = isinstance(path, bytes)
         try:
-            payload = Path(path).read_bytes()
+            payload = path if given else Path(path).read_bytes()
             value = strict_json(payload)
         except (OSError, ValueError, TypeError, RecursionError) as exc:
-            raise ValueError(f"parameter file {name}={path}: {exc}") from exc
+            label = "(request body)" if given else path
+            raise ValueError(f"parameter file {name}={label}: {exc}") from exc
         record = {
-            "path": str(path),
+            "path": None if given else str(path),
             "sha256": hashlib.sha256(payload).hexdigest(),
             "bytes": len(payload),
             "copy": f"parameters/{name}.json",
@@ -291,11 +305,24 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray], dict[str, Any] |
     return rate, outputs, time_map
 
 
+def _work_modules(root: Path) -> set[str]:
+    """Work files (relative to `root`) that this process has imported so far."""
+    imported = set()
+    for module in list(sys.modules.values()):
+        file = getattr(module, "__file__", None)
+        if isinstance(file, str):
+            path = Path(file).resolve()
+            if path.is_relative_to(root):
+                imported.add(path.relative_to(root).as_posix())
+    return imported
+
+
 def _source_changes(
     before: source_info.SourceInventory,
     after: source_info.SourceInventory,
     entry: Path,
     stage_entries: list[tuple[Path, frozenset[str]]],
+    loaded: frozenset[str] | None = None,
 ) -> dict[str, Any] | None:
     """Describe source/lock edits made while `render` ran, or None when nothing changed.
 
@@ -305,17 +332,15 @@ def _source_changes(
     hash comparison cannot tell, so such a file is reported as uncertain. Stage entries
     this run wrote with a changed file in their key are removed rather than kept under
     start hashes they may not match.
+
+    `loaded` (a resident service) names the work files its load imported before the
+    inventory could change: they ran their recorded bytes, so editing them is certain and
+    each file says `imported_at_load`.
     """
     if after == before:
         return None
     root = entry.parent
-    imported = {entry.relative_to(root).as_posix()}
-    for module in list(sys.modules.values()):
-        file = getattr(module, "__file__", None)
-        if isinstance(file, str):
-            path = Path(file).resolve()
-            if path.is_relative_to(root):
-                imported.add(path.relative_to(root).as_posix())
+    imported = {entry.relative_to(root).as_posix(), *_work_modules(root)}
     start, end = before["source_files"], after["source_files"]
     files = [
         {
@@ -323,6 +348,7 @@ def _source_changes(
             "start_sha256": start.get(path),
             "end_sha256": end.get(path),
             "imported": path in imported,
+            **({"imported_at_load": path in loaded} if loaded is not None else {}),
         }
         for path in sorted(start.keys() | end.keys())
         if start.get(path) != end.get(path)
@@ -332,7 +358,9 @@ def _source_changes(
         if before["dependency_lock"] == after["dependency_lock"]
         else {"start": before["dependency_lock"], "end": after["dependency_lock"]}
     )
-    uncertain = [item["path"] for item in files if item["imported"]]
+    uncertain = [
+        item["path"] for item in files if item["imported"] and not item.get("imported_at_load")
+    ]
     if lock is not None:
         uncertain.append((before["dependency_lock"] or after["dependency_lock"])["path"])
     if uncertain:
@@ -340,6 +368,12 @@ def _source_changes(
             f"{', '.join(uncertain)} changed while this run was using it; the receipt "
             "records the start of the run, but the audio may come from the edited "
             "version. Re-render to attribute the audio to the current source."
+        )
+    elif any(item.get("imported_at_load") for item in files):
+        message = (
+            f"{', '.join(item['path'] for item in files)} changed after the service loaded "
+            "it; this request ran the loaded bytes in the receipt's source_files, and the "
+            "next request loads the edited source."
         )
     else:
         message = (
@@ -358,46 +392,153 @@ def _source_changes(
     }
 
 
-def _execute(request: dict[str, Any]) -> dict[str, Any]:
-    """Worker-only execution; phase labels keep diagnostics useful to callers."""
-    source, out = Path(request["source"]), Path(request["out"])
-    phase = "load"
-    try:
-        before = source_info.inventory(source.parent, out)
-        snapshot = takes.snapshot_source(source, before)
-        git = revision.record(source.parent, out)
-        _reset_record()
-        reuse = bool(request.get("reuse", False))
+_CODES = {
+    "load": "load_failed",
+    "bind": "invalid_parameters",
+    "execute": "execution_failed",
+    "validate": "invalid_output",
+    "publish": "publication_failed",
+}
+
+
+def _failure(exc: BaseException, phase: str, out: Path | None) -> RunError:
+    """Map an exception raised in `phase` to the run's stable error codes."""
+    if isinstance(exc, (MaterialError, ToolError)):
+        code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"
+        return RunError(code, phase, str(exc))
+    if isinstance(exc, InvalidParameters):
+        # The work's own check of its parameters, distinct from a crash while rendering.
+        return RunError("invalid_parameters", "bind", str(exc))
+    message = f"{type(exc).__name__}: {exc}"
+    if out is not None and (out / "render.json").is_file():
+        message += (
+            f"; completed render retained at {out}; retry delivery with "
+            f"tactus export wav {out} --out NEW_DIR"
+        )
+    return RunError(_CODES[phase], phase, message)
+
+
+@dataclass
+class _Loaded:
+    """A work imported once, with the identities taken before the import.
+
+    `run` loads for one request; a resident service (`serve.py`) keeps it for many. The
+    inventory, Git record, patch and take snapshot are the load's: a request is attributed
+    to them only while the work's files still hash the same (the service checks).
+    """
+
+    source: Path
+    excluded: Path
+    reuse: bool
+    before: source_info.SourceInventory
+    snapshot: bytes
+    git: dict[str, Any] | None
+    patch: str | None
+    factory: Any
+    inputs: dict[str, Any] = field(default_factory=dict)
+    modules: frozenset[str] = frozenset()
+    environment: dict[str, Any] = field(default_factory=dict)
+    _packages: tuple[int, dict[str, str], dict[str, Any]] | None = None
+
+    def packages(self) -> tuple[dict[str, str], dict[str, Any]]:
+        """`python_packages` and `package_sources`, recomputed only when imports grew."""
+        count = len(sys.modules)
+        if self._packages is None or self._packages[0] != count:
+            python_packages = source_info.python_packages()
+            # Tactus itself is always attributed even though `packages_distributions()`
+            # does not map its own editable install back to `tactus.*` modules.
+            sources = source_info.package_sources(sorted({*python_packages, "tactus"}))
+            self._packages = (count, python_packages, sources)
+        return self._packages[1], self._packages[2]
+
+    def begin(self) -> None:
+        """Open the stage context and input record for a request (once per load for `run`)."""
         stage._begin_run(
-            reuse=reuse,
-            source_files=before["source_files"],
-            dependency_lock=before["dependency_lock"],
+            reuse=self.reuse,
+            source_files=self.before["source_files"],
+            dependency_lock=self.before["dependency_lock"],
             python_version=sys.version.split()[0],
             tactus_version=version("tactus"),
-            root=source.parent,
-            entry=source,
+            root=self.source.parent,
+            entry=self.source,
         )
+
+
+def _load(source: Path, excluded: Path, *, reuse: bool) -> _Loaded:
+    """Inventory, snapshot and import the work; `excluded` is left out of inventories."""
+    try:
+        before = source_info.inventory(source.parent, excluded)
+        snapshot = takes.snapshot_source(source, before)
+        git, patch = revision.read(source.parent)
+        _reset_record()
+        loaded = _Loaded(
+            source=source,
+            excluded=excluded,
+            reuse=reuse,
+            before=before,
+            snapshot=snapshot,
+            git=git,
+            patch=patch,
+            factory=None,
+        )
+        # Stage calls and inputs resolved while importing belong to the first request.
+        loaded.begin()
         sys.path.insert(0, str(source.parent))
         namespace = runpy.run_path(str(source), run_name="__tactus__")
-        phase = "bind"
-        factory = namespace.get("render")
-        arguments, effective = _bind(factory, request["params"])
+        loaded.factory = namespace.get("render")
+        loaded.inputs = _record_snapshot()
+        loaded.modules = frozenset({source.name, *_work_modules(source.parent)})
+        loaded.environment = source_info.environment()
+        return loaded
+    except RunError:
+        raise
+    except BaseException as exc:
+        raise _failure(exc, "load", None) from exc
+
+
+def _render(
+    loaded: _Loaded,
+    out: Path,
+    request: dict[str, Any],
+    *,
+    resident: bool = False,
+) -> dict[str, Any]:
+    """Bind, render and publish one request of a loaded work into the new directory `out`.
+
+    `resident` marks a service's warm load: source edits are judged against the files it
+    imported at load (see `_source_changes`). `request["service"]`, when given, is added
+    to the receipt as is.
+    """
+    source = loaded.source
+    phase = "bind"
+    try:
+        if stage._context is None:
+            # A previous request ended the load's context: start this one's, keeping the
+            # materials and tools the import resolved.
+            _reset_record()
+            _replay(loaded.inputs)
+            loaded.begin()
+        if loaded.patch is not None:
+            (out / "source.patch").write_text(loaded.patch, encoding="utf-8")
+        reuse = loaded.reuse
+        arguments, effective = _bind(loaded.factory, request["params"])
         phase = "execute"
         started = time.perf_counter()
-        result = factory(**arguments)
+        result = loaded.factory(**arguments)
         elapsed_seconds = round(time.perf_counter() - started, 3)
         stages, stage_entries = stage._end_run()
         inputs_used = _record_snapshot()
-        python_packages = source_info.python_packages()
-        environment = source_info.environment()
-        # Tactus itself is always attributed even though `packages_distributions()`
-        # does not map its own editable install back to `tactus.*` modules.
-        package_sources = source_info.package_sources(sorted({*python_packages, "tactus"}))
+        python_packages, package_sources = loaded.packages()
+        environment = loaded.environment
         phase = "validate"
         rate, outputs, time_map = _validate(result)
         phase = "publish"
         source_changed = _source_changes(
-            before, source_info.inventory(source.parent, out), source, stage_entries
+            loaded.before,
+            source_info.inventory(source.parent, loaded.excluded),
+            source,
+            stage_entries,
+            loaded.modules if resident else None,
         )
         if source_changed is not None:
             print(
@@ -415,8 +556,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "format_version": 4,
             "entry": {"path": str(source), "function": "render"},
             "parameters": effective,
-            **before,
-            "git": git,
+            **loaded.before,
+            "git": loaded.git,
             "source_changed": source_changed,
             "materials": inputs_used["materials"],
             "tools": inputs_used["tools"],
@@ -439,9 +580,11 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             receipt["map"] = map_entry
         if request.get("parameter_files"):
             receipt["parameter_files"] = request["parameter_files"]
+        if request.get("service") is not None:
+            receipt["service"] = request["service"]
         write_json(out / "receipt.json", receipt)
         take_refs = (
-            takes.publish_candidates(out, result["takes"], rate, snapshot)
+            takes.publish_candidates(out, result["takes"], rate, loaded.snapshot)
             if "takes" in result
             else {}
         )
@@ -481,26 +624,16 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             **({"source_changed": source_changed} if source_changed is not None else {}),
             **({"map": str(out / "map.json")} if map_entry is not None else {}),
         }
-    except (MaterialError, ToolError) as exc:
-        code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"
-        raise RunError(code, phase, str(exc)) from exc
-    except InvalidParameters as exc:
-        # The work's own check of its parameters, distinct from a crash while rendering.
-        raise RunError("invalid_parameters", "bind", str(exc)) from exc
-    except RunError:
-        raise
     except BaseException as exc:
-        codes = {
-            "load": "load_failed",
-            "bind": "invalid_parameters",
-            "execute": "execution_failed",
-            "validate": "invalid_output",
-            "publish": "publication_failed",
-        }
-        message = f"{type(exc).__name__}: {exc}"
-        if (out / "render.json").is_file():
-            message += (
-                f"; completed render retained at {out}; retry delivery with "
-                f"tactus export wav {out} --out NEW_DIR"
-            )
-        raise RunError(codes[phase], phase, message) from exc
+        if stage._context is not None:
+            stage._end_run()
+        if isinstance(exc, RunError):
+            raise
+        raise _failure(exc, phase, out) from exc
+
+
+def _execute(request: dict[str, Any]) -> dict[str, Any]:
+    """Worker-only execution; phase labels keep diagnostics useful to callers."""
+    source, out = Path(request["source"]), Path(request["out"])
+    loaded = _load(source, out, reuse=bool(request.get("reuse", False)))
+    return _render(loaded, out, request)

@@ -12,7 +12,8 @@ other directory a receipt attributes (an editable install's directory, for
 `commit_on_remote` support `init.py`'s decision of whether an editable checkout's `HEAD`
 can be pinned as a Git source for a new work (it must be clean and pushed).
 
-Reads: nothing else in tactus; invoked by run.py at inventory time and init.py at scaffold time.
+Reads: nothing else in tactus; invoked by run.py at inventory time (`read` once per load for a
+resident service) and init.py at scaffold time.
 """
 
 from __future__ import annotations
@@ -50,17 +51,28 @@ def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
     a `git` binary, or on any git failure (including a repository with no commits,
     where `HEAD` does not resolve).
     """
+    result, patch = read(entry_dir)
+    if patch is not None:
+        (out / "source.patch").write_text(patch, encoding="utf-8")
+    return result
+
+
+def read(entry_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
+    """`record` without writing: the record and the `source.patch` text it names, if any.
+
+    A resident service reads this once per load and writes the patch into each request.
+    """
     toplevel = _git(["rev-parse", "--show-toplevel"], entry_dir)
     if toplevel is None or toplevel.returncode != 0:
-        return None
+        return None, None
     head = _git(["rev-parse", "HEAD"], entry_dir)
     if head is None or head.returncode != 0:
-        return None
+        return None, None
     commit = head.stdout.strip()
 
     status = _git(["status", "--porcelain", "--", str(entry_dir)], entry_dir)
     if status is None or status.returncode != 0:
-        return None
+        return None, None
     # Untracked entries (`??`) are reported separately as `untracked`; dirty tracks
     # only tracked-file changes under the entry directory.
     dirty = any(line and not line.startswith("??") for line in status.stdout.splitlines())
@@ -70,7 +82,7 @@ def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
         entry_dir,
     )
     if untracked_proc is None or untracked_proc.returncode != 0:
-        return None
+        return None, None
     root = Path(toplevel.stdout.strip())
     untracked_paths = sorted(
         line for line in untracked_proc.stdout.splitlines() if line.endswith(".py")
@@ -81,17 +93,17 @@ def record(entry_dir: Path, out: Path) -> dict[str, Any] | None:
     if dirty or untracked_paths:
         diff = _git(["diff", "HEAD", "--binary", "--", str(entry_dir)], entry_dir)
         if diff is None or diff.returncode != 0:
-            return None
+            return None, None
         parts = [diff.stdout]
         for path in untracked_paths:
             # `--no-index` exits 1 when the files differ, which is always the case here.
             added = _git(["diff", "--no-index", "--binary", "--", "/dev/null", path], root)
             if added is None or added.returncode != 1:
-                return None
+                return None, None
             parts.append(added.stdout)
-        (out / "source.patch").write_text("".join(parts), encoding="utf-8")
         result["patch"] = "source.patch"
-    return result
+        return result, "".join(parts)
+    return result, None
 
 
 def describe(directory: Path) -> dict[str, Any] | None:
