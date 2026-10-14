@@ -175,6 +175,10 @@ def serve(
         pass
     finally:
         signal.signal(signal.SIGTERM, previous)
+        if url is not None:
+            # A terminal's Ctrl-C can arrive twice (the group's and uv's forwarded copy);
+            # the second must not interrupt stopping the worker or printing the summary.
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
         service.close()
         sock.close()
     return {"url": url, **service.status()}
