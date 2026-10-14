@@ -25,6 +25,7 @@ module; a work may keep its own time maths, or mix it with this one.
     clock.beat_of(20.0), clock.bpm_at(40.0)
     for bar in clock.bars(1, 12): ...     # .number .start_beat .beats .start_frame .end_frame
     clock.span(17, 25)                    # frame range of bars 17..24
+    clock.grid(1, 8)                      # bar frames for a render map (tactus.timemap)
     frame_of(3.3, 48000)                  # free time: plain seconds, no clock needed
     quantize(1.61, grid=0.25, strength=0.75)         # a performed beat moved toward its 16th
     note_seconds(clock, 0.0, 0.75)                   # a dotted eighth's seconds at that tempo
@@ -282,6 +283,26 @@ class Clock:
     def span(self, first_bar: int, end_bar: int) -> tuple[int, int]:
         """(first frame of first_bar, first frame of end_bar)."""
         return self.frame(first_bar), self.frame(end_bar)
+
+    def grid(self, first: int = 1, last: int | None = None, *, offset: int = 0) -> dict:
+        """The `grid` of a render map (see `tactus.timemap`) for bars first..last inclusive.
+
+        `bars` are `self.frame(n)` for each bar and `end` is `self.frame(last + 1)`, all
+        shifted by `offset` frames (where this clock's frame 0 sits in the output, e.g. a
+        track placed later in a tape). `beats_per_bar` is the meter's quarter beats: one
+        number when constant over these bars, else one per bar. Rounding stays `frame_of`.
+        """
+        last = first if last is None else last
+        if type(first) is not int or type(last) is not int or last < first:
+            raise ValueError("grid needs integer bars with first <= last")
+        meters = [self.beats_per_bar(n) for n in range(first, last + 1)]
+        meters = [int(q) if float(q).is_integer() else q for q in meters]
+        return {
+            "first_bar": first,
+            "bars": [self.frame(n) + offset for n in range(first, last + 1)],
+            "end": self.frame(last + 1) + offset,
+            "beats_per_bar": meters[0] if len(set(meters)) == 1 else meters,
+        }
 
 
 def frame_of(seconds: float, sample_rate: int) -> int:

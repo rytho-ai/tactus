@@ -5,6 +5,8 @@ receipt bytes; export never falls back to PCM if an existing checkpoint is corru
 read_published owns legacy run/excerpt manifests and their PCM verification.
 read prefers original arrays, falling back to published PCM only for legacy runs.
 prune removes a run's original arrays after verifying its published PCM, marker first.
+A run's map.json is bound by sha256 in render.json and manifest.json; every reader that
+returns a map verifies it against the marker it read (read_map for export).
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ class PublishedAudio:
     sample_rate: int
     outputs: dict[str, np.ndarray]
     references: dict[str, AudioRef]
+    time_map: dict | None = None
 
 
 class RenderOrigin(TypedDict):
@@ -56,6 +59,7 @@ class LoadedRender:
     sample_rate: int
     outputs: Mapping[str, np.ndarray]
     origin: Mapping[str, str]
+    map: dict | None = None
 
 
 class _OutputSelectionError(ValueError):
@@ -73,7 +77,7 @@ def read_published(
     try:
         manifest_bytes = manifest_path.read_bytes()
         manifest = json.loads(manifest_bytes)
-        if manifest.get("format_version") not in (1, 2, 3):
+        if manifest.get("format_version") not in (1, 2, 3, 4):
             raise ValueError(
                 f"unsupported manifest format_version: {manifest.get('format_version')!r}"
             )
@@ -100,10 +104,57 @@ def read_published(
             raise RunError(
                 "source_corrupt", "validate", f"output {name!r} failed verification: {exc}"
             ) from exc
-    return PublishedAudio(manifest_bytes, rate, full_outputs, references)
+    try:
+        time_map = _verified_map(manifest.get("map"), lambda name: run_dir / name)
+    except (KeyError, ValueError, TypeError, OSError) as exc:
+        raise RunError("source_corrupt", "validate", f"map failed verification: {exc}") from exc
+    return PublishedAudio(manifest_bytes, rate, full_outputs, references, time_map)
 
 
-def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> Path:
+def _verified_map(entry: object, file: Callable[[str], Path]) -> dict | None:
+    """The map a marker binds, re-hashed against its entry; None when there is none."""
+    if entry is None:
+        return None
+    if not isinstance(entry, dict) or entry.get("file") != "map.json":
+        raise ValueError("map entry must be {file: map.json, sha256}")
+    digest = entry["sha256"]
+    if not isinstance(digest, str) or not DIGEST_RE.fullmatch(digest):
+        raise ValueError("invalid map digest")
+    path = file("map.json")
+    if path.is_symlink():
+        raise ValueError("map.json must not be a symlink")
+    if hash_file(path) != digest:
+        raise ValueError("map.json hash mismatch")
+    value = json.loads(path.read_bytes())
+    if not isinstance(value, dict):
+        raise TypeError("map.json must hold an object")
+    return value
+
+
+def read_map(root: Path, origin: RenderOrigin) -> dict | None:
+    """The verified map of the render `read` returned (`origin`), or None without one.
+
+    The map is checked against the marker `origin` names (render.json for an original
+    render, manifest.json for published PCM), which must still be the bytes `read` saw.
+    """
+    marker = root / ("render.json" if origin["kind"] == "original-render" else "manifest.json")
+    try:
+        payload = marker.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != origin["sha256"]:
+            raise ValueError(f"{marker.name} changed since it was read")
+        return _verified_map(json.loads(payload).get("map"), lambda name: root / name)
+    except (KeyError, ValueError, TypeError, OSError, AttributeError) as exc:
+        raise RunError("source_corrupt", "validate", f"map failed verification: {exc}") from exc
+
+
+def publish(
+    root: Path,
+    rate: int,
+    outputs: dict,
+    takes: dict | None = None,
+    *,
+    time_map: dict | None = None,
+) -> Path:
     directory = root / "render"
     directory.mkdir()
     entries = {}
@@ -126,6 +177,8 @@ def publish(root: Path, rate: int, outputs: dict, takes: dict | None = None) -> 
     }
     if takes:
         manifest["takes"] = takes
+    if time_map is not None:
+        manifest["map"] = time_map
     write_json(root / "render.json", manifest)
     return root / "render.json"
 
@@ -158,7 +211,7 @@ def prune(root: Path) -> dict:
 def _checkpoint(
     file: Callable[[str, str | None], Path],
     outputs: list[str] | tuple[str, ...] | None = None,
-) -> tuple[int, dict[str, np.ndarray], str]:
+) -> tuple[int, dict[str, np.ndarray], str, dict | None]:
     """Shared original-array validation for local export and selected material reads."""
 
     def unique_pairs(pairs: list[tuple[str, object]]) -> dict:
@@ -226,7 +279,8 @@ def _checkpoint(
             raise ValueError(f"render array metadata mismatch: {name}")
         arrays[name] = audio
     validate_audio_mapping(arrays)
-    return rate, arrays, hashlib.sha256(payload).hexdigest()
+    time_map = _verified_map(manifest.get("map"), lambda name: file(name, None))
+    return rate, arrays, hashlib.sha256(payload).hexdigest(), time_map
 
 
 def load_render(ref: str, *, outputs: list[str] | tuple[str, ...] | None = None) -> LoadedRender:
@@ -251,7 +305,7 @@ def load_render(ref: str, *, outputs: list[str] | tuple[str, ...] | None = None)
         raise ValueError("outputs must be a nonempty list or tuple of unique names")
     files = _material_tree_files(ref)
     try:
-        rate, arrays, digest = _checkpoint(files.file, outputs)
+        rate, arrays, digest, time_map = _checkpoint(files.file, outputs)
     except _OutputSelectionError:
         raise
     except tree.TreeError as exc:
@@ -264,6 +318,7 @@ def load_render(ref: str, *, outputs: list[str] | tuple[str, ...] | None = None)
         rate,
         MappingProxyType(arrays),
         MappingProxyType({"ref": ref, "kind": "original-render", "sha256": digest}),
+        time_map,
     )
 
 
@@ -290,7 +345,7 @@ def read(root: Path) -> RenderedAudio:
                 raise ValueError(f"render file hash mismatch: {relative}")
             return file_path
 
-        rate, arrays, digest = _checkpoint(local_file)
+        rate, arrays, digest, _ = _checkpoint(local_file)
         return RenderedAudio(
             rate,
             arrays,

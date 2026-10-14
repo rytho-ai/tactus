@@ -2,6 +2,7 @@
 
 Owns request/process lifetime, render binding, receipts and failed-run cleanup.
 Source edited during a run is reported in the receipt (`source_changed`), not fatal.
+A returned map is validated (timemap) and bound as map.json before any output is written.
 Original arrays are committed before PCM delivery; completed renders survive a
 delivery failure. Stage reuse, saved takes and output formats have dedicated owners.
 Shared errors/JSON/audio contracts live in _contracts; source and environment
@@ -29,9 +30,10 @@ from typing import Any
 import numpy as np
 
 from . import _source as source_info
-from . import render_store, revision, stage, takes
+from . import render_store, revision, stage, takes, timemap
 from ._contracts import RunError, json_copy, parse_params, validate_audio_mapping, write_json
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
+from .inputs.pool import hash_file
 from .store import OutputStore
 
 __all__ = ["RunError", "parse_params", "run"]
@@ -202,15 +204,17 @@ def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[st
     return json_copy(effective), effective
 
 
-def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
-    example = 'Return {"sample_rate": 48000, "outputs": {"mix": audio}}; optional: "takes".'
+def _validate(result: Any) -> tuple[int, dict[str, np.ndarray], dict[str, Any] | None]:
+    example = (
+        'Return {"sample_rate": 48000, "outputs": {"mix": audio}}; optional: "takes", "map".'
+    )
     if not isinstance(result, dict):
         raise TypeError(
             f"render must return a dictionary, got {type(result).__name__}. {example}"
         )
     required = {"sample_rate", "outputs"}
     missing = required - result.keys()
-    unexpected = result.keys() - (required | {"takes"})
+    unexpected = result.keys() - (required | {"takes", "map"})
     if missing or unexpected:
         details = []
         if missing:
@@ -230,7 +234,8 @@ def _validate(result: Any) -> tuple[int, dict[str, np.ndarray]]:
     validate_audio_mapping(outputs)
     if "takes" in result:
         validate_audio_mapping(result["takes"])
-    return rate, outputs
+    time_map = timemap.validate(result["map"], outputs) if "map" in result else None
+    return rate, outputs, time_map
 
 
 def _source_changes(
@@ -336,7 +341,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         # does not map its own editable install back to `tactus.*` modules.
         package_sources = source_info.package_sources(sorted({*python_packages, "tactus"}))
         phase = "validate"
-        rate, outputs = _validate(result)
+        rate, outputs, time_map = _validate(result)
         phase = "publish"
         source_changed = _source_changes(
             before, source_info.inventory(source.parent, out), source, stage_entries
@@ -347,6 +352,11 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
                 file=sys.stderr,
             )
         identity = {"kind": "tactus.functional-run"}
+        map_entry = None
+        if time_map is not None:
+            # The receipt is written before any output, and the map is known now: bind it here.
+            write_json(out / "map.json", time_map)
+            map_entry = {"file": "map.json", "sha256": hash_file(out / "map.json")}
         receipt = {
             **identity,
             "format_version": 4,
@@ -372,6 +382,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "resolved materials, declared tools and imported third-party distributions. "
             "Not traced: undeclared files or executables, network access and randomness.",
         }
+        if map_entry is not None:
+            receipt["map"] = map_entry
         write_json(out / "receipt.json", receipt)
         take_refs = (
             takes.publish_candidates(out, result["takes"], rate, snapshot)
@@ -380,7 +392,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         )
         checkpoint = bool(request.get("checkpoint", True))
         if checkpoint:
-            render_store.publish(out, rate, outputs, take_refs)
+            render_store.publish(out, rate, outputs, take_refs, time_map=map_entry)
         # A completed render is durable before the optional default delivery can fail.
         store = OutputStore(out, rate)
         references = {}
@@ -398,6 +410,9 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         if "takes" in result:
             manifest["takes"] = take_refs
             manifest["format_version"] = 3
+        if map_entry is not None:
+            manifest["map"] = map_entry
+            manifest["format_version"] = 4
         write_json(out / "manifest.json", manifest)
         return {
             **({"takes": manifest["takes"]} if "takes" in manifest else {}),
@@ -409,6 +424,7 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
             "render_bytes": sum(f.stat().st_size for f in (out / "render").glob("*.npy")),
             "levels": levels,
             **({"source_changed": source_changed} if source_changed is not None else {}),
+            **({"map": str(out / "map.json")} if map_entry is not None else {}),
         }
     except (MaterialError, ToolError) as exc:
         code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"

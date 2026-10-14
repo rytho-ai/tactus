@@ -145,8 +145,9 @@ def save_take(run_dir: str | Path, name: str) -> dict[str, Any]:
         manifest = json.loads(marker.read_text())
         if (manifest["kind"], manifest["format_version"]) not in (
             ("tactus.functional-run", 3),
+            ("tactus.functional-run", 4),
             ("tactus.render", 1),
-        ):
+        ) or "takes" not in manifest:
             raise ValueError("run has no take candidates; return a takes mapping from render()")
         expected = manifest["takes"][name]
         tree.digest_from_ref(expected)

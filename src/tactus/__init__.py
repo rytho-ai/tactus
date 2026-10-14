@@ -6,7 +6,7 @@ import SciPy's signal package until an analysis (or DSP/synthesis) needs it.
 
 import importlib
 
-from . import fx, timing
+from . import fx, timemap, timing
 from .excerpt import excerpt
 from .inputs import MaterialError, ToolError, load_audio, material, tool
 from .render_store import LoadedRender, load_render
@@ -30,6 +30,7 @@ __all__ = [
     "material",
     "run",
     "stage",
+    "timemap",
     "timing",
     "tool",
 ]

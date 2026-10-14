@@ -49,6 +49,9 @@ these steps, with the same steps.
    representation that suits the work. Read the
    [render contract](../references/runtime.md#the-render-contract) before returning audio.
    Expose choices you want to compare as keyword-only parameters with JSON-valued defaults.
+   When players, checks or picture work need the piece's bars, sections or playable clips,
+   return them from the same code as a [time map](../references/runtime.md#the-render-contract)
+   rather than restating tempo constants elsewhere; its form is yours.
 4. **Render a candidate:** `tactus run song.py --out runs/a --params '{"gain": 0.2}'`.
    Choose a new directory each time; keep generated runs outside Git and available while
    listeners use them. Read the returned paths and [run results](../references/runtime.md#run-results).

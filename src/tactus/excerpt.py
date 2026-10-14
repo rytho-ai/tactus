@@ -6,9 +6,10 @@ outputs — no padding, fade, re-normalization or re-render — so it is sample-
 same frames of the source run even when the work's render is nondeterministic (e.g. a VST3
 instrument whose oscillator phases differ every render). Provenance is the source run itself:
 an excerpt keeps no receipt, only a `source` pointer (run path + manifest hash). Accepts a
-source manifest of `format_version` 1, 2 or 3. Excerpt outputs are already-clipped published
-audio, so each carries `peak_dbfs`/`clipped_samples` for the published slice (`clipped_samples`
-is always 0 there); its own manifest is `format_version` 2, following the run manifest.
+source manifest of `format_version` 1 to 4; a source map is not carried over. Excerpt outputs
+are already-clipped published audio, so each carries `peak_dbfs`/`clipped_samples` for the
+published slice (`clipped_samples` is always 0 there); its own manifest is `format_version` 2,
+following the run manifest.
 
 Reads: _contracts · render_store · store.OutputStore · timing.frame_of
 """
