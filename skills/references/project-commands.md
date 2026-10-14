@@ -316,8 +316,10 @@ None of these resamples, normalizes, mixes or trims.
 
 - **`web --codec wav|flac|aac|opus [--bitrate 224k] [--names JSON] [--peaks 2000]`** writes
   `audio/<name>-<sha8>.<ext>` (`sha8` from the PCM24 WAV's sha256, the run's own WAV name) and
-  `bundle.json` (`kind` `tactus.web-bundle`): `source` (`run`, `manifest_sha256`,
-  `receipt_sha256`, `map_sha256`), `sample_rate`, per output `file`, `codec`, `bitrate`,
+  `bundle.json` (`kind` `tactus.web-bundle`): `source` (`run`: the run directory's name only,
+  since bundles get published; `export.json` keeps the path; `manifest_sha256`,
+  `receipt_sha256`, `map_sha256`), `sample_rate`, per output `file` (relative to the bundle
+  directory), `codec`, `bitrate`,
   `frames`, `seconds`, `channels`, `source_sha256`, `peak_dbfs`, `clipped_samples`,
   `integrated_lufs` (`null` when too short), `peaks` (largest absolute sample per bucket) and
   `decoded` (`frames`, `offset_frames`, `decoder`; AAC adds `padding_frames`), plus `map` (frames) and `map_seconds`

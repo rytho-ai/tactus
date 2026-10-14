@@ -111,6 +111,7 @@ def test_web_wav_reproduces_the_published_pcm(rendered, tmp_path):
         assert len(entry["peaks"]["values"]) == 100 and entry["peaks"]["buckets"] == 100
         assert entry["peak_dbfs"] == item["peak_dbfs"]
     assert bundle["source"]["manifest_sha256"] and bundle["source"]["map_sha256"]
+    assert bundle["source"]["run"] == "run"   # a published bundle names the run, no local path
     assert bundle["map"]["outputs"]["mix"]["grid"]["bars"] == [0, 16000, 32000, 48000]
     assert bundle["map_seconds"]["outputs"]["mix"]["grid"]["bars"] == [0.0, 2.0, 4.0, 6.0]
     assert bundle["map_seconds"]["outputs"]["mix"]["lanes"]["lyrics"]["items"][0]["end"] == 12345 / 8000
@@ -195,7 +196,7 @@ def test_curves_join_levels_events_and_the_grid(rendered, tmp_path):
     assert grid["beat_phase"][1] == pytest.approx(0.2)
     assert curves["spans"]["sections"]["index"][19:21] == [0, 1]
     assert curves["spans"]["sections"]["labels"] == ["intro", "verse"]
-    assert curves["source"]["map_sha256"]
+    assert curves["source"]["map_sha256"] and curves["source"]["run"] == "run"
 
 
 def test_curves_sample_frame_times_without_drift(tmp_path):

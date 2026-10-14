@@ -40,6 +40,13 @@ def _selected(outputs: dict, names: list[str] | None) -> dict:
     return selected(outputs, names)
 
 
+def _run_name(identity: dict) -> str | None:
+    """The run directory's name: bundles get published, so no local path goes into them
+    (export.json beside them keeps the full path; the hashes identify the run)."""
+    run = identity.get("run")
+    return None if run is None else Path(run).name
+
+
 def waveform_peaks(audio: np.ndarray, buckets: int) -> list[float]:
     """Largest absolute sample per bucket across channels: an outline, not a waveform.
 
@@ -227,7 +234,7 @@ def web(
         "kind": "tactus.web-bundle",
         "format_version": 1,
         "source": {
-            "run": identity.get("run"),
+            "run": _run_name(identity),
             "manifest_sha256": identity.get("manifest_sha256"),
             "receipt_sha256": identity.get("receipt_sha256"),
             "map_sha256": identity.get("map_sha256"),
@@ -379,7 +386,7 @@ def curves(
         "frame_time": "start",
         "sample_rate": sample_rate,
         "source": {
-            "run": (run_identity or {}).get("run"),
+            "run": _run_name(run_identity or {}),
             "manifest_sha256": (run_identity or {}).get("manifest_sha256"),
             "map_sha256": (run_identity or {}).get("map_sha256"),
         },

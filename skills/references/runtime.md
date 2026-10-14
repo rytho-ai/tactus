@@ -64,7 +64,9 @@ of a named output; Tactus validates the structure and references and saves it as
 right. A work without bars returns lanes only, or no map.
 
 ```python
-clock = Clock(sample_rate=48000, tempo=110)
+from tactus.timing import Clock
+
+clock = Clock(sample_rate=48000, tempo=110)        # 3/4: Clock(..., meter=3)
 return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
     "outputs": {
         "mix": {"grid": clock.grid(1, 8),             # bars, end, beats_per_bar, first_bar
@@ -88,9 +90,11 @@ return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
 - `segments.NAME`: a region a player can loop, enter or leave: `output`, `start <= end <=
   tail_end` (the tail overlaps what follows), `loop`, `tags`, `label`. `joins` record where one
   may leave: `at` is `"bars"` (every bar line of that output's grid) or frames relative to
-  `start`, within the body. `to` is optional: `null` (the player decides), segment names, or
+  `start`, from 0 to `end - start` inclusive (the body's end is a valid exit). `to` is optional: `null` (the player decides), segment names, or
   `{"tags": [...]}`; `keep_phase` enters the target at the same offset. Rules that depend on
-  state (an hour, what was played before) stay in the work.
+  state (an hour, what was played before) stay in the work. A segment names one output; for
+  parallel stems that loop together, put the segment on one of them and name the others in
+  the work's own data (or a `label`/`tags` convention), as 《門》 does with `<space>_<stem>`.
 - `clock_hint` is any JSON, informational only. Unknown keys are rejected; every error names
   the field, e.g. `map.outputs.mix.grid.bars[3]: frames must not decrease`. The run fails
   with `invalid_output`. `tactus.timemap.validate(map, outputs)` is the same check for a
