@@ -17,7 +17,7 @@ from ._source import environment, package_sources
 from .commands import add_flags, registry
 from .excerpt import excerpt, parse_beats, parse_outputs, parse_range
 from .export import BUILTINS as EXPORTERS
-from .export import deliver
+from .export import deliver, flag_view
 from .init import init
 from .inputs import pool, tree
 from .project import environment_root, selected_project
@@ -214,7 +214,9 @@ def _main(argv: Sequence[str] | None = None) -> int:
         )
         sub.add_argument("--out", required=True, type=Path, help="New delivery directory")
         if selected:
-            names = add_flags(sub, fn, {"out", "run_dir", "help", "command", "export_name"})
+            names = add_flags(
+                sub, flag_view(fn), {"out", "run_dir", "help", "command", "export_name"}
+            )
             sub.set_defaults(callable_command=command, param_names=names)
     try:
         args = parser.parse_args(arguments)

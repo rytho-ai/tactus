@@ -6,10 +6,15 @@ rate and keyword-only out directory. Generated files are inventoried after execu
 wav, flac and stems share one names selection; wav and flac default to every output.
 store.encode_pcm24 owns quantization; FLAC transcodes its integer samples losslessly.
 Float WAVs are written without libsndfile's timestamped PEAK chunk, so bytes repeat.
+An exporter that declares keyword-only `time_map` and/or `run_identity` receives the run's
+verified map and identity; they never become CLI flags (flag_view). web, srt and curves
+(_delivery) use them; exporters without them load and run unchanged.
 """
 
 from __future__ import annotations
 
+import functools
+import inspect
 import io
 import json
 import shutil
@@ -23,6 +28,7 @@ import soundfile as sf
 
 from . import render_store
 from ._contracts import RunError, write_json
+from ._delivery import curves, srt, web
 from .commands import Command, identity
 from .inputs.pool import hash_file
 from .store import OutputStore, encode_pcm24
@@ -99,7 +105,31 @@ def stems(outputs, sample_rate, *, out: Path, names: list[str] | None = None) ->
     return {"names": selected, "clipped_samples": levels}
 
 
-BUILTINS = {"wav": wav, "flac": flac, "stems": stems}
+BUILTINS = {"wav": wav, "flac": flac, "stems": stems, "web": web, "srt": srt, "curves": curves}
+RUNTIME_KEYWORDS = ("time_map", "run_identity")
+
+
+def flag_view(fn):
+    """`fn` as the CLI sees it: the same parameters without the runtime keywords."""
+    signature = inspect.signature(fn)
+    if not any(name in signature.parameters for name in RUNTIME_KEYWORDS):
+        return fn
+
+    @functools.wraps(fn)
+    def view(*args, **kwargs):
+        return fn(*args, **kwargs)
+
+    view.__annotations__ = {
+        key: value for key, value in fn.__annotations__.items() if key not in RUNTIME_KEYWORDS
+    }
+    view.__signature__ = signature.replace(
+        parameters=[p for p in signature.parameters.values() if p.name not in RUNTIME_KEYWORDS]
+    )
+    return view
+
+
+def _sha256(path: Path) -> str | None:
+    return hash_file(path) if path.is_file() else None
 
 
 def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
@@ -118,12 +148,26 @@ def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
         provenance = begin(command, out)
         rendered = render_store.read(source)
         rate, arrays, origin = rendered.sample_rate, rendered.outputs, rendered.origin
+        time_map = render_store.read_map(source, origin)
+        map_sha256 = None if time_map is None else hash_file(source / "map.json")
         for audio in arrays.values():
             audio.flags.writeable = False
+        declared = inspect.signature(fn).parameters
+        runtime = {
+            "time_map": time_map,
+            "run_identity": {
+                "run": str(source),
+                "manifest_sha256": _sha256(source / "manifest.json"),
+                "receipt_sha256": _sha256(source / "receipt.json"),
+                "map_sha256": map_sha256,
+                "origin": dict(origin),
+            },
+        }
+        keywords = {**params, **{k: v for k, v in runtime.items() if k in declared}}
         out.mkdir(parents=True, exist_ok=False)
         created = True
         with redirect_stdout(sys.stderr):
-            result = fn(arrays, rate, out=out, **params)
+            result = fn(arrays, rate, out=out, **keywords)
         if not isinstance(result, dict):
             raise TypeError("exporter must return a JSON object")
         json.dumps(result, allow_nan=False)
@@ -149,7 +193,7 @@ def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
         record = {
             "kind": "tactus.export",
             "format_version": 1,
-            "source": origin,
+            "source": {**origin, "map": None if map_sha256 is None else {"sha256": map_sha256}},
             "exporter": identity(command),
             "params": params,
             "sample_rate": rate,
