@@ -18,6 +18,10 @@ dependencies = [
 
 [project.optional-dependencies]
 librosa = ["librosa==1.0.0"]
+serve = [
+    "fastapi>=0.143.0",
+    "uvicorn>=0.54.0",
+]
 
 [project.scripts]
 tactus = "tactus.launcher:main"
@@ -45,7 +49,12 @@ exclude = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "ruff>=0.6"]
+dev = [
+    "fastapi>=0.143.0",
+    "pytest>=8.3",
+    "ruff>=0.6",
+    "uvicorn>=0.54.0",
+]
 
 [tool.ruff]
 line-length = 100

@@ -131,4 +131,6 @@ whether controls follow source time or output time; see the connections referenc
 Consult [Musical time](../references/runtime.md#musical-time-optional) for optional timing
 helpers, [stage reuse](../references/runtime.md#reusing-unchanged-stages) for unchanged
 computations, and [project commands](../references/project-commands.md) for delivery from
-saved renders. Installed signatures and `--help` describe the work's pinned runtime version.
+saved renders. A piece played while it renders (the next bars on request) keeps the work
+loaded with [`tactus serve`](../references/serve.md). Installed signatures and `--help`
+describe the work's pinned runtime version.

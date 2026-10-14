@@ -40,7 +40,16 @@ def _main(argv: Sequence[str] | None = None) -> int:
     parser_type = (
         _RunParser
         if arguments[:1]
-        in (["run"], ["material"], ["excerpt"], ["init"], ["analyze"], ["take"], ["export"])
+        in (
+            ["run"],
+            ["material"],
+            ["excerpt"],
+            ["init"],
+            ["analyze"],
+            ["take"],
+            ["export"],
+            ["serve"],
+        )
         else argparse.ArgumentParser
     )
     parser = parser_type(
@@ -75,6 +84,34 @@ def _main(argv: Sequence[str] | None = None) -> int:
         "--no-checkpoint",
         action="store_true",
         help="Do not save the original arrays; keep only the published PCM (throwaway candidates)",
+    )
+    serve_work = commands.add_parser(
+        "serve",
+        help="Keep a work loaded and render requests over local HTTP (needs tactus[serve])",
+        description="Load SOURCE once in a resident worker and render each POST /render "
+        "({params, param_files, key, checkpoint}) into OUT/<session>/NNNN, an ordinary run "
+        "directory with its own receipt. An edited source is loaded again before the next "
+        "request. Local only. Stop with Ctrl-C; the summary is printed as JSON.",
+    )
+    serve_work.add_argument("source", type=Path, help="Python file defining render(*, ...)")
+    serve_work.add_argument(
+        "--out", required=True, type=Path, help="Root for session directories"
+    )
+    serve_work.add_argument("--host", default="127.0.0.1", help="A loopback address")
+    serve_work.add_argument("--port", type=int, default=0, help="Default: chosen by the system")
+    serve_work.add_argument(
+        "--reuse", action="store_true", help="Reuse unchanged @stage results"
+    )
+    serve_work.add_argument(
+        "--no-checkpoint",
+        action="store_true",
+        help="Do not save requests' original arrays; keep only the published PCM",
+    )
+    serve_work.add_argument(
+        "--retain",
+        type=int,
+        metavar="N",
+        help="Keep only the newest N request directories; older receipts move to retired/",
     )
     take_command = commands.add_parser("take", help="Save and transfer immutable performances")
     take_commands = take_command.add_subparsers(dest="take_command", required=True)
@@ -242,6 +279,29 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 param_files=param_files,
             )
             print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.command == "serve":
+            from . import _serve_http
+            from .serve import Service
+
+            service = Service(
+                args.source,
+                args.out,
+                reuse=args.reuse,
+                checkpoint=not args.no_checkpoint,
+                retain=args.retain,
+            )
+            result = _serve_http.serve(
+                service,
+                host=args.host,
+                port=args.port,
+                announce=lambda url: print(
+                    f"tactus serve: {url} (session {service.directory})",
+                    file=sys.stderr,
+                    flush=True,
+                ),
+            )
+            print(json.dumps({"status": "ok", **result}, sort_keys=True))
             return 0
         if args.command == "take":
             result = (
