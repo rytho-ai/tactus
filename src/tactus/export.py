@@ -183,13 +183,18 @@ def deliver(
     }
 
 
-def _deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
+def _deliver(
+    source: Path, *, out: Path, command: Command, params: dict, nested: bool = False
+) -> dict:
+    """The export itself. `nested` (tactus serve only) lets `out` be a direct child of the
+    run, so a served request keeps its delivery inside its own directory."""
     from .provenance import begin, finish
 
     source, out = source.resolve(), out.resolve()
     if out.exists():
         raise RunError("output_exists", "request", f"output already exists: {out}")
-    if source == out or source.is_relative_to(out) or out.is_relative_to(source):
+    inside = nested and out.parent == source
+    if source == out or source.is_relative_to(out) or (out.is_relative_to(source) and not inside):
         raise RunError(
             "invalid_request", "request", "export directory must be outside the source run"
         )

@@ -134,10 +134,14 @@ def _main(argv: Sequence[str] | None = None) -> int:
     serve_work = commands.add_parser(
         "serve",
         help="Keep a work loaded and render requests over local HTTP (needs tactus[serve])",
-        description="Load SOURCE once in a resident worker and render each POST /render "
-        "({params, param_files, key, checkpoint}) into OUT/<session>/NNNN, an ordinary run "
-        "directory with its own receipt. An edited source is loaded again before the next "
-        "request. Local only. Stop with Ctrl-C; the summary is printed as JSON.",
+        description="Load SOURCE once in a resident worker and render each POST /v1/render "
+        "({params, param_files, key, checkpoint, deliver}) into OUT/<session>/NNNN, an ordinary "
+        "run directory with its own receipt; the answer is the request as a resource (sample "
+        "rate, outputs in frames and seconds, map, file URLs; deliver: {codec, bitrate} adds "
+        "browser audio and bundle.json). GET /v1/work describes the work; /docs lists the "
+        "routes; the unversioned POST /render, /status, /cancel and /reload stay. An edited "
+        "source is loaded again before the next request. Local only. Stop with Ctrl-C; the "
+        "summary is printed as JSON.",
     )
     serve_work.add_argument("source", type=Path, help="Python file defining render(*, ...)")
     serve_work.add_argument(
@@ -145,6 +149,12 @@ def _main(argv: Sequence[str] | None = None) -> int:
     )
     serve_work.add_argument("--host", default="127.0.0.1", help="A loopback address")
     serve_work.add_argument("--port", type=int, default=0, help="Default: chosen by the system")
+    serve_work.add_argument(
+        "--static",
+        type=Path,
+        metavar="DIR",
+        help="Serve DIR at / (index.html) beside the API, so a page shares its origin",
+    )
     serve_work.add_argument(
         "--reuse", action="store_true", help="Reuse unchanged @stage results"
     )
@@ -352,6 +362,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 service,
                 host=args.host,
                 port=args.port,
+                static=args.static,
                 announce=lambda url: print(
                     f"tactus serve: {url} (session {service.directory})",
                     file=sys.stderr,

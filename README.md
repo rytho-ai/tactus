@@ -194,11 +194,13 @@ tactus export web runs/b --codec flac --out delivery/web          # browser audi
 tactus export srt runs/b --output mix --lane words --out delivery/subs
 tactus export curves runs/b --fps 30 --out delivery/curves        # levels and bars per video frame
 tactus analyze join seams runs/b --at-s '[2.0, 4.0]' --reference-s '[0.5, 1.0, 1.5]'
-tactus serve song.py --out runs/serve --port 4300                 # render on request while it plays
+tactus serve song.py --static player --out runs/serve --port 4300  # the page and a local API for the work
 ```
 
 A work rejects an invalid performance with `tactus.InvalidParameters`. `tactus serve` keeps the
-work loaded and answers `POST /render` with an ordinary receipted run per request. The `join`
+work loaded and answers `POST /v1/render` with an ordinary receipted run per request, its files
+served over HTTP and, with `deliver`, browser audio and `bundle.json`; `--static` serves the
+page from the same origin, and `GET /v1/work` describes the work. The `join`
 analyses measure loop wraps and switch points against ordinary bar lines; they report numbers,
 and the work decides what counts as a click. See the [interactive skill](skills/interactive/SKILL.md),
 [the time map](skills/references/runtime.md#the-time-map-optional),

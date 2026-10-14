@@ -44,6 +44,9 @@ integer frames of that output. Build bars with `Clock.grid(first, last)`
 frame lists; a work without bars returns lanes only. Contract and example:
 [The time map](../references/runtime.md#the-time-map-optional).
 
+- Say what each output represents in the map's `clock_hint` or a lane ("the three possible
+  next leads, one per call", "the whole touch"): a caller cannot tell the next bars from the
+  whole piece otherwise. Tactus copies `clock_hint` and gives it no meaning.
 - Derive the map in the same code path as the audio, never as a second hand-written file.
   When a downstream page or check needs a bar length, a loop length or a cue, it reads the map,
   not a constant copied into JavaScript or a script.
@@ -82,13 +85,17 @@ frame lists; a work without bars returns lanes only. Contract and example:
 |---|---|---|
 | Every reachable clip can be enumerated | everything ahead of time, in one run | `tactus export web` |
 | The next part depends on history, or the states are too many | the next bars on request while the current ones play | `tactus serve` |
+| The listener's next decision has a few options, and the music depends on history | branches ahead: one request renders every option of the next decision, so the choice stays open until the bar line | `tactus serve` with `deliver` |
 | Heavy processing, light live mixing | heavy parts offline; the player only levels, filters or crossfades rendered stems | `tactus export web` |
 
-[`tactus serve`](../references/serve.md) keeps the work loaded and answers `POST /render`
+[`tactus serve`](../references/serve.md) keeps the work loaded and answers `POST /v1/render`
 with an ordinary receipted run per request (Island: 1.4 s per step against about 4 s for a cold
-`tactus run`). Budget a request against the music: it must finish before the bar that needs
-it, so ask one step ahead. Real-time DSP inside the player and exporting Tactus DSP to plug-ins
-are outside Tactus today.
+`tactus run`); `--static` serves the page beside it, so the work needs no server of its own.
+Budget a request against the music: the time from the decision to the bar that sounds it must
+cover the render, the delivery and the download. Ask one step ahead, or render the branches
+ahead and let the decision come as late as the bar line (Coming Round: about 1 s per request
+against a 19 s lead). Real-time DSP inside the player and exporting Tactus DSP to plug-ins are
+outside Tactus today.
 
 ## 3. Join: declare and check every path
 
@@ -109,6 +116,10 @@ Offline rendering lets you hear and measure every way the piece can go before an
 - Check what analysis cannot: that every state reaches an end (or deliberately does not),
   that two renders agree sample for sample up to a switch point, that a delivered file plays
   the same length in the browser as in the run.
+- When pieces rendered on request are played one after another, check continuity: the
+  pieces as played equal the whole performance rendered once (a `whole` parameter that
+  renders the finished performance as one output). Design for it: linear processing across
+  the joins, phases and seeds counted in performance time, complementary crossfades.
 - Sample-exact agreement needs a reproducible render. Free-running plug-ins (OB-Xf's
   oscillators in 《門》) differ on every render; check by rendering the same
   source twice, and keep such parts as [saved takes](../references/runtime.md#saved-takes) when
@@ -132,9 +143,12 @@ Offline rendering lets you hear and measure every way the piece can go before an
 - **Pictures or a video:** `tactus export srt` turns a spans lane into subtitles;
   `tactus export curves --fps 30` gives levels, map events, bars and sections per video frame.
   Visual smoothing and style stay with the picture code.
-- **On request:** run `tactus serve` beside the page; each request is a run directory that
-  `export`, `analyze` and `prune` read like any other. Keep `--retain` bounded; published PCM
-  grows with every request.
+- **On request:** `tactus serve song.py --static player --out runs/serve` serves the page and
+  the API from one origin. `POST /v1/render` with `deliver: {codec, bitrate}` answers with the
+  sample rate, each output's frames and seconds, the map in frames and seconds, and URLs for
+  the delivered files and `bundle.json`; `GET /v1/work` describes the work to another agent.
+  Each request is a run directory that `export`, `analyze` and `prune` read like any other.
+  Keep `--retain` bounded; published PCM grows with every request.
 
 Test the delivery where it is meant to work: open the page in a browser, walk or play every
 kind of path at least once, capture the audio if you cannot listen, and say what remains
