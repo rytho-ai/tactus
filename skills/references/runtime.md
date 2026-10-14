@@ -10,7 +10,7 @@ adopting a candidate or recovering a work revision.
 ## Contents
 
 - [Render contract](#the-render-contract) and [creating a work](#creating-a-work)
-- [Excerpts](#listening-to-part-of-a-run), [keeping candidates](#keeping-a-candidate) and [saved takes](#saved-takes)
+- [Excerpts](#listening-to-part-of-a-run), [comparing two runs](#comparing-two-runs), [keeping candidates](#keeping-a-candidate) and [saved takes](#saved-takes)
 - [Inputs](#inputs) and [stage reuse](#reusing-unchanged-stages)
 - [Reuse saved render outputs](#reuse-saved-render-outputs)
 - [Plugin helpers](#helpers-from-tactus-import-fx) and [musical time](#musical-time-optional)
@@ -156,6 +156,21 @@ accepts a NumPy array or JSON path. Variable tempo uses the actual point times, 
 interpolation. Both boundary points must exist; there is no extrapolated last beat.
 These are beat points, not bar or downbeat labels. Adopt the analysis explicitly before
 cutting; excerpt never runs beat detection. The usual per-output end clamping still applies.
+
+## Comparing two runs
+
+`tactus.diff.compare(run_a, run_b, bpm=None)` reports where two completed runs differ, per
+output and over time. It is measured rather than recalled: the second run minus the
+level-aligned first, so a master-level change alone reads as no difference. Each output is
+`same`, `changed`, `new` or `missing`, and a changed one lists ranges (`start_s`, `end_s`,
+the largest residual in dBFS, the largest residual relative to the louder side, `major`).
+`causes` names what the receipts show: uncommitted source changes, different parameters,
+different work commits, and a different Tactus version, which can leave small differences
+across the whole piece that the edit did not cause. Use it after a revision to check that
+only what you meant to change has changed, and to tell a listener where to compare.
+Outputs driven by a changed one (a part ducked by the kick you edited) differ too; that
+is expected and worth saying. `bpm` reads in half-beat windows instead of 0.25 s. Relative
+paths resolve against the current directory.
 
 ## Keeping a candidate
 

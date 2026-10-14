@@ -237,6 +237,8 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 
 **分析的計算路徑：**CQT／VQT 只在運算量大時改用 private cached Numba kernel，短輸入維持 SciPy FIR、不載入 compiler；STFT／Mel 保留原生 FFT 與 sparse projection，分批限制暫存記憶體。加速不更動分析的定義、時間格點或單位，呼叫結束恢復執行緒設定。見 [加速測試](../tests/test_analysis_acceleration.py)。
 
+**兩個 run 的差異：**`tactus.diff.compare(run_a, run_b)` 把第二個 run 減去對齊音量後的第一個，逐個 output、逐段時間回報哪裡不同（`same`／`changed`／`new`／`missing`），並依收據列出可能原因（未提交的修改、參數、作品 commit、Tactus 版本）。它是量測，不判斷好壞；試聽介面（`audition-ui`）可以把結果當成一層標記。理由：修訂後「只改了想改的」要量出來，不能靠記憶；在一件作品上，相同輸出約 −146 dBFS、編輯處高於相對 −20 dB、函式庫版本差異落在相對 −26 到 −39 dB，三者分得開。見 [Comparing two runs](../skills/references/runtime.md#comparing-two-runs)。
+
 **作品自訂分析與交付：**常用或難實作的能力由 Tactus 內建；其他分析與交付由作品自己的 Python 定義，在 `pyproject.toml` 的 `[tool.tactus.analysis]`／`[tool.tactus.export]` 以 `module:function` 明確註冊，CLI 以 `tactus analyze category name`／`tactus export name` 呼叫，只 import 被選中的函式。函式仍可直接由 Python 使用；keyword-only 參數形成 typed flags，內建與自訂共用紀錄流程。紀錄包括輸入、callable、作品 source／config／lock、參數與實際環境，不追蹤任意外部 I/O，也不隔離 Python 副作用。見 [project commands](project-commands.md)。
 
 **尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；stereo、DC 與 dropout 類分析是否提供；`join` 量到的斷點哪些聽得見（尚未有人聆聽確認）；pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察值得標準化。
