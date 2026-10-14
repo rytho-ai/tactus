@@ -59,6 +59,14 @@ def _main(argv: Sequence[str] | None = None) -> int:
     run_command.add_argument("--out", required=True, type=Path, help="New run directory")
     run_command.add_argument("--params", default="{}", help="JSON object of parameter overrides")
     run_command.add_argument(
+        "--param-file",
+        action="append",
+        default=[],
+        metavar="NAME=FILE",
+        help="Bind a JSON file (a performance) to parameter NAME; repeatable. The receipt "
+        "records its sha256 and the run keeps a copy in parameters/NAME.json",
+    )
+    run_command.add_argument(
         "--reuse",
         action="store_true",
         help="Reuse unchanged @stage results from prior runs on unchanged source",
@@ -211,12 +219,25 @@ def _main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(arguments)
         if args.command == "run":
+            param_files = {}
+            for binding in args.param_file:
+                name, separator, path = binding.partition("=")
+                if not separator or not name or not path:
+                    raise RunError(
+                        "invalid_request", "request", f"--param-file needs NAME=FILE: {binding!r}"
+                    )
+                if name in param_files:
+                    raise RunError(
+                        "invalid_request", "request", f"--param-file {name} is given twice"
+                    )
+                param_files[name] = Path(path)
             result = run(
                 args.source,
                 out=args.out,
                 params=parse_params(args.params),
                 reuse=args.reuse,
                 checkpoint=not args.no_checkpoint,
+                param_files=param_files,
             )
             print(json.dumps(result, sort_keys=True))
             return 0

@@ -13,6 +13,7 @@ Reads: _contracts · _source · inputs · stage · takes/render_store · store/r
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import os
@@ -31,12 +32,20 @@ import numpy as np
 
 from . import _source as source_info
 from . import render_store, revision, stage, takes, timemap
-from ._contracts import RunError, json_copy, parse_params, validate_audio_mapping, write_json
+from ._contracts import (
+    InvalidParameters,
+    RunError,
+    json_copy,
+    parse_params,
+    strict_json,
+    validate_audio_mapping,
+    write_json,
+)
 from .inputs import MaterialError, ToolError, _record_snapshot, _reset_record
 from .inputs.pool import hash_file
 from .store import OutputStore
 
-__all__ = ["RunError", "parse_params", "run"]
+__all__ = ["InvalidParameters", "RunError", "parse_params", "run"]
 
 
 def _stop(process: subprocess.Popen[str]) -> None:
@@ -68,6 +77,7 @@ def run(
     params: dict[str, Any] | None = None,
     reuse: bool = False,
     checkpoint: bool = True,
+    param_files: dict[str, str | Path] | None = None,
 ) -> dict[str, Any]:
     """Execute source's render(**params), returning paths to a completed new run.
 
@@ -81,6 +91,13 @@ def run(
     `checkpoint=False` skips saving the original arrays (`render.json` and `render/`): the
     run keeps only its published PCM, as a pruned run does. The result's `render_bytes`
     reports what the checkpoint occupies, 0 without one.
+
+    `param_files={"tape": "tapes/demo.json"}` binds each file's JSON to that keyword
+    parameter (a performance, a route). The receipt keeps the value under `parameters` and
+    the file's path, sha256 and size under `parameter_files`; the exact bytes are copied to
+    `parameters/NAME.json` in the run, so the performance can be rendered again from there.
+    A name given both inline and as a file is `invalid_request`. A work rejecting a value
+    raises `tactus.InvalidParameters`, reported as `invalid_parameters`.
     """
     try:
         source = Path(source).resolve()
@@ -92,8 +109,11 @@ def run(
             raise ValueError(f"source must be an existing Python file: {source}")
         if source.parent == out or source.parent.is_relative_to(out):
             raise ValueError("output cannot be the source directory or an ancestor")
+        files = _parameter_files(param_files or {}, params)
     except (ValueError, TypeError, OSError, RecursionError) as exc:
         raise RunError("invalid_request", "request", str(exc)) from exc
+    for name, (value, _payload, _record) in files.items():
+        params[name] = value
 
     try:
         out.mkdir(parents=True, exist_ok=False)
@@ -105,6 +125,11 @@ def run(
     process = None
     completed = False
     try:
+        if files:
+            # The copy is the same bytes that were hashed and parsed.
+            (out / "parameters").mkdir()
+            for name, (_value, payload, _record) in files.items():
+                (out / "parameters" / f"{name}.json").write_bytes(payload)
         with tempfile.TemporaryDirectory(prefix="tactus-run-") as temporary:
             request = Path(temporary) / "request.json"
             response = Path(temporary) / "response.json"
@@ -116,6 +141,7 @@ def run(
                     "params": params,
                     "reuse": bool(reuse),
                     "checkpoint": bool(checkpoint),
+                    "parameter_files": {name: record for name, (_, _, record) in files.items()},
                 },
             )
             # Load this installed Tactus before adding the author's import directory.
@@ -184,6 +210,33 @@ def run(
                 (out / "manifest.json").unlink(missing_ok=True)
             else:
                 shutil.rmtree(out, ignore_errors=True)
+
+
+def _parameter_files(
+    param_files: dict[str, str | Path], inline: dict[str, Any]
+) -> dict[str, tuple[Any, bytes, dict[str, Any]]]:
+    """Read and strictly parse each NAME=FILE once: (value, exact bytes, receipt record)."""
+    if not isinstance(param_files, dict):
+        raise TypeError("param_files must map parameter names to JSON files")
+    files = {}
+    for name, path in param_files.items():
+        if not isinstance(name, str) or not name.isidentifier():
+            raise ValueError(f"parameter file name must be a parameter name, got {name!r}")
+        if name in inline:
+            raise ValueError(f"parameter {name!r} is given both inline and as a file")
+        try:
+            payload = Path(path).read_bytes()
+            value = strict_json(payload)
+        except (OSError, ValueError, TypeError, RecursionError) as exc:
+            raise ValueError(f"parameter file {name}={path}: {exc}") from exc
+        record = {
+            "path": str(path),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "bytes": len(payload),
+            "copy": f"parameters/{name}.json",
+        }
+        files[name] = (value, payload, record)
+    return files
 
 
 def _bind(factory: Any, params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -384,6 +437,8 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
         }
         if map_entry is not None:
             receipt["map"] = map_entry
+        if request.get("parameter_files"):
+            receipt["parameter_files"] = request["parameter_files"]
         write_json(out / "receipt.json", receipt)
         take_refs = (
             takes.publish_candidates(out, result["takes"], rate, snapshot)
@@ -429,6 +484,9 @@ def _execute(request: dict[str, Any]) -> dict[str, Any]:
     except (MaterialError, ToolError) as exc:
         code = "material_unavailable" if isinstance(exc, MaterialError) else "tool_unavailable"
         raise RunError(code, phase, str(exc)) from exc
+    except InvalidParameters as exc:
+        # The work's own check of its parameters, distinct from a crash while rendering.
+        raise RunError("invalid_parameters", "bind", str(exc)) from exc
     except RunError:
         raise
     except BaseException as exc:

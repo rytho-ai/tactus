@@ -10,13 +10,14 @@ from . import fx, timemap, timing
 from .excerpt import excerpt
 from .inputs import MaterialError, ToolError, load_audio, material, tool
 from .render_store import LoadedRender, load_render
-from .run import RunError, run
+from .run import InvalidParameters, RunError, run
 from .stage import stage
 from .store import AudioRef
 from .takes import load_take
 
 __all__ = [
     "AudioRef",
+    "InvalidParameters",
     "LoadedRender",
     "MaterialError",
     "RunError",

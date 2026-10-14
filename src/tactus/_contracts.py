@@ -54,19 +54,29 @@ def json_copy(value: Any) -> Any:
     raise ValueError("parameters must contain finite JSON values and string object keys")
 
 
+class InvalidParameters(ValueError):
+    """Raised by a work's `render` when its parameters are invalid (e.g. a malformed
+    performance), before the expensive part; `run` reports it as `invalid_parameters`."""
+
+
+def _pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in items:
+        if key in result:
+            raise ValueError(f"duplicate parameter key: {key}")
+        result[key] = value
+    return result
+
+
+def strict_json(raw: str | bytes) -> Any:
+    """Finite JSON with unique object keys (the parameter boundary), or ValueError."""
+    return json_copy(json.loads(raw, object_pairs_hook=_pairs))
+
+
 def parse_params(raw: str) -> dict[str, Any]:
     """Parse CLI overrides, rejecting duplicate keys and nonstandard JSON numbers."""
-
-    def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in items:
-            if key in result:
-                raise ValueError(f"duplicate parameter key: {key}")
-            result[key] = value
-        return result
-
     try:
-        params = json_copy(json.loads(raw, object_pairs_hook=pairs))
+        params = strict_json(raw)
         if not isinstance(params, dict):
             raise TypeError("--params must be a JSON object")
         return params
