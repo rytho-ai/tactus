@@ -239,4 +239,4 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 
 **作品自訂分析與交付：**常用或難實作的能力由 Tactus 內建；其他分析與交付由作品自己的 Python 定義，在 `pyproject.toml` 的 `[tool.tactus.analysis]`／`[tool.tactus.export]` 以 `module:function` 明確註冊，CLI 以 `tactus analyze category name`／`tactus export name` 呼叫，只 import 被選中的函式。函式仍可直接由 Python 使用；keyword-only 參數形成 typed flags，內建與自訂共用紀錄流程。紀錄包括輸入、callable、作品 source／config／lock、參數與實際環境，不追蹤任意外部 I/O，也不隔離 Python 副作用。見 [project commands](project-commands.md)。
 
-**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；stereo、DC 與 dropout 類分析是否提供；pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察值得標準化。
+**尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；stereo、DC 與 dropout 類分析是否提供；`join` 量到的斷點哪些聽得見（尚未有人聆聽確認）；pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察值得標準化。
