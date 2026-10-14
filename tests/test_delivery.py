@@ -314,3 +314,12 @@ def test_web_flac_at_16_bits_rounds_the_published_pcm(rendered, tmp_path):
         with pytest.raises(RunError) as failure:
             export(rendered, tmp_path / f"bad{len(params)}{params['codec']}", "web", **params)
         assert "--bit-depth is 16 or 24" in str(failure.value)
+
+
+def test_web_peaks_zero_writes_no_outline(rendered, tmp_path):
+    export(rendered, tmp_path / "none", "web", codec="wav", peaks=0)
+    bundle = json.loads((tmp_path / "none" / "bundle.json").read_text())
+    assert {entry["peaks"] for entry in bundle["outputs"].values()} == {None}
+    with pytest.raises(RunError) as failure:
+        export(rendered, tmp_path / "bad", "web", codec="wav", peaks=-1)
+    assert "0 writes no outline" in str(failure.value)

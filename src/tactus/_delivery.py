@@ -157,7 +157,8 @@ def web(
     declares (its sample table minus the edit list's priming), which is what browsers play;
     ffmpeg alone would add the last packet's padding (`padding_frames`). The map is
     copied as frames (`map`) and as seconds (`map_seconds`). No resampling, normalization,
-    mixing or trimming. Pass --names as a JSON list to bundle only those outputs.
+    mixing or trimming. Pass --names as a JSON list to bundle only those outputs; --peaks 0
+    leaves the waveform outline out (`peaks: null`) for pages that draw none.
     """
     if codec not in CODECS:
         raise ValueError(f"codec must be one of {', '.join(CODECS)}")
@@ -169,6 +170,8 @@ def web(
     if bit_depth is not None and (codec != "flac" or bit_depth not in (16, 24)):
         raise ValueError("--bit-depth is 16 or 24, for flac only (wav is the run's PCM24)")
     depth = (bit_depth or 24) if not lossy else None
+    if type(peaks) is not int or peaks < 0:
+        raise ValueError("peaks must be a whole number of buckets; 0 writes no outline")
     selected = _selected(outputs, names)
     ffmpeg = None
     if lossy:
@@ -237,7 +240,9 @@ def web(
                 "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[
                     "integrated_lufs"
                 ],
-                "peaks": {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
+                "peaks": None
+                if peaks == 0
+                else {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
             }
     identity = run_identity or {}
     bundle = {

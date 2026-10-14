@@ -50,8 +50,8 @@ frame lists; a work without bars returns lanes only. Contract and example:
 - A segment names one output. Parallel stems that loop together share one segment on one of
   them; the work's own data names the rest.
 - A map error fails the run only after rendering (`invalid_output`). For a long render, test
-  the map first: `tactus.timemap.validate(map, outputs)` accepts arrays of the right lengths
-  (`np.zeros(frames)`), e.g. the frame counts of a previous run's manifest.
+  the map first: `tactus.timemap.validate(map, outputs)` accepts frame counts in place of
+  arrays, e.g. `{name: entry["frames"]}` from a previous run's manifest.
 - Tactus validates structure and references only. It gives lane names no meaning and does
   not judge a join; rules that depend on state (an hour, what was played before) stay in the
   work's player.
@@ -89,6 +89,9 @@ are outside Tactus today.
 Offline rendering lets you hear and measure every way the piece can go before anyone plays it.
 
 - Declare each loop and switch point in the map's segments and joins.
+- Measure both kinds: a loop's own wrap, and every exit into another segment joined as the
+  player joins it. The switches are often where the click is (a clip ending on a held value
+  into one starting at another); the measure skill's `switches` helper builds them.
 - Measure them with the `join` analyses (`tactus analyze join --help`): the step and
   residual across each seam or loop wrap, levels through a crossfade, onset phase after a
   switch. Measure the same things at ordinary bar lines (`reference_s`) and compare: one
@@ -117,7 +120,7 @@ Offline rendering lets you hear and measure every way the piece can go before an
   each run once, to a directory named after the run, and point the page at it. Lossless keeps
   loops sample-exact (FLAC is PCM24; `--bit-depth 16` rounds it, often under half the size); AAC's reported length equals
   what browsers play. The waveform outline is about 1 MB with 30 outputs at the default
-  `--peaks 2000`; lower it when the page does not draw waveforms. See
+  `--peaks 2000`; `--peaks 0` leaves it out when the page draws no waveform. See
   [Delivering with the map](../references/project-commands.md#delivering-with-the-map-web-srt-curves).
 - **Pictures or a video:** `tactus export srt` turns a spans lane into subtitles;
   `tactus export curves --fps 30` gives levels, map events, bars and sections per video frame.
