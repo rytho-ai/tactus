@@ -34,6 +34,18 @@ module; a work may keep its own time maths, or mix it with this one.
     euclid(2, 5, rotate=1)                # Tidal-style left rotation: (1, 4)
     cycle("x..x.", 16)                    # a 5-step figure run continuously over 16 steps
 
+Fitting adopted beat times (any tracker, or taps) to a constant grid, outside `render`; the
+work picks the candidate and the downbeat and freezes `(bpm, bar-1 seconds)` as constants:
+
+    from tactus.timing import fit_tempo, segment, warp_markers, fold
+    fits = fit_tempo(beats_s, bpm_range=(60, 100))  # candidates, best first: TempoFit
+    fits[0].bpm, fits[0].origin_s, fits[0].coverage  # 85.0, a beat near 0 s, ~1.0
+    source = Clock(sample_rate=sr, tempo=85, start_seconds=0.734)   # frozen bar 1
+    seg = segment(audio, source.frame(1) - lead, source.frame(9) + lead)   # zero-padded
+    pairs = warp_markers(source, Clock(sample_rate=sr, tempo=88), 1, 9,
+                         lead_frames=lead, tail_frames=lead)  # for pytimestretch.time_warp
+    fold(onsets_s, period_s=4 * 60 / 85, origin_s=0.734, steps=16)  # onsets per 16th of a bar
+
 Tempo points: `(bar, bpm)` is a step (the tempo becomes `bpm` at that bar). `(bar, bpm, shape)`
 is a gradual change that starts at the previous point and arrives at `bpm` at this bar; shape
 is `"ramp"` (linear in beats, as most DAWs draw it), `"ramp-time"` (linear in time) or
@@ -48,6 +60,7 @@ from __future__ import annotations
 import math
 from bisect import bisect_right
 from collections.abc import Sequence
+from itertools import pairwise
 from typing import NamedTuple, Union
 
 import numpy as np
@@ -486,18 +499,259 @@ def cycle(figure: str | Sequence[bool], count: int, start: int = 0) -> tuple[int
     return tuple(s for s in range(start, start + count) if hits[s % m])
 
 
+# -- fitting adopted beat times to a constant grid ------------------------------------------
+
+
+class TempoFit(NamedTuple):
+    """One constant-tempo grid candidate for a list of beat times (see `fit_tempo`)."""
+
+    bpm: float  # candidate tempo: a whole multiple of `step`
+    origin_s: float  # grid point nearest 0 s, in [-period/2, period/2): a beat, not a downbeat
+    inliers: float  # fraction of input beats within tolerance_s of a grid point
+    coverage: float  # fraction of grid points from the first to the last beat with an inlier
+    offset_ms: float  # signed median inlier residual (beat - grid) after the origin refinement
+    p95_ms: float  # 95th percentile of |inlier residual|
+    drift_ms_per_min: float  # inlier residual slope against time; non-zero: not this exact tempo
+    free_bpm: float  # least-squares tempo of the inliers (88.002 for an 88 master)
+
+
+_CLUSTER_GAP = 4  # more missing grid points than this splits inliers into separate runs
+
+
+def _beat_times(beats_s) -> np.ndarray:
+    t = np.asarray(beats_s, dtype=float)
+    if t.ndim != 1:
+        raise ValueError("beats_s must be a one-dimensional sequence of seconds")
+    if len(t) < 8:
+        raise ValueError(f"fit_tempo needs at least 8 beats, got {len(t)}")
+    if not np.all(np.isfinite(t)):
+        raise ValueError("beats_s must be finite")
+    if np.any(np.diff(t) <= 0):
+        raise ValueError("beats_s must be strictly increasing")
+    return t
+
+
+def _wrap(x: np.ndarray, period: float) -> np.ndarray:
+    """x folded into [-period/2, period/2)."""
+    return np.mod(x + period / 2, period) - period / 2
+
+
+def _fit_one(t: np.ndarray, bpm: float, tolerance_s: float) -> TempoFit:
+    period = 60.0 / bpm
+    # Phase: the densest window of width 2 * tolerance_s among the beats' phases. A circular
+    # mean would cancel out when a tracker counts double (half the beats sit half a period
+    # away), hiding the slower grid exactly where it matters.
+    ph = np.sort(np.mod(t, period))
+    ext = np.concatenate([ph, ph + period])
+    counts = np.searchsorted(ext, ph + 2 * tolerance_s, side="right") - np.arange(len(ph))
+    i = int(np.argmax(counts))
+    origin = float(_wrap(np.array(np.median(ext[i : i + min(counts[i], len(ph))])), period))
+    inl = np.abs(_wrap(t - origin, period)) <= tolerance_s
+    if inl.any():  # one refinement: centre the grid on the inliers
+        origin = float(_wrap(np.array(origin + np.median(_wrap(t[inl] - origin, period))), period))
+    r = _wrap(t - origin, period)
+    inl = np.abs(r) <= tolerance_s
+    nan = float("nan")
+    if not inl.any():
+        return TempoFit(bpm, origin, 0.0, 0.0, nan, nan, nan, nan)
+    ti, ri = t[inl], r[inl]
+    k = np.floor((ti - origin) / period + 0.5).astype(np.int64)
+    first = math.floor((t[0] - origin) / period + 0.5)
+    last = math.floor((t[-1] - origin) / period + 0.5)
+    coverage = len(np.unique(k)) / (last - first + 1)
+    # Residual slope within runs of nearby grid points, pooled: an inexact tempo makes the
+    # residuals a sawtooth (each run drifts through the tolerance, the next starts over),
+    # so one line through all inliers would mix runs; per-run slopes measure the drift.
+    run = np.concatenate([[0], np.cumsum(np.diff(k) > _CLUSTER_GAP + 1)])
+    dt = ti.copy()
+    dr = ri.copy()
+    for j in range(run[-1] + 1):
+        m = run == j
+        dt[m] -= dt[m].mean()
+        dr[m] -= dr[m].mean()
+    denom = float(np.sum(dt * dt))
+    slope = float(np.sum(dt * dr)) / denom if denom > 0 else nan
+    return TempoFit(
+        bpm=bpm,
+        origin_s=origin,
+        inliers=float(inl.mean()),
+        coverage=float(coverage),
+        offset_ms=float(np.median(ri)) * 1000.0,
+        p95_ms=float(np.percentile(np.abs(ri), 95)) * 1000.0,
+        drift_ms_per_min=slope * 60_000.0,
+        free_bpm=bpm * (1.0 - slope),
+    )
+
+
+def fit_tempo(
+    beats_s,
+    *,
+    bpm_range: tuple[float, float],
+    step: float = 1.0,
+    tolerance_s: float = 0.03,
+    top: int = 5,
+) -> list[TempoFit]:
+    """Constant-tempo grid candidates for adopted beat times, best first.
+
+    `beats_s` are beat times in seconds from any source (`rhythm.beats`'s `beats_s`, another
+    tracker's report, hand taps): finite and strictly increasing, negatives allowed, at least
+    8. This fits given numbers; it does not listen to audio. Every tempo that is a whole
+    multiple of `step` within `bpm_range` (inclusive, required: the range is a choice) is
+    tried: its phase is the densest `2 * tolerance_s` window of the beats' phases, refined
+    once by the median inlier residual; a beat is an inlier within `tolerance_s` of a grid point. Candidates are sorted
+    by `inliers`, then `coverage`. `step=1.0` encodes the whole-number BPM assumption;
+    `step=0.5` or `0.01` relax it.
+
+    The result never chooses a felt tempo or a downbeat. A grid at twice a tempo contains
+    every beat of the slower one, so it never scores fewer inliers; `coverage` (grid points
+    that have a beat) is how "tracker at 85" (85: coverage ~1) differs from "170 with every
+    other point empty" (170: coverage ~0.5). A tracker counting double gives coverage ~1 at
+    both, so the work decides from the music. `origin_s` is a beat; a bar line is
+    `origin_s + k * 60 / bpm` for a `k` the work picks, and
+    `Clock(sample_rate=sr, tempo=fit.bpm, meter=4, start_seconds=that)` is the grid. The
+    origin inherits the tracker's placement bias. `drift_ms_per_min` well away from 0 (and
+    `free_bpm` away from `bpm`) means the beats follow a nearby, not this exact, tempo.
+    """
+    t = _beat_times(beats_s)
+    lo, hi = (float(v) for v in bpm_range)
+    if not (step > 0 and tolerance_s > 0):
+        raise ValueError("step and tolerance_s must be positive")
+    if not (math.isfinite(lo) and math.isfinite(hi) and 0 < lo <= hi):
+        raise ValueError(f"bpm_range must be (low, high) with 0 < low <= high, got {bpm_range}")
+    if top < 1:
+        raise ValueError(f"top must be at least 1, got {top}")
+    ks = range(math.ceil(lo / step - 1e-9), math.floor(hi / step + 1e-9) + 1)
+    if len(ks) == 0:
+        raise ValueError(f"no multiple of step {step} lies within bpm_range {bpm_range}")
+    fits = [_fit_one(t, round(k * step, 9), tolerance_s) for k in ks]
+    fits.sort(key=lambda f: (-f.inliers, -f.coverage))
+    return fits[:top]
+
+
+# -- bar-aligned cutting and stretch markers ------------------------------------------------
+
+
+def segment(audio: np.ndarray, start_frame: int, end_frame: int) -> np.ndarray:
+    """Exactly `end_frame - start_frame` frames of `audio`, zero-filled where the range runs
+    before frame 0 or past the end. Always a new array; dtype and channels kept. The
+    read-side counterpart of `add_at`: `segment(audio, *clock.span(9, 17))`."""
+    start, end = int(start_frame), int(end_frame)
+    if start != start_frame or end != end_frame:
+        raise ValueError("segment needs whole frames; round with frame_of")
+    if end <= start:
+        raise ValueError(f"end_frame must be after start_frame, got {start}..{end}")
+    out = np.zeros((end - start, *audio.shape[1:]), dtype=audio.dtype)
+    lo, hi = max(start, 0), min(end, len(audio))
+    if hi > lo:
+        out[lo - start : hi - start] = audio[lo:hi]
+    return out
+
+
+def warp_markers(
+    source: Clock,
+    target: Clock,
+    first_bar: int,
+    end_bar: int,
+    *,
+    target_bar: int = 1,
+    lead_frames: int = 0,
+    tail_frames: int = 0,
+) -> list[tuple[int, int]]:
+    """`(source_frame, output_frame)` pairs for `pytimestretch.time_warp` that put source bar
+    lines `first_bar..end_bar` on target bar lines `target_bar..` exactly.
+
+    The audio to warp is `segment(audio, source.frame(first_bar) - lead_frames,
+    source.frame(end_bar) + tail_frames)`; frames are relative to that segment's start. The
+    pairs start at `(0, 0)` and end at `(len(segment), output length)`, both columns strictly
+    increasing Python ints, as `time_warp` requires. The lead and tail (context for the
+    engine, such as a pre-roll) map by the tempo ratio of the bar next to them, rounded with
+    `frame_of`; output bar line i is `target.frame(target_bar + i) - target.frame(target_bar)`
+    plus the mapped lead. Both clocks need the same sample rate. The engine call, pitch and
+    backend stay in the work:
+    `pytimestretch.time_warp(seg, sr, markers=warp_markers(...), semitones=...)`.
+    """
+    sr = source.sample_rate
+    if target.sample_rate != sr:
+        raise ValueError("source and target clocks need the same sample rate")
+    if end_bar <= first_bar:
+        raise ValueError(f"end_bar must be after first_bar, got {first_bar}..{end_bar}")
+    if lead_frames < 0 or tail_frames < 0:
+        raise ValueError("lead_frames and tail_frames must not be negative")
+    bars = end_bar - first_bar
+    start = source.frame(first_bar) - lead_frames
+    t0 = target.frame(target_bar)
+
+    def ratio(src_bar: int, tgt_bar: int) -> float:
+        src = source.seconds(src_bar + 1) - source.seconds(src_bar)
+        return (target.seconds(tgt_bar + 1) - target.seconds(tgt_bar)) / src
+
+    # A frame count scaled by a ratio is rounded by frame_of at a rate of 1 (frames in, frames
+    # out), which keeps exact half-frame ties exact instead of passing through seconds.
+    lead_out = frame_of(lead_frames * ratio(first_bar, target_bar), 1)
+    pairs = [(0, 0)] if lead_frames else []
+    for i in range(bars + 1):
+        pairs.append(
+            (source.frame(first_bar + i) - start, target.frame(target_bar + i) - t0 + lead_out)
+        )
+    if tail_frames:
+        tail_out = frame_of(tail_frames * ratio(end_bar - 1, target_bar + bars - 1), 1)
+        src_end, out_end = pairs[-1]
+        pairs.append((src_end + tail_frames, out_end + tail_out))
+    pairs = [(int(s), int(o)) for s, o in pairs]
+    for (s0, o0), (s1, o1) in pairwise(pairs):
+        if s1 <= s0 or o1 <= o0:
+            raise ValueError(
+                f"markers would not strictly increase at ({s0}, {o0}) -> ({s1}, {o1}); "
+                "a lead or tail too short to map, or a bar shorter than one frame"
+            )
+    return pairs
+
+
+def fold(times_s, *, period_s: float, origin_s: float, steps: int, weights=None) -> np.ndarray:
+    """Events folded onto a repeating period: an onset list (or an envelope's frame times
+    with `weights`) folded onto the beat or the bar, `steps` bins long.
+
+    Step k covers `[k - 0.5, k + 0.5)` steps after `origin_s` (times before the origin fold
+    the same way). Without `weights`, each bin holds its event count; with `weights`, the
+    mean weight of its events, 0.0 for an empty bin. Scoring the result (which step is the
+    downbeat) belongs to the work."""
+    t = np.asarray(times_s, dtype=float).ravel()
+    if not (period_s > 0 and math.isfinite(period_s)):
+        raise ValueError(f"period_s must be positive, got {period_s}")
+    if int(steps) != steps or steps < 1:
+        raise ValueError(f"steps must be a positive whole number, got {steps}")
+    steps = int(steps)
+    if not np.all(np.isfinite(t)):
+        raise ValueError("times_s must be finite")
+    # floor(x + 0.5): the same tie rule as frame_of (half a step goes to the later bin).
+    bins = np.floor((t - origin_s) / period_s * steps + 0.5).astype(np.int64) % steps
+    counts = np.bincount(bins, minlength=steps).astype(float)
+    if weights is None:
+        return counts
+    w = np.asarray(weights, dtype=float).ravel()
+    if len(w) != len(t):
+        raise ValueError("weights must have one value per time")
+    sums = np.bincount(bins, weights=w, minlength=steps)
+    return np.divide(sums, counts, out=np.zeros(steps), where=counts > 0)
+
+
 __all__ = [
     "Bar",
     "Clock",
     "Groove",
+    "TempoFit",
     "add_at",
     "cycle",
     "envelope_beats",
     "envelope_seconds",
     "euclid",
+    "fit_tempo",
+    "fold",
     "frame_of",
     "markers",
     "note_seconds",
     "quantize",
+    "segment",
     "swing",
+    "warp_markers",
 ]

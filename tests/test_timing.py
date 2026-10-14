@@ -3,6 +3,7 @@ validation the plan requires. See docs/blueprints/plans/2026-09-27-tactus-timing
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
@@ -663,3 +664,279 @@ def test_cycle_unknown_character_raises():
 def test_cycle_empty_figure_raises():
     with pytest.raises(ValueError):
         cycle("", 4)
+
+
+# ---------------------------------------------------------------------------
+# fit_tempo / segment / warp_markers / fold
+# See docs/blueprints/plans/2026-10-14-tempo-grid-fitting.md.
+# ---------------------------------------------------------------------------
+
+
+def _beat_train(
+    bpm, *, seed, duration=200.0, intro=15.0, jitter=0.008, offset=-0.015, drop=0.05, extra=0.05
+):
+    """A tracker-like beat list: a regular grid (origin `offset`) from `intro` on, with
+    Gaussian jitter, dropped and spurious beats, and an irregular intro before it."""
+    rng = np.random.default_rng(seed)
+    period = 60.0 / bpm
+    n = np.arange(math.ceil(intro / period), int(duration / period))
+    grid = n * period + offset + rng.normal(0.0, jitter, len(n))
+    grid = grid[rng.random(len(grid)) > drop]
+    spurious = rng.uniform(intro, duration, int(extra * len(grid)))
+    taps = np.cumsum(rng.uniform(0.3, 1.1, 40))
+    return np.unique(np.concatenate([taps[taps < intro - 0.5], grid, spurious]))
+
+
+def _phase_error(a, b, period):
+    return abs((a - b + period / 2) % period - period / 2)
+
+
+@pytest.mark.parametrize("bpm", [85, 88, 91, 66, 69, 71])
+def test_fit_tempo_recovers_whole_tempo_or_its_double(bpm):
+    fits = timing.fit_tempo(_beat_train(bpm, seed=bpm), bpm_range=(50, 180))
+    assert fits[0].bpm in (bpm, 2 * bpm)
+    truth = next(f for f in fits if f.bpm == bpm)
+    if fits[0].bpm == 2 * bpm:  # a doubled grid holds every beat: coverage tells them apart
+        assert truth.coverage > 1.5 * fits[0].coverage
+        assert fits[0].inliers >= truth.inliers
+    assert _phase_error(truth.origin_s, -0.015, 60 / bpm) < 0.005
+    assert -60 / bpm / 2 <= truth.origin_s < 60 / bpm / 2
+    assert abs(truth.drift_ms_per_min) < 3
+    assert truth.free_bpm == pytest.approx(bpm, abs=0.02)
+    assert truth.inliers > 0.8 and truth.coverage > 0.85
+    assert abs(truth.offset_ms) < 2 and truth.p95_ms < 20
+
+
+def test_fit_tempo_survives_a_half_beat_lock_that_misleads_least_squares():
+    # The album's 04: the tracker (at 132 = 2 x 66) slips half a beat for 30 s and loses one
+    # beat on the way back; a line through all beats then rounds to 131.
+    period = 60 / 132
+    grid = np.arange(0, 120, period)
+    beats = np.concatenate(
+        [grid[grid < 40], grid[(grid >= 40) & (grid < 70 - period)] + period / 2, grid[grid >= 70]]
+    )
+    beats = beats + np.random.default_rng(4).normal(0, 0.004, len(beats))
+    slope = np.polyfit(np.arange(len(beats)), beats, 1)[0]
+    assert round(60 / slope) == 131
+    fits = timing.fit_tempo(beats, bpm_range=(50, 180))
+    assert fits[0].bpm == 132
+    assert fits[0].inliers == pytest.approx(0.75, abs=0.03)
+
+
+def test_fit_tempo_keeps_the_true_tempo_when_the_tracker_locks_double_and_1_6x():
+    # The album's 05 (71 BPM): beats at 142 in parts, locked to 1.6 x 71 elsewhere.
+    period = 60 / 71
+    rng = np.random.default_rng(5)
+    double = period / 2
+    beats = np.concatenate(
+        [
+            np.arange(0, 60, double),
+            60.2 + np.arange(0, 60, period / 1.6),
+            np.arange(math.ceil(121 / double), int(200 / double)) * double,
+        ]
+    )
+    beats = np.sort(beats + rng.normal(0, 0.008, len(beats)))
+    fits = timing.fit_tempo(beats, bpm_range=(50, 180))
+    assert fits[0].bpm == 142
+    true = next(f for f in fits if f.bpm == 71)
+    assert true.inliers < fits[0].inliers
+    assert true.coverage >= fits[0].coverage - 0.01
+
+
+def test_fit_tempo_reports_drift_for_a_tempo_between_whole_numbers():
+    period = 60 / 87.6
+    grid = np.arange(0, 200, period)
+    beats = grid + np.random.default_rng(6).normal(0, 0.002, len(grid))
+    near = next(f for f in timing.fit_tempo(beats, bpm_range=(80, 95), top=50) if f.bpm == 88)
+    assert near.inliers < 0.3
+    assert near.drift_ms_per_min > 100  # beats fall behind an 88 grid
+    assert near.free_bpm == pytest.approx(87.6, abs=0.1)
+    finer = timing.fit_tempo(beats, bpm_range=(80, 95), step=0.1)[0]
+    assert finer.bpm == pytest.approx(87.6)
+    assert finer.inliers == 1.0 and abs(finer.drift_ms_per_min) < 1
+
+
+def test_fit_tempo_finds_no_good_grid_in_a_tempo_ramp():
+    times = [0.0]
+    for i in range(300):  # 60 -> 100 BPM, a romantic accelerando
+        times.append(times[-1] + 60 / (60 + 40 * i / 300))
+    fits = timing.fit_tempo(times, bpm_range=(50, 180), top=200)
+    assert max(f.inliers for f in fits) < 0.4
+
+
+def test_fit_tempo_candidates_respect_range_step_and_top():
+    beats = np.arange(16) * 0.5
+    fits = timing.fit_tempo(beats, bpm_range=(100, 140), step=10, top=10)
+    assert sorted(f.bpm for f in fits) == [100, 110, 120, 130, 140]
+    assert fits[0].bpm == 120 and fits[0].coverage == 1.0
+    assert len(timing.fit_tempo(beats, bpm_range=(100, 140))) == 5
+    shifted = timing.fit_tempo(beats - 3.0, bpm_range=(100, 140))[0]  # negatives allowed
+    assert shifted.bpm == 120 and shifted.origin_s == pytest.approx(0.0, abs=1e-9)
+
+
+@pytest.mark.parametrize(
+    "beats, kwargs",
+    [
+        (np.arange(7) * 0.5, {}),
+        (np.r_[np.arange(10) * 0.5, 4.0], {}),
+        (np.r_[np.arange(10) * 0.5, np.nan], {}),
+        (np.arange(10) * 0.5, {"bpm_range": (121.2, 121.8)}),
+        (np.arange(10) * 0.5, {"bpm_range": (140, 100)}),
+        (np.arange(10) * 0.5, {"step": 0}),
+        (np.arange(10) * 0.5, {"top": 0}),
+    ],
+)
+def test_fit_tempo_validation(beats, kwargs):
+    with pytest.raises(ValueError):
+        timing.fit_tempo(beats, **{"bpm_range": (60, 180), **kwargs})
+
+
+def test_fit_tempo_requires_a_range():
+    with pytest.raises(TypeError):
+        timing.fit_tempo(np.arange(10) * 0.5)
+
+
+@pytest.mark.parametrize("channels", [None, 2])
+def test_segment_is_exact_length_and_zero_filled(channels):
+    shape = (10,) if channels is None else (10, channels)
+    audio = np.arange(1, 11, dtype=np.float32).reshape(10, -1).repeat(channels or 1, axis=1)
+    audio = audio.reshape(shape)
+    for start, end in [(-3, 4), (7, 14), (-5, -1), (12, 15), (-2, 12), (2, 5)]:
+        out = timing.segment(audio, start, end)
+        assert out.shape == (end - start, *shape[1:]) and out.dtype == np.float32
+        for i in range(end - start):
+            src = start + i
+            expected = audio[src] if 0 <= src < 10 else np.zeros(shape[1:])
+            np.testing.assert_array_equal(out[i], expected)
+    out = timing.segment(audio, 0, 10)
+    out[0] = -1
+    assert audio[0].flat[0] == 1  # a copy, never a view
+
+
+def test_segment_validation():
+    with pytest.raises(ValueError):
+        timing.segment(np.zeros(4), 3, 3)
+    with pytest.raises(ValueError):
+        timing.segment(np.zeros(4), 0.5, 3)
+
+
+def _check_time_warp_contract(pairs, segment_length):
+    assert pairs[0] == (0, 0)
+    assert pairs[-1][0] == segment_length
+    assert all(type(s) is int and type(o) is int for s, o in pairs)
+    assert all(s1 > s0 and o1 > o0 for (s0, o0), (s1, o1) in itertools.pairwise(pairs))
+
+
+@pytest.mark.parametrize("lead, tail", [(0, 0), (8000, 0), (0, 5000), (11025, 11025)])
+def test_warp_markers_put_bar_lines_on_the_target_grid(lead, tail):
+    source = Clock(sample_rate=44100, tempo=85, start_seconds=-0.001)  # negative origin
+    target = Clock(sample_rate=44100, tempo=88, start_seconds=3.0)
+    pairs = timing.warp_markers(
+        source, target, 1, 9, target_bar=5, lead_frames=lead, tail_frames=tail
+    )
+    start, end = source.frame(1) - lead, source.frame(9) + tail
+    seg = timing.segment(np.ones(source.frame(20)), start, end)
+    _check_time_warp_contract(pairs, len(seg))
+    lead_out = frame_of(lead * 85 / 88, 1)
+    bar_pairs = pairs[1 if lead else 0 :][:9]
+    for i, (s, o) in enumerate(bar_pairs):
+        assert s == source.frame(1 + i) - start
+        assert o == target.frame(5 + i) - target.frame(5) + lead_out
+    assert pairs[-1][1] == target.frame(13) - target.frame(5) + lead_out + frame_of(
+        tail * 85 / 88, 1
+    )
+
+
+def test_warp_markers_follow_frame_of_on_half_frame_ties():
+    source = Clock(sample_rate=48000, tempo=100)
+    target = Clock(sample_rate=48000, tempo=200)  # ratio 0.5: odd leads land on half frames
+    for lead in (1, 3, 5, 7, 12345):
+        assert (
+            timing.warp_markers(source, target, 1, 2, lead_frames=lead)[1]
+            == (lead, frame_of(lead / 2, 1))
+            == (lead, (lead + 1) // 2)
+        )
+
+
+def test_warp_markers_validation():
+    a = Clock(sample_rate=48000, tempo=100)
+    with pytest.raises(ValueError):
+        timing.warp_markers(a, Clock(sample_rate=44100, tempo=100), 1, 2)
+    with pytest.raises(ValueError):
+        timing.warp_markers(a, a, 3, 3)
+    with pytest.raises(ValueError):
+        timing.warp_markers(a, a, 1, 2, lead_frames=-1)
+    with pytest.raises(ValueError):  # one lead frame at ratio 0.4 maps to zero frames
+        timing.warp_markers(a, Clock(sample_rate=48000, tempo=250), 1, 2, lead_frames=1)
+
+
+def test_fold_counts_and_averages_per_step():
+    period = 2.0
+    times = np.array([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]) + 10.0
+    counts = timing.fold(times, period_s=period, origin_s=10.0, steps=16)
+    expected = np.zeros(16)
+    expected[[0, 4, 8, 12]] = 2
+    np.testing.assert_array_equal(counts, expected)
+    weights = [1, 2, 3, 4, 3, 4, 5, 6]
+    means = timing.fold(times, period_s=period, origin_s=10.0, steps=16, weights=weights)
+    np.testing.assert_allclose(means[[0, 4, 8, 12]], [2, 3, 4, 5])
+    assert means.sum() == 14
+    # a half-step tie goes to the later step; times before the origin fold the same way
+    tie = timing.fold(
+        [10.0 + period / 32, 10.0 - period / 16], period_s=period, origin_s=10.0, steps=16
+    )
+    assert tie[1] == 1 and tie[15] == 1
+
+
+def test_fold_validation():
+    with pytest.raises(ValueError):
+        timing.fold([0.0], period_s=0.0, origin_s=0.0, steps=4)
+    with pytest.raises(ValueError):
+        timing.fold([0.0], period_s=1.0, origin_s=0.0, steps=0)
+    with pytest.raises(ValueError):
+        timing.fold([0.0, 1.0], period_s=1.0, origin_s=0.0, steps=4, weights=[1.0])
+
+
+def test_clicks_to_beats_to_fit_to_warp_land_on_the_new_grid():
+    import pytimestretch
+
+    from tactus import synth
+    from tactus.analysis import rhythm
+
+    rate, bars, first_click = 44100, 10, 1.0
+    performed = Clock(sample_rate=rate, tempo=85, start_seconds=first_click)
+    hit_frames = frame_of(0.02, rate)
+    hit = synth.sine(1000, rate, frames=hit_frames) * np.exp(-np.arange(hit_frames) / rate * 250)
+    audio = np.zeros(performed.frame(bars + 1) + rate)
+    clicks = [performed.frame_at(b) for b in range(bars * 4)]
+    for f in clicks:
+        add_at(audio, hit, f)
+
+    beats = np.array(rhythm.beats(audio, rate)["beats_s"])
+    fit = timing.fit_tempo(beats, bpm_range=(60, 100))[0]
+    assert fit.bpm == 85 and fit.coverage > 0.95
+    period = 60 / fit.bpm
+    # The work picks the downbeat: here the grid point nearest the first click.
+    k = round((first_click - fit.origin_s) / period)
+    source = Clock(sample_rate=rate, tempo=fit.bpm, start_seconds=fit.origin_s + k * period)
+    target = Clock(sample_rate=rate, tempo=88)
+    lead = frame_of(period, rate)
+    seg = timing.segment(audio, source.frame(1) - lead, source.frame(9) + lead)
+    pairs = timing.warp_markers(source, target, 1, 9, lead_frames=lead, tail_frames=lead)
+    out = pytimestretch.time_warp(seg.astype(np.float32), rate, markers=pairs)
+    lead_out = pairs[1][1]
+    assert len(out) == pairs[-1][1] == target.frame(9) + lead_out + frame_of(lead * 85 / 88, 1)
+
+    # The fitted origin carries the tracker's placement bias (decision: document, no API);
+    # once that measured bias is accounted for, every click sits within 2 ms of its beat.
+    click_s = np.array(clicks) / rate
+    bias_s = np.median(beats - click_s[np.abs(beats[:, None] - click_s).argmin(axis=1)])
+    assert -0.04 < bias_s < 0  # qm-dsp places these clicks' beats early
+    expected_ms = -bias_s * 1000 * 85 / 88
+    window = frame_of(0.03, rate)
+    late_ms = []
+    for b in range(33):
+        line = lead_out + target.frame_at(b)
+        env = np.abs(out[line - window : line + window])
+        late_ms.append((np.argmax(env > 0.5 * env.max()) - window) / rate * 1000)
+    assert np.all(np.abs(np.array(late_ms) - expected_ms) < 2.0)
