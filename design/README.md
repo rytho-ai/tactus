@@ -3,6 +3,11 @@
 The shared home for Tactus visual style, tokens, interactive specimens and brand
 assets. Start here when building a widget or exploring a Studio surface.
 
+The listening and review interface is no longer built here: it is the separate
+`audition-ui` package, which owns its components and its own copy of these tokens
+(taken 2026-10-14, not synchronized). The tokens below serve the Tactus brand assets
+and this specimen.
+
 | File | Responsibility |
 | --- | --- |
 | [tokens.css](tokens.css) | Shared color, typography, spacing, density and state values |
