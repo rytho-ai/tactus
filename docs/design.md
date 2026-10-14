@@ -10,7 +10,7 @@
 
 分解方式是：選擇素材身分、產生或處理音訊、組合完成的訊號、交付作品宣告的 outputs。Runtime 因此能在必要處提供可靠執行，又不接管 Agent 的分組、角色、routing 與音樂算法。
 
-**`render` 約定：**作品的 Python 檔案提供同步 `render(*, ...)`。具名 keyword-only 參數及其預設值供候選試聽使用；回傳 `{"sample_rate": 整數, "outputs": {名稱: NumPy陣列}}`，可加上 `"takes": {名稱: NumPy陣列}` 保存這次生成的中間音訊。Tactus 負責呼叫、音訊驗證與寫檔。同一個工具因此能執行不同作品，作品內部結構仍由 Agent 決定。不合法的 dictionary 會指出 missing／unexpected fields，並提供正確形狀的範例。完整契約見 [runtime reference](../skills/references/runtime.md#the-render-contract)。
+**`render` 約定：**作品的 Python 檔案提供同步 `render(*, ...)`。具名 keyword-only 參數及其預設值供候選試聽使用；回傳 `{"sample_rate": 整數, "outputs": {名稱: NumPy陣列}}`，可加上 `"takes": {名稱: NumPy陣列}` 保存這次生成的中間音訊，以及 `"map"` 描述時間結構（見時間地圖）。Tactus 負責呼叫、音訊驗證與寫檔。同一個工具因此能執行不同作品，作品內部結構仍由 Agent 決定。不合法的 dictionary 會指出 missing／unexpected fields，並提供正確形狀的範例。完整契約見 [runtime reference](../skills/references/runtime.md#the-render-contract)。
 
 Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems 或 clips，沒有必要的 output 名稱。交付格式是非空 mono／stereo、有限的實數音訊，經 float32 轉成 PCM24 WAV；不自動混音、正規化或重採樣。這是輸出邊界的約定，不限制中間 DSP 的 headroom。超過 ±1 全幅不會被拒絕：寫檔前裁切到全幅，manifest 與 run 結果回報每個 output 的 `peak_dbfs`（裁切前的峰值）與 `clipped_samples`，由 Agent 判斷是否調整 gain。
 
@@ -50,9 +50,15 @@ Temporal abstraction 把 placement、repetition、時間變換與 automation 展
 
 **`tactus.timing`：**提供 `Clock`（tempo/meter → seconds/frames，含 step／ramp／ramp-time／smooth tempo 變化）、`swing`、`Groove`、beat／seconds envelope、唯一的 rounding 規則 `frame_of`，以及 `add_at`、`markers`、`quantize`、`note_seconds` 等機械性 helper；同類的 `fx.fit_rms` 與 `tactus.load_audio` 也已提供。它只在 `import tactus.timing` 時使用，`render`／`run` 不要求它，作品可保留自己的時間算法或混用。Beats 一律是 0-based quarter note（音樂人數的「第 2 拍」是 `beat=1.0`）。對照 probe 中，這組 helper 消除了 0/1-based beat 誤算與 tempo 曲線近似的錯誤，也減少了程式碼量；probe 中沒人使用的 `db_to_gain`／`gain_to_db` 不提供。見 [runtime reference](../skills/references/runtime.md#musical-time-optional)。
 
+**從拍點擬合固定速度：**`timing.fit_tempo(beats_s, bpm_range=..., step=1.0)` 把已採用的拍點秒數（`rhythm.beats`、其他 tracker 或手打拍）擬合成固定速度格線的候選。它處理給定的數字，不分析音訊，因此不同於範圍外的「groove 從音訊萃取」。每個在 `bpm_range` 內、是 `step` 整數倍的速度都試一次：相位取拍點相位最密集的容許窗，再以 inlier 中位數修正一次；候選依 inlier 比例排序，回傳 `TempoFit`（`bpm`、`origin_s`、`inliers`、`coverage`、`offset_ms`、`p95_ms`、`drift_ms_per_min`、`free_bpm`）。`bpm_range` 必填，因為速度範圍本身就是選擇。兩倍速的格線包含慢速格線的每一拍，inlier 永遠不會較少；`coverage`（有拍點的格點比例）讓「tracker 在 85」與「170 但每隔一格是空的」分得開，tracker 本身數成兩倍時兩者都接近 1，只能由作品依音樂判斷。理由是專輯作品的量測：先找最長穩定段再擬合的做法，在一首 405 拍只有 28 拍算穩定的歌上失敗，逐一嘗試整數 BPM 並計算落在格上的拍數，十一首都找回採用的速度或它的兩倍。
+
+擬合結果就是一個 `Clock`，不另設格線型別。選哪個候選、強拍在哪一拍、目標速度、移調與伸縮引擎都留在作品；作品在 `render` 外決定後，把 `(bpm, 第 1 小節秒數, meter)` 寫成 source 常數，拍點報告保留為釘選素材。`timing.segment` 取出精確長度的 frame 範圍，超出音檔處補零；`timing.warp_markers` 產生讓來源小節線剛好落在目標小節線上的 `time_warp` pairs；`timing.fold` 只把 onset 折疊到拍或小節週期上回傳數字，強拍評分屬於作品。原點承襲 tracker 的放置偏差：qm-dsp 的拍點比專輯以 madmom 為來源的凍結格線早 11–19 ms，文件只記錄，不提供校正 API。
+
 **時間位置的取整：**musical placement 與 excerpt 的秒數邊界共用 `timing.frame_of`，以 `floor(seconds * sample_rate + 0.5)` 取整；恰好半個 sample 時選較晚的 frame，excerpt 終點不包含在輸出內。舊版 excerpt 在部分半 sample 邊界的結果因此不同，已保存的 excerpt 不變。Analysis 視窗與 DSP 時長參數保留各自已記錄的離散化方式。
 
-**尚未定案：**seconds／samples placement 與總長度的正式介面，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用超出 `tactus.timing` 現有範圍。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證；MIDI 檔案讀入 tempo、groove 從音訊萃取，以及「全曲需要一個 clock」的要求，明確不在範圍內。
+**時間地圖：**`render` 可以另外回傳 `"map"`，由產生音訊的同一份程式算出作品的時間結構，不另設一份手寫檔案。位置一律是某個 output 的整數 frames：`grid`（小節起點，小節編號與 `Clock` 一樣從 1 開始；`end` 可以超出 output，因為母帶常在最後一條小節線前結束）、作者命名的 `lanes`（spans 或 points，段落、記號、歌詞、大鼓都是同一種資料），以及 `segments`（播放器可以循環、進入或離開的片段，含 body 與尾音、可離開的位置 `joins`，可接的片段名稱或 tag 是選填）。Tactus 只檢查結構與參照（output 存在、frame 在範圍內、位置不倒退、join 目標存在），錯誤指出欄位路徑，不賦予任何 lane 名稱意義，也不判斷接起來好不好聽；依狀態而定的規則（時段、剛才放過什麼）留在作品。`run` 把正規化後的地圖存成 `map.json`，receipt、`render.json` 與 manifest 記錄同一個 hash，含地圖的 run 使用 manifest version 4；沒有地圖的 run 寫法不變。`Clock.grid(first, last, offset=)` 是唯一的 helper，經由 `frame_of` 產生 `grid`，自有時間算法的作品直接給 frame 清單。理由：五件互動作品與三支 MV 各自把 BPM 抄進 JavaScript、檢查腳本與畫面程式，光 MV 就有六處重算小節；改成以 frames 而非 clock 規格為契約，是因為同一捲帶子會混多個速度、3/4、32 kHz 與倒帶小節，clock 規格表達不了，也會讓「clock 可選」失效。《一卷帶子》驗證：36 個 loop 的長度與小節、帶子的 94 條小節線都由地圖提供，與原本的 `Grid` 算術一致（只有一條在 filter 接點上相差一個 frame 的重複線被去除）。見 [time map](../skills/references/runtime.md#the-time-map-optional)。
+
+**尚未定案：**seconds／samples placement 與總長度的正式介面，以及哪些 tempo-map／local-clock 計算值得由 Tactus 共用超出 `tactus.timing` 現有範圍。漸變 tempo、rubato、巢狀 clock 與跨 tempo 變化的事件長度仍需驗證；MIDI 檔案讀入 tempo、groove 從音訊萃取，以及「全曲需要一個 clock」的要求，明確不在範圍內。Marker warp 與單一比例伸縮在真實母帶上的聽感差異尚未比較；以實際拍點（而非固定格線）修正母帶本身微小漂移的 marker map 仍是作品程式碼。
 
 ## Pattern：選用的局部規律工具
 
@@ -84,15 +90,23 @@ Python 執行後產生可保存的音訊材料與宣告 outputs；編排快照�
 
 **Manifest 與 receipt：**`manifest.json` 保存 sample rate 與具名音訊的內容 hash、frames、channels，最後發布，作為完成標記；WAV 檔名為 `<name>-<sha256 前 8 碼>.wav`。`receipt.json`（format_version 4）記錄實際參數、source hash、最近一個 `uv.lock`（`dependency_lock`）、素材 refs、宣告的 tools、實際 import 的套件版本與來源（`package_sources`）、runtime 版本、實際執行環境（`environment`）、`@stage` 呼叫與是否 `--reuse`。欄位定義見 [run results](../skills/references/runtime.md#run-results)。舊作品借用 Tactus checkout 的環境執行時，`dependency_lock` 可能為 null，`environment.lock` 則指向 Tactus 的 lock。
 
-執行中觀察到 source 或該 lock 改變時會失敗。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
+Receipt 的 `source_files` 與 `dependency_lock` 記錄執行開始時的狀態，與 `source.patch`、take 的 source snapshot 一致。執行中有 `.py` 或該 lock 被修改時，完成的 run 照樣保留，改由 receipt 與結果的 `source_changed` 列出改動的檔案、開始與結束的 hash，以及這次執行是否 import 過它：沒有 import 的檔案（例如 scratch script）不影響音訊，`certain` 為 true；import 過的檔案若在 import 之前就被改，執行的是新內容，hash 比對無法分辨先後，所以標為不確定（`certain` 為 false），需要可追溯的音訊時重跑。這次執行寫入、key 用到改動檔案的 stage cache entry 會被移除，避免以開始時的 hash 重用可能來自新內容的結果。不從複製的 source 執行：作品的相對素材路徑與 cwd 都指向原資料夾。理由：長時間的 render 不應因為作者在等待時修改程式而整個作廢；receipt 仍如實說明哪些歸因可靠。未以 `material()` 取得的檔案、未宣告的執行檔、網路存取與隨機性不在紀錄範圍內。Runtime 不隔離任意 Python 的外部副作用。
 
 **每個作品是自己的 uv project：**`tactus init DIR` 在不存在或空的資料夾建立 `pyproject.toml`（依賴 `tactus`，`[tool.uv.sources]` 釘住一個 Tactus 來源，`requires-python` 複製自正在執行的 Tactus）、`.gitignore` 與 `uv.lock`，不寫 `song.py`。來源預設是正在執行的 Tactus 自己的來源（讀自 PEP 610 `direct_url.json`）；editable checkout 只在乾淨且 `HEAD` 已在 remote 上時允許，否則失敗並提示先 push 或改用 `--tactus-path`。`--tactus-path PATH` 與 `--tactus URL@REV` 明確指定來源。作品因此能自行 `uv add` 套件，receipt 的 `dependency_lock` 就是作品自己的 `uv.lock`，環境不隨 Tactus checkout 移動。沒有 `pyproject.toml` 的舊作品維持原本的執行方式，不會被拒絕。見 [Creating a work](../skills/references/runtime.md#creating-a-work)。
 
-**全域 CLI 與作品環境：**CLI 以 uv 全域安裝一次。在作品內，launcher 以 `uv run --project DIR --locked` 執行作品自己的 Tactus 版本與 dependencies；缺少或過期的 lock 會失敗，不退回全域版本。`init` 與作品外的命令使用全域環境。
+**全域 CLI 與作品環境：**CLI 以 uv 全域安裝一次。在作品內，launcher 以 `uv run --project DIR --locked` 執行作品自己的 Tactus 版本與 dependencies；缺少或過期的 lock 會失敗，不退回全域版本。作品沒有自己的 `uv.lock` 時，若它是上層 uv workspace（`[tool.uv.workspace]` 的 `members`／`exclude`）的成員，就使用 workspace 根目錄的 lock 與 `.venv`，與 uv 自己的解析一致；不是成員就照樣失敗。錯誤訊息指出缺的是作品還是 workspace 的 lock。Receipt 的 `dependency_lock` 同樣記錄這份 workspace lock。`init` 與作品外的命令使用全域環境。
 
 **獨立 export：**`tactus export wav|flac|stems RUN --out NEW_DIR` 讀取已驗證的原始 checkpoint，不呼叫 render，可在試聽交付失敗後重試，也能交付 FLOAT／DOUBLE WAV 保留 headroom；三者都可用 `--names` 只交付指定的 outputs。`run` 維持一次命令完成生成與預設 PCM24 試聽，代價是另存原始 arrays 的磁碟用量。沒有 checkpoint 的舊 run 使用已保存的 PCM，記為 `published-pcm`，不能恢復丟失的精度。`tactus prune RUN_DIR...` 在驗證已發佈的 PCM 後移除 checkpoint（先 `render.json` 再 `render/`），讓不再需要原始精度的 run 釋放空間並成為同樣的 `published-pcm` 狀態；takes、receipt 與 manifest 不動。Checkpoint 預設寫入：哪個候選會被採用事後才知道，先存再清永遠來得及，先不存則只能重跑而重跑不保證相同。`run` 的結果以 `render_bytes` 回報 checkpoint 佔用的大小；事先確定用完即丟的候選可用 `tactus run --no-checkpoint` 不寫入。每次 export 有自己的目錄與 `export.json`，失敗只清除該次新目錄。`take export` 負責單一演奏素材包的轉移。見 [export 契約](../skills/references/project-commands.md#export-a-completed-render) 與 [export 測試](../tests/test_export.py)。
 
-**Opt-in 的 stage reuse：**`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷；帶 `--reuse` 時，stage 的 source、`source_files`、dependencies、Python／Tactus 版本與參數的 canonical hash 全部相符才重用結果，並重播記錄的 materials／tools（tool 重新雜湊比對）。參數與結果只支援 NumPy array 與純值，其他型別照常執行，receipt 說明原因。結果存在 `$TACTUS_POOL/stages/<key>/`，沒有 garbage collection。Cache 驗證格式版本與 SHA-256：entry 損壞回報 `cache_corrupt`，無法驗證的舊格式回報 `cache_incompatible`，都不自動重跑演奏。見 [stage reuse](../skills/references/runtime.md#reusing-unchanged-stages)。
+**演奏檔案作為輸入：**玩出來的帶子、路線或步驟以 JSON 檔交給作品：`tactus run --param-file NAME=FILE`（可重複；Python 為 `run(param_files=...)`）以與 `--params` 相同的嚴格解析綁定到同名參數，同一名稱同時以兩種方式給出是 `invalid_request`。Receipt 的 `parameters` 照舊保存值，`parameter_files` 另記檔案路徑、sha256 與大小，原始 bytes 複製到 run 的 `parameters/NAME.json`，所以演奏隨 run 保存，也能從那份副本再 render 一次。Tactus 不定義演奏格式，因為每件作品的遊戲規則不同；作品在 `render` 開頭以 `tactus.InvalidParameters` 拒絕不合法的演奏，回報為 `invalid_parameters`（phase `bind`，exit 2），與 render 當中的崩潰（`execution_failed`）分開。目前不提供不 render 的 `--check`：《一卷帶子》的伺服器以這個錯誤回應 HTTP 400，往返約 2 秒（process 啟動與 import）。
+
+**帶地圖的交付：**exporter 宣告 keyword-only `time_map`／`run_identity` 時，`deliver` 交給它驗證過的地圖與 run 身分（run、manifest／receipt／map hash、origin），兩者不會成為 CLI flag，沒有宣告的 exporter 照舊執行；`export.json` 的 `source.map` 記錄地圖 hash。內建 `web` 以明確指定的 codec（`wav`／`flac`／`aac`／`opus`，有損需指定 `--bitrate`，經 `tool("ffmpeg")`）寫出瀏覽器音訊與 `bundle.json`：長度（frames 與秒）、音量、波形輪廓、地圖（frames 與秒兩份）與 run 的 hash；它把寫出的檔案再解碼一次，回報 frame 數與位移差異但不拒絕，並註明是哪個 decoder 的結果（ffmpeg 保留 AAC 尾端 padding，瀏覽器會裁掉）。`srt` 把 spans lane 寫成字幕（最近的毫秒，恰好一半取較晚）。`curves --fps` 在每個畫面時間取 `level.rms_curve`／`peak_curve`（dBFS，靜音為 null）中心最近的分析視窗，不內插，因此 32 kHz／30 fps 不會累積誤差；同時給出 points lane 的逐格次數與 grid 的小節、相位與段落。重新取樣、正規化、混音、裁切，以及衰減、百分位正規化與平滑等畫面美學都不在交付裡。理由：每件作品的 `make_world.py` 都重寫同一套轉檔、雜湊與波形；《一卷帶子》改用 `export web` 後不再有 ffmpeg、雜湊與速度常數，36 個 AAC 與舊輸出逐 byte 相同。見 [帶地圖的交付](../skills/references/project-commands.md#delivering-with-the-map-web-srt-curves)。
+
+**常駐的渲染服務：**互動作品要在下一段播放前才算出來時，`tactus serve SOURCE --out DIR`（選用的 `tactus[serve]`，FastAPI＋uvicorn；只做離線 render 的作品不需要）把作品載入一個常駐子行程一次，之後每個 `POST /render` 用與 `tactus run` 相同的 `params`／`param_files` 契約算一次，結果是 `DIR/<session>/NNNN/` 這樣的普通 run 資料夾，`export`、`prune`、`analyze` 照用。核心 `tactus.serve.Service` 是普通 Python，HTTP 只是薄的一層。作品在子行程裡、不在伺服器行程裡：`python_packages` 不會混進 FastAPI，重新載入就是換一個乾淨的行程，正在算的 NumPy 也只能靠結束行程取消；一個 worker 一次只算一個請求，因為 stage context 與輸入紀錄是行程全域狀態。Inventory、Git 紀錄與 take snapshot 每次載入在 import 前取一次；每個請求開始前重新比對作品的 `.py` 與 lock，有變就換新的載入（`reason: "source_changed"`），所以 receipt 的 `source_files` 一定是那次載入 import 的內容；請求算到一半被改，照 `source_changed` 記錄，載入時已 import 的檔案標 `imported_at_load` 並視為確定。Receipt 加上 `service`（session、請求編號、load id／時間／原因／pid）。同 `key` 的新請求取代還在排隊的舊請求（`superseded`，409），`/cancel` 結束正在算的請求（`cancelled`）；`InvalidParameters` 是 400，帶作品自己的訊息。只綁 loopback，拒絕非本機的 Host／Origin 與非 JSON 的 POST。磁碟：已發佈的 PCM 本身就會長大（Island 每步約 30 MB），`--retain N` 只留最新 N 個請求資料夾，舊的 receipt 移到 `retired/`；`session.jsonl` 記錄每次載入與請求。理由：Island 同一步冷啟動 `tactus run` 中位數 3.97 秒，服務 1.38 秒且音訊逐 byte 相同，單一片段約 0.17–0.24 秒；重新載入約 2 秒。見 [serve 契約](../skills/references/serve.md)。
+
+**尚未定案：**join 的可接片段清單在沒有狀態時對播放器是否夠用；Island 每一步一份 receipt 的 session log 是否需要 Tactus 格式；演奏是否記錄它所根據的素材 bundle（`manifest_sha256`），並與 render 載入的素材比對；review 的 0-based 小節與地圖 1-based 小節的對齊；外部母帶經普通作品進入（第二個驗證案例，08〈憨膽〉MV）尚未實作。
+
+**Opt-in 的 stage reuse：**`@stage` 標記 module-level 函式。不帶 `--reuse` 時是單純呼叫，沒有額外開銷；帶 `--reuse` 時，stage 的 source、它實際觸及的 source、dependencies、Python／Tactus 版本與參數的 canonical hash 全部相符才重用結果，並重播記錄的 materials／tools（tool 重新雜湊比對）。參數與結果只支援 NumPy array 與純值，其他型別照常執行，receipt 說明原因。「觸及的 source」從 stage 函式的 code 出發，沿它用到的名稱追到作品裡的函式、class 與 module（module 只追 code 用到的屬性），取這些檔案的 hash；觸及的純值（常數、array 與它們的 list／dict）在呼叫時一併雜湊，因此從別的檔案 import 的常數、`render` 在呼叫前改的 module global 都算在內。改 mixer 或 `song.py` 的編排不會讓沒觸及它們的 stage 重跑。無法歸因時保守處理，退回以 entry 資料夾所有 `.py` 為 key：函式內的 `import`、`getattr`／`exec`／`eval`／`__import__`／`globals`／`vars`／`importlib` 這類動態查找，或觸及的物件不是純值（Generator、外掛、自訂 class 的 instance）。Receipt 的 `stages` 以 `source` 列出 key 用到的檔案，`source_reason` 說明為何退回全部檔案。透過 method 改動的狀態只以呼叫時的值計入，物件屬性不追。理由：只改 mixer 卻讓所有 stretch 重跑，讓 reuse 在多檔作品裡失去作用；寧可多重跑也不錯誤重用。結果存在 `$TACTUS_POOL/stages/<key>/`，沒有 garbage collection。Cache 驗證格式版本與 SHA-256：entry 損壞回報 `cache_corrupt`，無法驗證的舊格式回報 `cache_incompatible`，都不自動重跑演奏。見 [stage reuse](../skills/references/runtime.md#reusing-unchanged-stages)。
 
 Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都不同的外掛（如 OB-Xf）會讓候選混進隨機差異，對照 probe 中 reuse 讓 Agent 交出只改目標聲部的候選。實際等待 render 的時間占比小，速度本身尚不構成需求；checkpoint、region-only 計算與跨機器共用 cache 等實際 consumer 證明需求後再加入。Graph 可以支援執行與檢查，但不擴張成全曲創作模型。
 
@@ -133,7 +147,7 @@ Python 要求 `>=3.12`，不預先限制未來的 minor version；實際可安�
 
 **VST 延遲與連續處理：**`fx.process_automated` 先以靜音讓外掛穩定回報延遲並重設一次，之後連續處理所有區塊並補出緩衝中的音訊；起始延遲由 Pedalboard 補償。未修改的 LSP 1.2.35 Limiter 在 mono／stereo、44.1／48 kHz、兩個外掛串接與短區塊下，透明設定的輸出逐 sample 相同。Automation 若改變外掛回報的延遲會明確報錯；未回報的延遲與其他外掛需個別驗證。見 [延遲測試](../tests/test_fx_latency.py)。
 
-**Marker warp：**`pytimestretch.time_warp` 接受 `(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。作品先在 `render` 外取得拍點，把採用的 map 固定成素材，再由一次連續的引擎呼叫完成伸縮。普通作品函式已足夠，目前不提供 Tactus wrapper。見 [製作範例與驗證](../examples/beat-alignment/README.md)。
+**Marker warp：**`pytimestretch.time_warp` 接受 `(source_frame, output_frame)` 整數 pairs，包含 `(0, 0)` 與來源／輸出長度的終點。作品先在 `render` 外取得拍點，把採用的 map 固定成素材，再由一次連續的引擎呼叫完成伸縮。固定格線之間的小節線 map 由 `timing.warp_markers` 產生；引擎呼叫、移調與 backend 仍寫在作品裡，不提供 Tactus wrapper。見 [製作範例與驗證](../examples/beat-alignment/README.md)。
 
 **內建 DSP：**`tactus.dsp` 以普通函式提供常用處理（`fx` 的同名入口轉向同一函式），VST host 與自訂 Python 路徑維持獨立可用。理由是減少跨作品重寫與重測：fresh-agent 實驗中 Agent 自寫 delay 時出現插值與 wet-only 錯誤。共同邊界如下，參數契約見 [DSP reference](../skills/references/dsp.md)：
 
@@ -150,7 +164,7 @@ Audio handoff 明確處理 sample rate、channel layout、dtype 與 output encod
 
 自有 DSP 的有限實驗支持 Python／Numba 實作與 native／WASM 輸出的可行性，但尚未形成通用 export pipeline。驗證移植算法時要涵蓋時變參數、state 與 block boundaries；參考輸出本身也可能有錯，不能只因符合單一 golden 就宣稱正確。
 
-**尚未定案：**是否需要跨作品共用的 marker-map authoring helper；外掛的動態／未回報延遲、external sidechain 與更廣泛的 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈；公開發佈前如何解決 pytimestretch（GPL-2.0-only）與 Pedalboard（GPLv3）的授權衝突。Rubber Band baseline 不代表所有素材與比例下的品質排名。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
+**尚未定案：**外掛的動態／未回報延遲、external sidechain 與更廣泛的 plugin 相容性；自有 DSP 的可攜 state／buffer 約定與 native export 工具鏈；公開發佈前如何解決 pytimestretch（GPL-2.0-only）與 Pedalboard（GPLv3）的授權衝突。Rubber Band baseline 不代表所有素材與比例下的品質排名。只有真實需求暴露缺口時，才重新比較 Symusic／MusPy、Signalsmith 或自製 host；DawDreamer 保留為參考。
 
 ## 試聽：Offline、stateful、候選隔離
 

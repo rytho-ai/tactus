@@ -15,6 +15,7 @@ adopting a candidate or recovering a work revision.
 - [Plugin helpers](#helpers-from-tactus-import-fx) and [musical time](#musical-time-optional)
 - [Measurements](#measuring-audio) and [project commands/export](#project-commands-and-export)
 - [Library behavior](#library-behavior-that-affects-tactus-results) and [run results](#run-results)
+- Rendering on request while a piece plays: [`tactus serve`](serve.md)
 
 ## The `render` contract
 
@@ -45,6 +46,55 @@ def render(*, bass_gain_db: float = -5.0) -> dict:
   For stem processing and summation boundaries, read [audio delivery](production.md#explain-the-stem-and-master-boundaries).
 - Relative imports and relative files resolve from the entry file's directory. Author logs go
   to stderr; stdout carries one JSON result.
+- A performance (a tape, a route, a list of moves) can be a JSON file instead of inline JSON:
+  `tactus run song.py --out runs/t1 --param-file tape=tapes/demo.json` (repeatable;
+  `run(..., param_files={"tape": path})` in Python) binds the file's JSON to `tape`. A name
+  given both in `--params` and as a file is `invalid_request`. The run keeps the exact bytes as
+  `parameters/tape.json`, so `--param-file tape=RUN/parameters/tape.json` renders it again.
+  Tactus defines no performance format. To reject a value before the expensive part, raise
+  `tactus.InvalidParameters("why")` in `render`: the run fails with `invalid_parameters`
+  (phase `bind`, exit 2) instead of `execution_failed`.
+
+### The time map (optional)
+
+`render` may also return `"map"`: the piece's time structure, derived by the same code that
+made the audio, for players, checks, picture work and delivery. Positions are integer frames
+of a named output; Tactus validates the structure and references and saves it as `map.json`
+(see Run results). It gives no lane name a meaning and does not judge whether a join sounds
+right. A work without bars returns lanes only, or no map.
+
+```python
+clock = Clock(sample_rate=48000, tempo=110)
+return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
+    "outputs": {
+        "mix": {"grid": clock.grid(1, 8),             # bars, end, beats_per_bar, first_bar
+                "lanes": {"sections": {"kind": "spans", "items": [
+                              {"start": 0, "end": 418909, "label": "intro"}]},
+                          "kick": {"kind": "points", "items": [{"at": 0}, {"at": 26182}]}}},
+        "loop": {"grid": clock.grid(1, 4)}},
+    "segments": {"loop": {"output": "loop", "start": 0, "end": 418909, "tail_end": 460000,
+                          "loop": True, "tags": ["a"],
+                          "joins": [{"at": "bars", "to": {"tags": ["a"]}, "keep_phase": True}]}},
+    "clock_hint": {"tempo": 110}}}
+```
+
+- `outputs.NAME.grid`: `bars` are the frames where bars start (non-decreasing), numbered from
+  `first_bar` (default 1, as in `Clock`); `end` (optional) is the frame after the last bar and
+  may exceed the output (a master that stops before its last bar line); `beats_per_bar` is one
+  number or one per bar (quarter beats, 7/8 is 3.5); `beats` optionally lists beat frames.
+  `Clock.grid(first, last, offset=0)` builds it through `frame_of`; any frame list works.
+- `outputs.NAME.lanes.LANE`: `{"kind": "spans" | "points", "items": [...]}`, sorted by
+  position. Items carry `start`/`end` or `at`, plus any JSON fields (`label`, `text`, `status`).
+- `segments.NAME`: a region a player can loop, enter or leave: `output`, `start <= end <=
+  tail_end` (the tail overlaps what follows), `loop`, `tags`, `label`. `joins` record where one
+  may leave: `at` is `"bars"` (every bar line of that output's grid) or frames relative to
+  `start`, within the body. `to` is optional: `null` (the player decides), segment names, or
+  `{"tags": [...]}`; `keep_phase` enters the target at the same offset. Rules that depend on
+  state (an hour, what was played before) stay in the work.
+- `clock_hint` is any JSON, informational only. Unknown keys are rejected; every error names
+  the field, e.g. `map.outputs.mix.grid.bars[3]: frames must not decrease`. The run fails
+  with `invalid_output`. `tactus.timemap.validate(map, outputs)` is the same check for a
+  work's tests; `timemap.to_seconds(map, rate)` converts every position to seconds.
 
 ## Creating a work
 
@@ -270,12 +320,28 @@ retrying with `--reuse`. Preserve approved performances as saved takes, independ
 A call is not reusable when any argument, or the return value, is something other than a
 NumPy array, `None`, a bool/int/float/str/bytes, a `Path`, or a list/tuple/dict of these — a
 random `Generator`, a plugin object, a callable. It then runs normally and the receipt's
-`stages` entry says why. Editing any `.py` file under the entry directory recomputes every
-stage on the next run; only unchanged source lets a changed parameter reuse the stages it
-did not touch. The key sees only `.py` source, arguments, dependencies and the tools a stage
-resolved: a stage that reads any other file directly (not through `material()`) or an
-environment variable keeps its old result when that input changes, so read inputs through
-`material()`.
+`stages` entry says why.
+
+A stage is keyed on the source it reaches, not the whole entry directory. Starting from the
+stage function, Tactus follows the names its code uses through work functions, classes and
+modules (for a module, the attributes the code names), so editing a `.py` file the stage
+does not reach (the mixer, a scratch script, or the arrangement in `song.py` for a stage
+defined in another file) keeps it reused;
+editing a reached file recomputes it. Plain values the code reaches (constants, arrays,
+lists/dicts of these) are hashed at call time, so a constant imported from another file
+or a module global that `render` sets before the call (`stretch.LEVEL = level`) counts too.
+The receipt's `stages` entry lists the keyed files in `source`. When the reach cannot be
+attributed — an `import` inside a reached function body, `getattr`/`exec`/`eval`/
+`__import__`/`globals`/`vars`/`importlib`, or a reached object that is not a plain value
+(a random `Generator`, a plugin instance, an object of your own class) — the stage is keyed
+on every `.py` file under the entry directory, as before, and `source_reason` says why: pass
+such inputs as arguments, or create them inside the stage, to key it precisely. State
+changed through a method call (`stretch.TABLE.append(...)`) before the stage is called is
+seen only as the resulting value, and an object's attributes are not followed.
+
+The key also sees arguments, dependencies and the tools a stage resolved: a stage that reads
+any other file directly (not through `material()`) or an environment variable keeps its old
+result when that input changes, so read inputs through `material()`.
 
 ## Helpers (`from tactus import fx`)
 
@@ -408,6 +474,11 @@ to write only some outputs, for example `--names '["mix"]'`. All export from sav
 rerunning instruments. Custom exporters receive verified named arrays, sample rate and an
 `out` Path, write files there, and return a JSON dict. `export.json` inventories those files.
 A failed export removes only its new directory, so retrying leaves the render intact.
+Three built-ins deliver a run with its map: `web --codec aac|opus|flac|wav [--bitrate 224k]`
+(browser audio plus `bundle.json`: lengths in frames and seconds, levels, waveform peaks, the
+map in frames and in seconds, the run's hashes), `srt --output mix --lane lyrics` (a spans
+lane as subtitles) and `curves --fps 30` (level curves, map events, bars and spans per video
+frame). See [Export a completed render](project-commands.md#export-a-completed-render).
 
 ## Musical time (optional)
 
@@ -442,8 +513,95 @@ groove.frame(clock, 9, 1.75)                      # a groove template's offset a
 
 Tempo points are `(bar, bpm)` (a step) or `(bar, bpm, shape)`, a gradual change from the
 previous point: `"ramp"` (linear in beats), `"ramp-time"` (linear in time) or `"smooth"` (a
-cosine ease). The module docstring (`python -c "import tactus.timing; help(tactus.timing)"`)
-has the full API and precision notes.
+cosine ease). The module docstring (`uv run python -c "import tactus.timing; help(tactus.timing)"`)
+has the full API and precision notes. `clock.grid(1, 8)` is the `grid` of a render map for
+bars 1–8 (`bars`, `end` = bar 9, `beats_per_bar`); `offset=` shifts it to where the clock's
+frame 0 sits in the output.
+
+### Fitting a recording to a constant grid
+
+To cut a recording by bars or stretch it onto another tempo, fit its adopted beat times once,
+outside `render`, and freeze the result. `fit_tempo` fits the numbers it is given; it never
+listens to audio, and it never picks the felt tempo or the downbeat.
+
+```bash
+tactus analyze rhythm beats master.wav > beats.json   # or another tracker, or taps
+tactus material add beats.json
+```
+
+```python
+from tactus.timing import Clock, fit_tempo, fold, frame_of, segment, warp_markers
+
+fits = fit_tempo(report["result"]["beats_s"], bpm_range=(60, 100))  # range is required
+for f in fits:  # best first; nothing is chosen for you
+    print(f.bpm, f.origin_s, f.inliers, f.coverage, f.drift_ms_per_min, f.free_bpm)
+```
+
+Every tempo that is a multiple of `step` (default `1.0`: whole-number BPM) in `bpm_range` is
+tried, and candidates are sorted by `inliers`, the fraction of beats within `tolerance_s`
+(default 0.03 s) of the grid. A grid at twice a tempo contains every beat of the slower one,
+so it never scores fewer inliers: compare `coverage`, the fraction of grid points that have a
+beat (about 1.0 at 85 and 0.5 at 170 for a tracker that counted 85). A tracker that itself
+counted double gives coverage near 1.0 at both; choose from the music, or narrow
+`bpm_range`. `drift_ms_per_min` well away from 0 and `free_bpm` away from `bpm` mean the
+recording follows a nearby tempo, not this one: try `step=0.1`. Low `inliers` for every
+candidate means the recording has no constant tempo (rubato, ramps); write a tempo map
+instead.
+
+`origin_s` is a beat near 0 s, not a downbeat. The work picks which beat is bar 1 (kick and
+snare placement, sections, listening), then freezes the choice as source constants with a
+comment naming the beats material, the candidate's numbers and the date:
+
+```python
+GRID = {"08": (88, 0.003)}  # bpm, bar 1 s; fit_tempo on beats ref …, inliers 0.98, 2026-10-14
+bpm, bar1 = GRID["08"]      # bar1 = f.origin_s + k * 60 / f.bpm for the k you chose
+source = Clock(sample_rate=rate, tempo=bpm, meter=4, start_seconds=bar1)
+```
+
+The origin inherits the tracker's placement bias. qm-dsp beats sat 11–19 ms earlier than a
+madmom-derived grid on the same masters, and about 25–30 ms before synthetic click onsets in
+the integration test; Tactus reports this and does not correct it. Anchor `bar1` on drum
+onsets in the work if the offset matters.
+
+Bar numbers in recipes are `Clock`'s, 1-based. A 0-based bar count (index `n` in a list of
+bars) is `Clock` bar `n + 1`. A bar line before 0 s is valid: `source.frame(1)` may be
+negative, and bar 0 is a pickup bar.
+
+Inside `render`, `segment(audio, *source.span(9, 17))` returns exactly those frames, zero-filled
+where the range runs before 0 or past the end. Two ways to stretch onto a target tempo
+(`pytimestretch` calls stay in the work):
+
+```python
+target = Clock(sample_rate=rate, tempo=88)
+lead = frame_of(60 / bpm, rate)                 # one beat of engine context on each side
+seg = segment(audio, source.frame(9) - lead, source.frame(17) + lead)
+pairs = warp_markers(source, target, 9, 17, lead_frames=lead, tail_frames=lead)
+out = pytimestretch.time_warp(seg, rate, markers=pairs, semitones=0)
+body = out[pairs[1][1] : pairs[-2][1]]           # target bars 1..8, exactly
+
+uniform = pytimestretch.time_stretch(segment(audio, *source.span(9, 17)), rate,
+                                     duration_ratio=bpm / 88)
+```
+
+`warp_markers` pins every source bar line to its target bar line, so lengths are exact by
+construction and the lead and tail map by the neighbouring bar's tempo ratio (`frame_of`).
+Without lead or tail, the first pair is the first bar line and the last is the end bar. One
+`duration_ratio` gives the same mapping inside the bars for a constant source tempo; its
+length is `floor(frames * ratio + 0.5)`, so slice and pad it yourself. Whether the two sound
+different on real masters is not yet compared.
+
+`fold(onsets_s, period_s=4 * 60 / bpm, origin_s=bar1, steps=16)` counts onsets (or averages
+`weights`) per sixteenth of the bar; use it to check a downbeat choice. Scoring the result is
+the work's.
+
+To excerpt by bars, write bar-line seconds as a beat grid. Excerpt rejects negative times, so
+drop bar lines before 0 s, and then positions shift: if bar 1 starts before 0 s, position 1
+of the array is bar 2.
+
+```python
+lines = [s for s in (source.seconds(b) for b in range(1, 41)) if s >= 0]
+json.dump(lines, open("bars.json", "w"))  # then: tactus excerpt RUN --beat-grid bars.json --beats A:B
+```
 
 ## Library behavior that affects Tactus results
 
@@ -456,11 +614,13 @@ Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, 
 path, "render": render_checkpoint_path, "render_bytes": int, "levels": {name: {peak_dbfs,
 clipped_samples}}}`. `render_bytes` is the size of the saved original arrays; read it, because
 it is usually the largest part of the run. With `--no-checkpoint`, `render` is `null` and
-`render_bytes` is 0.
+`render_bytes` is 0. A run whose `render` returned a map adds `"map": path_to_map.json`.
+A request served by [`tactus serve`](serve.md) is the same run directory; its receipt adds a
+`service` block naming the session, request and load.
 
 `render.json` (`kind` `tactus.render`, `format_version` 1) is written before audition
 encoding. It records `sample_rate`, original `outputs` (`file`, `sha256`, `shape`, `dtype`),
-`receipt_sha256` and optional `takes`. The CLI result's `render` points to it. Keep it with
+`receipt_sha256`, optional `takes` and optional `map` (`{file: "map.json", sha256}`). The CLI result's `render` points to it. Keep it with
 `render/` and `receipt.json`; exports verify them. Raw arrays add 4 bytes per float32 sample
 value or 8 per float64 value, alongside the PCM24 files. Legacy runs without a checkpoint
 export from their saved PCM only, explicitly recorded as `published-pcm`.
@@ -490,8 +650,13 @@ the write. `levels` in the run result repeats both numbers per output.
 
 Runs returning `takes` use manifest `format_version` 3 and add `takes: {name: tree_ref}`
 to both manifest and CLI result. These are candidate identities; `take save` imports them
-before `load_take` can use them. Runs without takes retain version 2. Excerpts and analyses
-read all three run manifest versions and operate on the audition `outputs`.
+before `load_take` can use them. Runs without takes retain version 2. Runs returning a map
+use `format_version` 4 (takes optional) and add `map: {file: "map.json", sha256}`; `map.json`
+is the validated map with defaults filled (`first_bar`, `tail_end`, `loop`, `tags`, `joins`,
+`to`, `keep_phase`). Receipt, `render.json` and manifest record the same hash, and every
+reader verifies it: export (with or without a checkpoint), `load_render` (`.map`), and
+`render_store.read_published`. `prune` keeps `map.json`. Excerpts and analyses read all four
+run manifest versions and operate on the audition `outputs`; an excerpt does not carry the map.
 
 An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) has `kind`
 `tactus.excerpt` and carries:
@@ -510,7 +675,19 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
 - `entry`, `parameters`: effective values, defaults included.
 - `source_files`: the SHA-256 of each `.py` file under the entry directory, including scratch
   scripts that `render` never imports.
-- `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null.
+- `dependency_lock`: the nearest `uv.lock`, as `{path, sha256}` or null. In a uv workspace
+  member without its own lock, this is the workspace root's `uv.lock`.
+- `source_changed`: null when no inventoried `.py` file and not the lock changed while the
+  run executed. Otherwise the run is still kept, `source_files`/`dependency_lock` keep their
+  start-of-run hashes, and this lists `files` (`path`, `start_sha256`, `end_sha256`, null for
+  an added or removed file, and `imported`: whether this run imported it), `dependency_lock`
+  (`{start, end}` or null), `certain`, `stage_entries_discarded` and a `message`, which is also
+  printed to stderr. `certain` is true when only files this run never imported changed (a
+  scratch script): the receipt still names the source of the audio. It is false when an
+  imported file or the lock changed: a file edited before it was imported ran its new bytes,
+  which hashes cannot tell apart, so re-render before relying on the attribution. Stage cache
+  entries this run wrote whose key used a changed file are removed. The CLI/Python run result
+  repeats the object under `source_changed` only when something changed.
 - `git`: null outside a repository, or `{commit, dirty, untracked, patch}`. `patch` names
   `source.patch` in the run directory when tracked files changed or untracked `.py` files
   existed; `commit` plus that patch restores the source that actually ran.
@@ -528,10 +705,17 @@ An excerpt directory has no receipt; its `manifest.json` (`format_version` 2) ha
   commit}` for a VCS install; `{url, editable}` plus `git: {commit, dirty}` when it is also a
   local Git checkout, for a directory install (an editable Tactus checkout looks like this);
   `{url, hash}` for an archive.
-- `stages`: one entry per `@stage` call, in call order: `name`, `key`, `reused`, `seconds` and
-  `reason`. `key` is null when the call was not reusable. `reason` is null on an ordinary hit
-  or miss, and otherwise says why a call was not reusable or its result was not cached.
+- `stages`: one entry per `@stage` call, in call order: `name`, `key`, `reused`, `seconds`,
+  `reason`, `source` and `source_reason`. `key` is null when the call was not reusable.
+  `reason` is null on an ordinary hit or miss, and otherwise says why a call was not reusable
+  or its result was not cached. `source` lists the `.py` files (relative to the entry
+  directory) the key used; `source_reason` is null when that is the source the stage reaches,
+  and otherwise says why every file was used (see Reusing unchanged stages).
 - `reuse`: whether this run was started with `--reuse`.
+- `map` (only when `render` returned one): `{file: "map.json", sha256}`.
+- `parameter_files` (only with `--param-file`): `{name: {path, sha256, bytes, copy}}`, the
+  file as given, its hash and size, and `copy` (`parameters/NAME.json`, the same bytes in the
+  run). `parameters` still holds the parsed value.
 - `runtime`, `reproducibility`, `attribution_scope`.
 
 A receipt guarantees the saved outputs, not that re-running the source reproduces them. Say an

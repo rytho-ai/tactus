@@ -69,8 +69,9 @@ the source entry; saved WAVs can be played directly without a separate render or
 inspect command.
 
 `receipt.json` records effective parameters including defaults, Python files beneath
-the entry's parent, a `uv.lock` in that directory if present, and core runtime
-versions. An observed source/lock change during execution fails the run. This is
+the entry's parent, the nearest `uv.lock` found by walking upward, and core runtime
+versions as they were when the run started. A source/lock edit observed during
+execution keeps the finished run and is reported in `source_changed`. This is
 a bounded inventory: imported code outside that directory, media, hidden randomness
 and external processors are not automatically traced or pinned. It does not promise
 deterministic source rebuilds or sandbox arbitrary Python/file-system side effects.

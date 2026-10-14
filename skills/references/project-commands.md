@@ -12,6 +12,7 @@ for built-in and custom operations.
 - [Analyze](#analyze)
 - [Export a completed render](#export-a-completed-render)
 - [Attribution boundary](#attribution-boundary)
+- Rendering on request with a loaded work: [`tactus serve`](serve.md)
 
 ## Install and select a work
 
@@ -65,7 +66,9 @@ tactus --project /path/to/work run /path/to/work/song.py --out /path/to/work/run
 ```
 
 `--project` selects dependencies and custom command registrations; it preserves the
-caller's cwd. Source/input/output arguments still refer to the caller's directory.
+caller's cwd. A work without its own `uv.lock` that is a member of an enclosing uv workspace
+(listed by `[tool.uv.workspace]` `members` and not `exclude`d) runs with the workspace root's
+`uv.lock` and `.venv`, as uv itself resolves it; plain `tactus ...` works there too. Source/input/output arguments still refer to the caller's directory.
 The render entry then resolves its own relative imports/files from its source directory.
 
 For work-local Python scratch scripts, use its locked uv environment:
@@ -88,7 +91,9 @@ and `environment_matches_project` (default `.venv` match, or null without a work
 Check the project, interpreter and package source together: different revisions can share
 the same package version. A false match can reveal that a directly invoked module is using
 another environment; retry through the installed launcher with explicit `--project`.
-This diagnostic compares the default `.venv`, not arbitrary workspace/custom layouts.
+This diagnostic compares the default `.venv`: the work's own, or, for a work without its own
+`uv.lock` that is a member of an enclosing uv workspace, the workspace root's. Custom
+environment locations are not compared.
 Locks control versions; updating the global CLI does not upgrade a work's pinned Tactus.
 
 ## Test and lint a work
@@ -254,6 +259,9 @@ tactus export wav runs/a --subtype DOUBLE --out delivery/original
 tactus export flac runs/a --out delivery/flac
 tactus export stems runs/a --names '["drums", "bass"]' --out delivery/stems
 tactus export my-delivery runs/a --out delivery/label --title "Chosen candidate"
+tactus export web runs/a --codec aac --bitrate 224k --out delivery/web
+tactus export srt runs/a --output mix --lane lyrics --out delivery/subs
+tactus export curves runs/a --fps 30 --measures '["rms", "peak"]' --events '["kick"]' --out delivery/curves
 ```
 
 `run` saves original returned arrays plus their receipt in `render/` and `render.json` before
@@ -294,6 +302,42 @@ all files and writes `export.json` last, with source identity, callable, effecti
 result and provenance. This filename is reserved; symlinks and special files are rejected.
 On failure only the newly created delivery directory is removed. Existing output locations
 are rejected before calling your exporter. Exporting never invokes the original render code.
+
+An exporter that also declares keyword-only `time_map=None` and/or `run_identity=None`
+receives the run's verified map (the dict from `map.json`, or `None` when the run has none)
+and `{run, manifest_sha256, receipt_sha256, map_sha256, origin}`. They are never CLI flags.
+Exporters without them are called as before. `export.json` records `source.map` as
+`{sha256}` or `null`; a `map.json` that no longer matches its recorded hash fails the export
+(`source_corrupt`).
+
+### Delivering with the map: `web`, `srt`, `curves`
+
+None of these resamples, normalizes, mixes or trims.
+
+- **`web --codec wav|flac|aac|opus [--bitrate 224k] [--names JSON] [--peaks 2000]`** writes
+  `audio/<name>-<sha8>.<ext>` (`sha8` from the PCM24 WAV's sha256, the run's own WAV name) and
+  `bundle.json` (`kind` `tactus.web-bundle`): `source` (`run`, `manifest_sha256`,
+  `receipt_sha256`, `map_sha256`), `sample_rate`, per output `file`, `codec`, `bitrate`,
+  `frames`, `seconds`, `channels`, `source_sha256`, `peak_dbfs`, `clipped_samples`,
+  `integrated_lufs` (`null` when too short), `peaks` (largest absolute sample per bucket) and
+  `decoded` (`frames`, `offset_frames`, `decoder`), plus `map` (frames) and `map_seconds`
+  (every position divided by the rate). The codec is required; `aac` (.m4a) and `opus` need
+  `--bitrate` and run `ffmpeg`, recorded as a tool. Each file is decoded again and differences
+  are reported in the result's `decoded_mismatch`, not refused; ffmpeg keeps AAC's end padding
+  (One Tape: 838656 decoded frames for 837818), which browsers may trim. `wav` writes the
+  run's PCM24 bytes; `flac` decodes to the same samples.
+- **`srt --output NAME --lane NAME [--text-field text]`** writes `<lane>.srt` from a spans lane;
+  frames become the nearest millisecond (an exact half goes later). Items without text are
+  skipped; items whose `status` is not `checked` are written and counted as `unsure`.
+- **`curves --fps N [--names] [--measures '["rms","peak"]'] [--events '["kick"]'] [--map-output NAME]`**
+  writes `curves.json` (`kind` `tactus.curves`). Frame `i` is time `i / fps`. Measures are
+  `level.rms_curve` / `level.peak_curve` (dBFS, `null` for silence or past an output's end)
+  with a `1/fps` window on a 1 ms hop, each frame taking the window whose centre is nearest
+  its time, so no value is interpolated and 32 kHz at 30 fps does not drift; `max_offset_s`
+  reports the largest distance. `events` counts a points lane's items per frame interval,
+  per output. `grid` (`bar`, `bar_phase`, `beat_phase`) and `spans` (`index`, `labels`) come
+  from `--map-output` (default: the only output the map describes). Decay, normalization and
+  smoothing are the picture's choice.
 
 ## Attribution boundary
 
