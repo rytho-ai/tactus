@@ -20,7 +20,7 @@ from .export import BUILTINS as EXPORTERS
 from .export import deliver
 from .init import init
 from .inputs import pool, tree
-from .project import selected_project
+from .project import environment_root, selected_project
 from .run import run
 from .takes import export_take, save_take
 
@@ -321,7 +321,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
                     "package_source": package_sources(["tactus"]).get("tactus"),
                     "project": str(project.root) if project else None,
                     "environment_matches_project": (
-                        Path(sys.prefix).resolve() == (project.root / ".venv").resolve()
+                        Path(sys.prefix).resolve()
+                        == (environment_root(project.root) / ".venv").resolve()
                         if project
                         else None
                     ),

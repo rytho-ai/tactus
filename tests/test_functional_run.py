@@ -369,3 +369,24 @@ def render():
         run(entry, out=tmp_path / "out")
     assert failure.value.code == "invalid_output"
     assert not (tmp_path / "out").exists()
+
+
+def test_workspace_member_receipt_records_the_workspace_lock(tmp_path):
+    workspace = tmp_path / "showcase"
+    work = workspace / "works" / "dig"
+    work.mkdir(parents=True)
+    (workspace / "pyproject.toml").write_text('[tool.uv.workspace]\nmembers = ["works/*"]\n')
+    lock = workspace / "uv.lock"
+    lock.write_text("version = 1\n")
+    (work / "pyproject.toml").write_text('[project]\nname="dig"\ndependencies=["tactus"]\n')
+    entry = work / "song.py"
+    entry.write_text(
+        "import numpy as np\n"
+        "def render():\n"
+        "    return {'sample_rate': 8000, 'outputs': {'a': np.zeros(8)}}\n"
+    )
+    receipt = read(run(entry, out=work / "runs" / "a")["receipt"])
+    assert receipt["dependency_lock"] == {
+        "path": str(lock),
+        "sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+    }

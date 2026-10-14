@@ -3,6 +3,7 @@
 uv invokes `python -m tactus.cli` rather than the console script, so even older pinned
 Tactus versions cannot recurse. Init belongs to the launcher installation. No work
 means local/global execution; failed project resolution never falls back to global.
+A work inside a uv workspace uses the workspace's `uv.lock` (see project.environment_root).
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from .project import selected_project
+from .project import environment_root, selected_project
 
 
 def main() -> int:
@@ -32,8 +33,14 @@ def main() -> int:
         if explicit is not None and project is None:
             raise ValueError(f"no Tactus work found at {explicit}")
         if project is not None and args[:1] != ["init"]:
-            if not (project.root / "uv.lock").is_file():
-                raise ValueError(f"work has no uv.lock: {project.root}; run uv lock first")
+            owner = environment_root(project.root)
+            if not (owner / "uv.lock").is_file():
+                if owner == project.root:
+                    raise ValueError(f"work has no uv.lock: {project.root}; run uv lock first")
+                raise ValueError(
+                    f"uv workspace {owner} (containing work {project.root}) has no uv.lock; "
+                    "run uv lock there first"
+                )
             uv = shutil.which("uv")
             if uv is None:
                 raise ValueError("uv is required to use the work's environment")
