@@ -84,6 +84,8 @@ these steps, with the same steps.
 - Read [interactive](../interactive/SKILL.md) when players, pages, pictures or a live set will
   read the work's timing or change it: time maps, performances as input, rendering on
   request, checked joins and browser delivery.
+- Read [visual](../visual/SKILL.md) when a picture follows the music — a video, a page that
+  plays, live visuals: time from the run, deterministic frames, measured sync.
 
 The [runnable examples](../examples/README.md) combine local DSP, Tactus, Pedalboard and
 analysis-driven time warping. They are optional vocabulary, not a required production sequence.

@@ -70,8 +70,9 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 
 The `tactus` plugin provides **compose** (write and revise works), **dsp** (design sounds and build
 effects), **measure** (use or write analyses), **version** (track work revisions
-with Git) and **interactive** (give a work an interface: time map, decisions as input, checked
-joins, browser delivery). Install it from this repository root
+with Git), **interactive** (give a work an interface: time map, decisions as input, checked
+joins, browser delivery) and **visual** (join pictures to the music's time — videos, pages, live
+visuals — and measure their sync). Install it from this repository root
 for your agent host. Run the following commands from a clean checkout root.
 For an active development checkout containing local pools or dogfood runs, use the
 [tracked snapshot workflow](skills/README.md#install-from-a-development-checkout).
@@ -212,6 +213,7 @@ and [`tactus serve`](skills/references/serve.md).
 - [Creative examples](skills/examples/README.md): custom effects, library combinations, analysis-driven time warping and synthesized instruments.
 - [Runtime reference](skills/references/runtime.md): materials, rendering, time maps, excerpts and saved takes.
 - [Interactive works](skills/interactive/SKILL.md): maps, performances as input, rendering on request, checked joins and delivery.
+- [Pictures that follow the music](skills/visual/SKILL.md): videos, playing pages and live visuals timed from a run.
 - [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
 - [Devices](skills/references/devices.md) (sampler, pads, step sequencer), [synthesis](skills/references/synth.md), [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Visual style, tokens and brand assets](design/README.md). The listening and review interface is a separate package, `audition-ui`.

@@ -142,7 +142,7 @@ Offline rendering lets you hear and measure every way the piece can go before an
   [Delivering with the map](../references/project-commands.md#delivering-with-the-map-web-srt-curves).
 - **Pictures or a video:** `tactus export srt` turns a spans lane into subtitles;
   `tactus export curves --fps 30` gives levels, map events, bars and sections per video frame.
-  Visual smoothing and style stay with the picture code.
+  The [visual](../visual/SKILL.md) skill covers joining a picture to them and checking it.
 - **On request:** `tactus serve song.py --static player --out runs/serve` serves the page and
   the API from one origin. `POST /v1/render` with `deliver: {codec, bitrate}` answers with the
   sample rate, each output's frames and seconds, the map in frames and seconds, and URLs for
