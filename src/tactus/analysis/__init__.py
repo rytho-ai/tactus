@@ -15,7 +15,7 @@ structure:
     spectral.centroid(mix, rate, threshold_hz=2000.0)   # -> dict
     help(spectral)                                       # -> category summary + analyses
 
-See `level.py`, `spectral.py` and `rhythm.py` for the shipped categories, and each analysis's own
+See `level.py`, `spectral.py`, `rhythm.py` and `join.py` for the shipped categories, and each analysis's own
 docstring for its parameters, result fields, units and definitions.
 Every builtin result also includes a finite-JSON schema describing data shapes,
 coordinates, timestamp positions, units and special-value encodings. Existing
@@ -26,14 +26,14 @@ checks structural consistency and resolves declared coordinates without inferrin
 image(result, ...) optionally renders supported matrices as a labeled SVG without
 changing their arrays; CLI --image publishes it alongside the numerical attachments.
 
-Reads: level · spectral · rhythm · schema · _image
+Reads: level · spectral · rhythm · join · schema · _image
 """
 
 from __future__ import annotations
 
-from . import level, rhythm, schema, spectral
+from . import join, level, rhythm, schema, spectral
 from ._image import image
 
-CATEGORIES = {"level": level, "spectral": spectral, "rhythm": rhythm}
+CATEGORIES = {"level": level, "spectral": spectral, "rhythm": rhythm, "join": join}
 
-__all__ = ["CATEGORIES", "image", "level", "rhythm", "schema", "spectral"]
+__all__ = ["CATEGORIES", "image", "join", "level", "rhythm", "schema", "spectral"]
