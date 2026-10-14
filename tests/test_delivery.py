@@ -248,3 +248,21 @@ def test_export_web_from_a_run_without_checkpoint_and_cli(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)["status"] == "ok"
     assert main(["export", "srt", str(tmp_path / "run"), "--output", "mix", "--lane", "lyrics",
                  "--time-map", "{}", "--out", str(tmp_path / "srt2")]) == 2
+
+
+def test_web_and_curves_on_a_run_without_a_map(tmp_path):
+    entry = tmp_path / "plain" / "song.py"
+    entry.parent.mkdir()
+    entry.write_text("import numpy as np\ndef render():\n"
+                     "    return {'sample_rate': 8000, 'outputs': {'mix': np.full(16000, 0.1)}}\n")
+    run(entry, out=tmp_path / "run")
+    record = export(tmp_path / "run", tmp_path / "web", "web", codec="wav")
+    bundle = json.loads((tmp_path / "web" / "bundle.json").read_text())
+    assert bundle["map"] is None and bundle["map_seconds"] is None
+    assert bundle["source"]["map_sha256"] is None and record["source"]["map"] is None
+    export(tmp_path / "run", tmp_path / "curves", "curves", fps=10.0)
+    curves = json.loads((tmp_path / "curves" / "curves.json").read_text())
+    assert curves["frames"] == 20 and "grid" not in curves and "events" not in curves
+    with pytest.raises(RunError) as failure:
+        export(tmp_path / "run", tmp_path / "srt", "srt", output="mix", lane="lyrics")
+    assert "has no map" in str(failure.value)
