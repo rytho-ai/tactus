@@ -115,7 +115,7 @@ Offline rendering lets you hear and measure every way the piece can go before an
   work's own files beside it. File paths in the bundle are relative to its directory, so the
   page prefixes them with where the bundle is served. `--out` must be a new directory: export
   each run once, to a directory named after the run, and point the page at it. Lossless keeps
-  loops sample-exact (FLAC is PCM24, larger than a 16-bit copy); AAC's reported length equals
+  loops sample-exact (FLAC is PCM24; `--bit-depth 16` rounds it, often under half the size); AAC's reported length equals
   what browsers play. The waveform outline is about 1 MB with 30 outputs at the default
   `--peaks 2000`; lower it when the page does not draw waveforms. See
   [Delivering with the map](../references/project-commands.md#delivering-with-the-map-web-srt-curves).

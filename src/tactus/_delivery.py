@@ -139,6 +139,7 @@ def web(
     out: Path,
     codec: str,
     bitrate: str | None = None,
+    bit_depth: int | None = None,
     names: list[str] | None = None,
     peaks: int = 2000,
     time_map: dict | None = None,
@@ -146,8 +147,9 @@ def web(
 ) -> dict:
     """Write browser audio and bundle.json: lengths, levels, waveform peaks, map, run identity.
 
-    --codec is required: wav (PCM24, the bytes run publishes), flac (lossless PCM24), aac
-    (.m4a) or opus (.opus); aac and opus need --bitrate (e.g. 224k) and are encoded with
+    --codec is required: wav (PCM24, the bytes run publishes), flac (PCM24, lossless; or
+    --bit-depth 16, the PCM24 samples rounded to 16 bits without dither, often under
+    half the size), aac (.m4a) or opus (.opus); aac and opus need --bitrate (e.g. 224k) and are encoded with
     ffmpeg, recorded as a tool. Files are audio/<name>-<sha8>.<ext>, sha8 being the first 8
     hex of the PCM24 WAV sha256 (the run's own WAV name). Each encoded file is decoded again
     and its frame count and offset against the source are reported, not refused; this is
@@ -164,6 +166,9 @@ def web(
         raise ValueError(f"{codec} needs an explicit --bitrate, e.g. 192k")
     if not lossy and bitrate is not None:
         raise ValueError(f"{codec} is lossless; omit --bitrate")
+    if bit_depth is not None and (codec != "flac" or bit_depth not in (16, 24)):
+        raise ValueError("--bit-depth is 16 or 24, for flac only (wav is the run's PCM24)")
+    depth = (bit_depth or 24) if not lossy else None
     selected = _selected(outputs, names)
     ffmpeg = None
     if lossy:
@@ -183,6 +188,10 @@ def web(
             channels = pcm.shape[1]
             if codec == "wav":
                 file.write_bytes(payload)
+            elif codec == "flac" and depth == 16:
+                # Round PCM24 to 16 bits (half to even), no dither: a choice the caller made.
+                rounded = np.clip(np.round(pcm / 65536.0), -32768, 32767).astype(np.int16)
+                sf.write(file, rounded, sample_rate, subtype="PCM_16")
             elif codec == "flac":
                 sf.write(file, pcm, sample_rate, subtype="PCM_24")
             else:
@@ -213,6 +222,7 @@ def web(
                 "file": file.relative_to(out).as_posix(),
                 "codec": codec,
                 "bitrate": bitrate,
+                "bit_depth": depth,
                 "frames": frames,
                 "seconds": frames / sample_rate,
                 "channels": channels,

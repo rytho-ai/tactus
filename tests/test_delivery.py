@@ -292,3 +292,25 @@ def test_web_aac_reports_the_length_a_browser_plays(tmp_path):
     assert decoded["padding_frames"] > 0
     assert decoded["decoder"] == "ffmpeg, trimmed to the MP4's declared length"
     assert record["result"]["decoded_mismatch"] == []
+
+
+def test_web_flac_at_16_bits_rounds_the_published_pcm(rendered, tmp_path):
+    record = export(rendered, tmp_path / "f16", "web", codec="flac", bit_depth=16)
+    bundle = json.loads((tmp_path / "f16" / "bundle.json").read_text())
+    manifest = json.loads((rendered / "manifest.json").read_text())
+    for name, entry in bundle["outputs"].items():
+        assert entry["bit_depth"] == 16 and entry["decoded"]["frames"] == entry["frames"]
+        flac, _ = sf.read(tmp_path / "f16" / entry["file"], dtype="int16")
+        wav, _ = sf.read(rendered / manifest["outputs"][name]["file"], dtype="int32")
+        expected = np.clip(np.round(wav / 65536.0), -32768, 32767)
+        np.testing.assert_array_equal(flac, expected.astype(np.int16))
+    assert record["result"]["decoded_mismatch"] == []
+    default = export(rendered, tmp_path / "f24", "web", codec="flac")
+    assert default["result"]["decoded_mismatch"] == []
+    f24 = json.loads((tmp_path / "f24" / "bundle.json").read_text())
+    assert {e["bit_depth"] for e in f24["outputs"].values()} == {24}
+    for params in ({"codec": "wav", "bit_depth": 16}, {"codec": "flac", "bit_depth": 8},
+                   {"codec": "aac", "bitrate": "96k", "bit_depth": 16}):
+        with pytest.raises(RunError) as failure:
+            export(rendered, tmp_path / f"bad{len(params)}{params['codec']}", "web", **params)
+        assert "--bit-depth is 16 or 24" in str(failure.value)

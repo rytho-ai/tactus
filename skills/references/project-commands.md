@@ -314,7 +314,7 @@ Exporters without them are called as before. `export.json` records `source.map` 
 
 None of these resamples, normalizes, mixes or trims.
 
-- **`web --codec wav|flac|aac|opus [--bitrate 224k] [--names JSON] [--peaks 2000]`** writes
+- **`web --codec wav|flac|aac|opus [--bitrate 224k] [--bit-depth 16] [--names JSON] [--peaks 2000]`** writes
   `audio/<name>-<sha8>.<ext>` (`sha8` from the PCM24 WAV's sha256, the run's own WAV name) and
   `bundle.json` (`kind` `tactus.web-bundle`): `source` (`run`: the run directory's name only,
   since bundles get published; `export.json` keeps the path; `manifest_sha256`,
@@ -329,7 +329,9 @@ None of these resamples, normalizes, mixes or trims.
   packet whole (One Tape: 838656 frames for 837818), so AAC is first trimmed to the length the
   MP4 declares (sample table minus the edit list's priming), which is what browsers play; the
   surplus is `padding_frames`. `wav` writes the
-  run's PCM24 bytes; `flac` decodes to the same samples.
+  run's PCM24 bytes; `flac` decodes to the same samples, or with `--bit-depth 16` to them rounded
+  to 16 bits (half to even, no dither; 《門》: 26 MB instead of 65 MB). Each entry records
+  `bit_depth` (null for lossy codecs).
 - **`srt --output NAME --lane NAME [--text-field text]`** writes `<lane>.srt` from a spans lane;
   frames become the nearest millisecond (an exact half goes later). Items without text are
   skipped; items whose `status` is not `checked` are written and counted as `unsure`.
