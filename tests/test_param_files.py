@@ -132,3 +132,17 @@ def test_cli_param_file(work, tmp_path, capsys):
         assert main(["run", str(entry), "--out", str(tmp_path / "x"), *arguments]) == 2
         error = json.loads(capsys.readouterr().out)["error"]
         assert error["code"] == "invalid_request" and message in error["message"]
+
+
+def test_a_rejected_performance_prints_no_traceback(work, tmp_path, capsys):
+    entry, _ = work
+    empty = tmp_path / "empty.json"
+    empty.write_text('{"tracks": []}')
+    with pytest.raises(RunError):
+        run(entry, out=tmp_path / "run", param_files={"tape": empty})
+    assert "Traceback" not in capsys.readouterr().err
+    entry.write_text(WORK.replace("raise tactus.InvalidParameters", "raise RuntimeError"))
+    with pytest.raises(RunError) as failure:
+        run(entry, out=tmp_path / "crash", param_files={"tape": empty})
+    assert failure.value.code == "execution_failed"
+    assert "Traceback" in capsys.readouterr().err   # a crash still shows where it broke

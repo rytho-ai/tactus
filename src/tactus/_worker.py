@@ -16,7 +16,8 @@ def main() -> int:
     try:
         result = _execute(json.loads(request.read_text(encoding="utf-8")))
     except RunError as exc:
-        traceback.print_exc(file=sys.stderr)
+        if exc.code != "invalid_parameters":  # the work's or the binding's own message says it all
+            traceback.print_exc(file=sys.stderr)
         write_json(response, exc.to_dict())
         return exc.exit_code
     write_json(response, result)

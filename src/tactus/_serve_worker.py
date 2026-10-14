@@ -58,7 +58,8 @@ def main() -> int:
         try:
             result = _render(loaded, out, request, resident=True)
         except RunError as exc:
-            traceback.print_exc(file=sys.stderr)
+            if exc.code != "invalid_parameters":  # the work's own message says it all
+                traceback.print_exc(file=sys.stderr)
             _send(channel, exc.to_dict())
             continue
         receipt = json.loads((out / "receipt.json").read_text(encoding="utf-8"))
