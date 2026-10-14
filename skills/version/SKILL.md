@@ -83,9 +83,7 @@ existing source without Git, and `tactus doctor` reports the environment without
    `source_files`, `dependency_lock`, `parameters` and material refs. An uncommitted
    candidate can have `dirty: true` and a patch; its HEAD alone is not the candidate.
    Keep listener-facing outputs in the main checkout's ignored `runs/` or another durable
-   location, including when rendering from a disposable worktree. To check that only what
-   you meant to change has changed, and where a listener should compare, measure the pair
-   with [`tactus.diff.compare`](../references/runtime.md#comparing-two-runs).
+   location, including when rendering from a disposable worktree.
 3. **Adopt the listener's choice in source.** Set the selected defaults or material refs.
    If this changes what ran, render again and compare every output hash before identifying
    it as the selected result. Use [Saved takes](../references/runtime.md#saved-takes) when
