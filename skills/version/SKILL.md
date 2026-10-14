@@ -87,7 +87,12 @@ existing source without Git, and `tactus doctor` reports the environment without
 3. **Adopt the listener's choice in source.** Set the selected defaults or material refs.
    If this changes what ran, render again and compare every output hash before identifying
    it as the selected result. Use [Saved takes](../references/runtime.md#saved-takes) when
-   a performance varies between runs. Measurements alone do not establish musical approval.
+   a performance varies between runs. To find out whether it does, render the same source
+   and parameters twice and compare each output's `sha256` in the two manifests. Builtin DSP,
+   synthesis, devices and fluidsynth rendered identically in every work measured; a VST
+   instrument with free-running oscillators (OB-Xf in one work) did not, and parts that follow
+   it (a level fitted to the sum) differ slightly too. Measurements alone do not establish
+   musical approval.
    After adopting, free the candidates that were not chosen: `tactus prune RUN_DIR...` removes
    their original arrays (often over a gigabyte per run) and keeps their audio and receipts.
    Keep the arrays of the adopted run and of any run you may continue from.
