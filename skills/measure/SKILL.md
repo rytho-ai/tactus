@@ -46,7 +46,8 @@ Where the work says audio is joined, measure the joined signal at the declared p
 with `tactus analyze join seams` (step, prediction error and high-frequency burst), `fades`
 (dip or bump through a crossfade) and `onset_phase` (onsets against a beat grid you give).
 Positions are seconds on the input's clock; nothing is estimated. Compare each join with
-ordinary positions of the same music, passed as `--reference-s` (usually bar lines), not
+ordinary positions of the same music, passed as `--reference-s` (usually bar lines; beats or
+sixteenths when a short loop has only a few bar lines, so a maximum means something), not
 with "the largest step inside": that is one drum attack and hid 0.15–0.25 FS wrap steps in
 One Tape. The threshold belongs to the work; the analysis only reports.
 

@@ -325,7 +325,10 @@ None of these resamples, normalizes, mixes or trims.
   `decoded` (`frames`, `offset_frames`, `decoder`; AAC adds `padding_frames`), plus `map` (frames) and `map_seconds`
   (every position divided by the rate). The codec is required; `aac` (.m4a) and `opus` need
   `--bitrate` and run `ffmpeg`, recorded as a tool. Each file is decoded again and differences
-  are reported in the result's `decoded_mismatch`, not refused. ffmpeg decodes AAC's last
+  are reported in the result's `decoded_mismatch` (printed by the CLI and kept in
+  `export.json`), not refused. `offset_frames` is a cross-correlation estimate over the first
+  seconds: quiet or strictly periodic material can make it pick a neighbouring lag, so compare
+  the samples before treating a few frames as a real shift. ffmpeg decodes AAC's last
   packet whole (One Tape: 838656 frames for 837818), so AAC is first trimmed to the length the
   MP4 declares (sample table minus the edit list's priming), which is what browsers play; the
   surplus is `padding_frames`. `wav` writes the

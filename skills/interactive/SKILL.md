@@ -52,6 +52,10 @@ frame lists; a work without bars returns lanes only. Contract and example:
 - A map error fails the run only after rendering (`invalid_output`). For a long render, test
   the map first: `tactus.timemap.validate(map, outputs)` accepts frame counts in place of
   arrays, e.g. `{name: entry["frames"]}` from a previous run's manifest.
+- Keep the source unchanged while a long render runs: an edit is recorded as
+  `source_changed` and the run no longer cleanly matches a commit.
+- `tactus prune` removes a run's original arrays and `render.json`; scripts that check a run
+  later read the sample rate and lengths from `manifest.json` and `map.json`.
 - Tactus validates structure and references only. It gives lane names no meaning and does
   not judge a join; rules that depend on state (an hour, what was played before) stay in the
   work's player.

@@ -206,6 +206,7 @@ def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
             "status": "ok",
             "directory": str(out),
             "manifest": str(out / "export.json"),
+            "result": result,
             "files": {name: str(out / name) for name in files},
         }
     except RunError:

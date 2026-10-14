@@ -84,14 +84,17 @@ return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
   `first_bar` (default 1, as in `Clock`); `end` (optional) is the frame after the last bar and
   may exceed the output (a master that stops before its last bar line); `beats_per_bar` is one
   number or one per bar (quarter beats, 7/8 is 3.5); `beats` optionally lists beat frames.
-  `Clock.grid(first, last, offset=0)` builds it through `frame_of`; any frame list works.
+  `Clock.grid(first, last, offset=0)` builds it through `frame_of` (nearest frame); any frame
+  list works. If the work sizes its audio another way (e.g. rounding up), check that the
+  grid's `end` and the output length agree where a loop must be exact.
 - `outputs.NAME.lanes.LANE`: `{"kind": "spans" | "points", "items": [...]}`, sorted by
   position. Items carry `start`/`end` or `at`, plus any JSON fields (`label`, `text`, `status`).
 - `segments.NAME`: a region a player can loop, enter or leave: `output`, `start <= end <=
   tail_end` (the tail overlaps what follows), `loop`, `tags`, `label`. `joins` record where one
   may leave: `at` is `"bars"` (every bar line of that output's grid) or frames relative to
   `start`, from 0 to `end - start` inclusive (the body's end is a valid exit). `to` is optional: `null` (the player decides), segment names, or
-  `{"tags": [...]}`; `keep_phase` enters the target at the same offset. Rules that depend on
+  `{"tags": [...]}` (Tactus checks each tag exists on some segment; whether a target needs
+  any or all of them is the player's rule); `keep_phase` enters the target at the same offset. Rules that depend on
   state (an hour, what was played before) stay in the work. A segment names one output; for
   parallel stems that loop together, put the segment on one of them and name the others in
   the work's own data (or a `label`/`tags` convention), as 《門》 does with `<space>_<stem>`.

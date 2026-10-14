@@ -323,3 +323,10 @@ def test_web_peaks_zero_writes_no_outline(rendered, tmp_path):
     with pytest.raises(RunError) as failure:
         export(rendered, tmp_path / "bad", "web", codec="wav", peaks=-1)
     assert "0 writes no outline" in str(failure.value)
+
+
+def test_cli_export_prints_the_exporters_result(rendered, tmp_path, capsys):
+    assert main(["export", "web", str(rendered), "--codec", "wav", "--out",
+                 str(tmp_path / "w")]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["result"]["decoded_mismatch"] == []
