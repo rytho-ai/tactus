@@ -132,7 +132,7 @@ tactus run song.py --out runs/b --params '{"gain": 0.1}'
 ```
 
 Each output directory must be new. The command returns WAV paths, levels and execution
-records. Play the WAVs with your audio tools. Parameters let you compare candidates without
+records; `--brief` prints a short summary instead of every path. Play the WAVs with your audio tools. Parameters let you compare candidates without
 editing source; adopt the values you choose in the work's code.
 
 Each run also keeps its original arrays for lossless export and reuse; `render_bytes` in the

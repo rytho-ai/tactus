@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
 
 from ._contracts import RunError, parse_params
 from ._source import environment, package_sources
@@ -31,6 +32,45 @@ class _RunParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         raise RunError("invalid_request", "request", message)
 
+
+
+def _summary(value: Any, limit: int = 12) -> Any:
+    """Long lists and mappings become their size, so a summary stays a few lines long."""
+    if isinstance(value, dict):
+        if len(value) > limit:
+            return {"count": len(value)}
+        return {key: _summary(item, limit) for key, item in value.items()}
+    if isinstance(value, list) and len(value) > limit:
+        return {"count": len(value)}
+    return value
+
+
+def _brief_run(result: dict) -> dict:
+    levels = result.get("levels", {})
+    peaks = [entry["peak_dbfs"] for entry in levels.values() if entry.get("peak_dbfs") is not None]
+    brief = {
+        "status": result["status"],
+        "run": str(Path(result["manifest"]).parent),
+        "manifest": result["manifest"],
+        "receipt": result["receipt"],
+        "outputs": len(result.get("outputs", {})),
+        "peak_dbfs": max(peaks) if peaks else None,
+        "clipped": sorted(n for n, e in levels.items() if e.get("clipped_samples")),
+        "render_bytes": result.get("render_bytes"),
+    }
+    for key in ("map", "takes", "source_changed"):
+        if result.get(key) is not None:
+            brief[key] = _summary(result[key])
+    return brief
+
+
+def _brief_export(result: dict) -> dict:
+    brief = {key: result[key] for key in ("status", "directory", "manifest") if key in result}
+    brief["files"] = len(result.get("files", {}))
+    brief["result"] = _summary(result.get("result"))
+    if result.get("replaced"):
+        brief["replaced"] = True
+    return brief
 
 def _main(argv: Sequence[str] | None = None) -> int:
     """Execute a command; functional runs reserve stdout for one JSON result."""
@@ -84,6 +124,12 @@ def _main(argv: Sequence[str] | None = None) -> int:
         "--no-checkpoint",
         action="store_true",
         help="Do not save the original arrays; keep only the published PCM (throwaway candidates)",
+    )
+    run_command.add_argument(
+        "--brief",
+        action="store_true",
+        help="Print a summary (status, run directory, records, output count, loudest peak, "
+        "clipped outputs) instead of every output path",
     )
     serve_work = commands.add_parser(
         "serve",
@@ -250,9 +296,20 @@ def _main(argv: Sequence[str] | None = None) -> int:
             "run_dir", type=Path, help="Source run (render.json, or legacy published WAVs)"
         )
         sub.add_argument("--out", required=True, type=Path, help="New delivery directory")
+        sub.add_argument(
+            "--replace",
+            action="store_true",
+            help="Rewrite --out if it is an earlier tactus export; the new export is written "
+            "beside it and swapped in only when it succeeds",
+        )
+        sub.add_argument(
+            "--brief", action="store_true", help="Print a summary instead of every file path"
+        )
         if selected:
             names = add_flags(
-                sub, flag_view(fn), {"out", "run_dir", "help", "command", "export_name"}
+                sub,
+                flag_view(fn),
+                {"out", "run_dir", "help", "command", "export_name", "replace", "brief"},
             )
             sub.set_defaults(callable_command=command, param_names=names)
     try:
@@ -278,7 +335,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 checkpoint=not args.no_checkpoint,
                 param_files=param_files,
             )
-            print(json.dumps(result, sort_keys=True))
+            print(json.dumps(_brief_run(result) if args.brief else result, sort_keys=True))
             return 0
         if args.command == "serve":
             from . import _serve_http
@@ -358,9 +415,13 @@ def _main(argv: Sequence[str] | None = None) -> int:
             params = parse_params(json.dumps(params))
             if args.command == "export":
                 result = deliver(
-                    args.run_dir, out=args.out, command=args.callable_command, params=params
+                    args.run_dir,
+                    out=args.out,
+                    command=args.callable_command,
+                    params=params,
+                    replace=args.replace,
                 )
-                print(json.dumps(result, sort_keys=True))
+                print(json.dumps(_brief_export(result) if args.brief else result, sort_keys=True))
             else:
                 visualization = None
                 supports_image = (

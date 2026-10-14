@@ -330,3 +330,57 @@ def test_cli_export_prints_the_exporters_result(rendered, tmp_path, capsys):
                  str(tmp_path / "w")]) == 0
     printed = json.loads(capsys.readouterr().out)
     assert printed["result"]["decoded_mismatch"] == []
+
+
+def test_bundle_and_curves_are_compact_json(rendered, tmp_path):
+    export(rendered, tmp_path / "web", "web", codec="wav")
+    export(rendered, tmp_path / "curves", "curves", fps=25)
+    for path in (tmp_path / "web" / "bundle.json", tmp_path / "curves" / "curves.json"):
+        text = path.read_text()
+        assert "\n " not in text and ": " not in text   # no indentation, no padding
+        json.loads(text)
+    assert "\n  " in (tmp_path / "web" / "export.json").read_text()   # records stay readable
+
+
+def test_replace_rewrites_only_an_earlier_export(rendered, tmp_path, capsys):
+    out = tmp_path / "web"
+    assert main(["export", "web", str(rendered), "--codec", "wav", "--out", str(out)]) == 0
+    capsys.readouterr()
+    assert main(["export", "web", str(rendered), "--codec", "flac", "--out", str(out)]) == 2
+    assert "--replace" in json.loads(capsys.readouterr().out)["error"]["message"]
+    assert main(["export", "web", str(rendered), "--codec", "flac", "--out", str(out),
+                 "--replace", "--brief"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["replaced"] is True and printed["directory"] == str(out.resolve())
+    assert printed["files"] == len(list((out / "audio").iterdir())) + 1   # audio + bundle.json
+    assert {p.suffix for p in (out / "audio").iterdir()} == {".flac"}
+    assert json.loads((out / "export.json").read_text())["params"]["codec"] == "flac"
+    assert not [p for p in tmp_path.iterdir() if p.name.startswith(".web.")]   # nothing left
+    # a failed replacement leaves the earlier export as it was
+    before = sorted(p.name for p in (out / "audio").iterdir())
+    assert main(["export", "web", str(rendered), "--codec", "mp3", "--out", str(out),
+                 "--replace"]) != 0
+    capsys.readouterr()
+    assert sorted(p.name for p in (out / "audio").iterdir()) == before
+    assert not [p for p in tmp_path.iterdir() if p.name.startswith(".web.")]
+    # anything that is not an export is refused
+    plain = tmp_path / "mine"
+    plain.mkdir()
+    (plain / "notes.txt").write_text("keep")
+    assert main(["export", "web", str(rendered), "--codec", "wav", "--out", str(plain),
+                 "--replace"]) == 2
+    assert "written by tactus export" in json.loads(capsys.readouterr().out)["error"]["message"]
+    assert (plain / "notes.txt").read_text() == "keep"
+
+
+def test_brief_run_and_export_summaries(rendered, tmp_path, capsys):
+    entry = rendered.parent / "work" / "song.py"
+    assert main(["run", str(entry), "--out", str(tmp_path / "b"), "--brief"]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert brief["status"] == "ok" and brief["outputs"] == 2 and brief["clipped"] == []
+    assert brief["run"] == str((tmp_path / "b").resolve()) and brief["receipt"].endswith("receipt.json")
+    assert isinstance(brief["peak_dbfs"], float) and "levels" not in brief
+    assert main(["export", "web", str(tmp_path / "b"), "--codec", "wav", "--out",
+                 str(tmp_path / "w"), "--brief"]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert brief["files"] == 3 and brief["result"]["decoded_mismatch"] == []

@@ -84,10 +84,12 @@ def parse_params(raw: str) -> dict[str, Any]:
         raise RunError("invalid_request", "request", str(exc)) from exc
 
 
-def write_json(path: Path, value: dict[str, Any]) -> None:
+def write_json(path: Path, value: dict[str, Any], *, compact: bool = False) -> None:
+    """Write JSON atomically; `compact` drops indentation and spaces (files a page downloads)."""
     temporary = path.with_suffix(".json.tmp")
+    layout = {"separators": (",", ":")} if compact else {"indent": 2}
     temporary.write_text(
-        json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8"
+        json.dumps(value, sort_keys=True, allow_nan=False, **layout) + "\n", encoding="utf-8"
     )
     temporary.replace(path)
 

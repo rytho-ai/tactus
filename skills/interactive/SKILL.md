@@ -122,8 +122,9 @@ Offline rendering lets you hear and measure every way the piece can go before an
   peaks, the map in frames and seconds, the run's hashes, the length each file decodes to).
   The page loads `bundle.json` and schedules from its map; titles, credits and art stay in the
   work's own files beside it. File paths in the bundle are relative to its directory, so the
-  page prefixes them with where the bundle is served. `--out` must be a new directory: export
-  each run once, to a directory named after the run, and point the page at it. Lossless keeps
+  page prefixes them with where the bundle is served. To deliver again into the
+  same directory, add `--replace`: it rewrites only a directory `tactus export` wrote, and
+  swaps the new export in once it has succeeded. `bundle.json` is written compactly. Lossless keeps
   loops sample-exact (FLAC is PCM24; `--bit-depth 16` rounds it, often under half the size); AAC's reported length equals
   what browsers play. The waveform outline is about 1 MB with 30 outputs at the default
   `--peaks 2000`; `--peaks 0` leaves it out when the page draws no waveform. See

@@ -259,7 +259,7 @@ def web(
         "map": time_map,
         "map_seconds": None if time_map is None else timemap.to_seconds(time_map, sample_rate),
     }
-    write_json(out / "bundle.json", bundle)
+    write_json(out / "bundle.json", bundle, compact=True)
     return {
         "codec": codec,
         "outputs": {name: entry["file"] for name, entry in entries.items()},
@@ -437,7 +437,7 @@ def curves(
                 spans[lane] = _span_frames(value["items"], times)
         if spans:
             record["spans"] = {"output": map_output, **spans}
-    write_json(out / "curves.json", record)
+    write_json(out / "curves.json", record, compact=True)
     return {
         "frames": count,
         "measures": sorted(curves_out),

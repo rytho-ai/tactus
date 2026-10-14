@@ -260,6 +260,7 @@ tactus export flac runs/a --out delivery/flac
 tactus export stems runs/a --names '["drums", "bass"]' --out delivery/stems
 tactus export my-delivery runs/a --out delivery/label --title "Chosen candidate"
 tactus export web runs/a --codec aac --bitrate 224k --out delivery/web
+tactus export web runs/b --codec aac --bitrate 224k --out delivery/web --replace --brief   # deliver again
 tactus export srt runs/a --output mix --lane lyrics --out delivery/subs
 tactus export curves runs/a --fps 30 --measures '["rms", "peak"]' --events '["kick"]' --out delivery/curves
 ```

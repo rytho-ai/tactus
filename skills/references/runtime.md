@@ -482,6 +482,11 @@ to write only some outputs, for example `--names '["mix"]'`. All export from sav
 rerunning instruments. Custom exporters receive verified named arrays, sample rate and an
 `out` Path, write files there, and return a JSON dict. `export.json` inventories those files.
 A failed export removes only its new directory, so retrying leaves the render intact.
+`--replace` rewrites an existing `--out` only when it is an earlier export (it holds a
+`tactus.export` `export.json`): the new export is written beside it and swapped in after it
+succeeds, so a failure keeps the earlier one. `--brief` prints the status, directory, record,
+file count and a short result instead of every file path. `bundle.json` and `curves.json` are
+compact JSON (no indentation); `export.json` stays indented.
 Three built-ins deliver a run with its map: `web --codec aac|opus|flac|wav [--bitrate 224k]`
 (browser audio plus `bundle.json`: lengths in frames and seconds, levels, waveform peaks, the
 map in frames and in seconds, the run's hashes), `srt --output mix --lane lyrics` (a spans
@@ -618,7 +623,9 @@ stretching and reproducibility caveats, including clipping that the run report c
 
 ## Run results
 
-Success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, "receipt":
+`tactus run --brief` prints `{status, run, manifest, receipt, outputs: count, peak_dbfs (the
+loudest output), clipped: [names], render_bytes}` plus `map`, `takes` and `source_changed`
+when present, for works with many outputs. Without it, success prints `{"status": "ok", "outputs": {name: wav_path}, "manifest": path, "receipt":
 path, "render": render_checkpoint_path, "render_bytes": int, "levels": {name: {peak_dbfs,
 clipped_samples}}}`. `render_bytes` is the size of the saved original arrays; read it, because
 it is usually the largest part of the run. With `--no-checkpoint`, `render` is `null` and

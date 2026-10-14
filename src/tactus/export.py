@@ -17,6 +17,7 @@ import functools
 import inspect
 import io
 import json
+import os
 import shutil
 import sys
 import zipfile
@@ -132,7 +133,57 @@ def _sha256(path: Path) -> str | None:
     return hash_file(path) if path.is_file() else None
 
 
-def deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
+def deliver(
+    source: Path, *, out: Path, command: Command, params: dict, replace: bool = False
+) -> dict:
+    """Run an exporter into the new directory `out`; with `replace`, rewrite an earlier export.
+
+    `replace` accepts only a directory that `tactus export` wrote (its `export.json`). The new
+    export is written beside it and swapped in only after it succeeds, so a failure leaves the
+    earlier export untouched.
+    """
+    out = Path(out).resolve()
+    if not out.exists():
+        return _deliver(source, out=out, command=command, params=params)
+    if not replace:
+        raise RunError(
+            "output_exists", "request",
+            f"output already exists: {out} (--replace rewrites an earlier export)",
+        )  # fmt: skip
+    try:
+        earlier = json.loads((out / "export.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        earlier = None
+    if not out.is_dir() or not isinstance(earlier, dict) or earlier.get("kind") != "tactus.export":
+        raise RunError(
+            "invalid_request", "request",
+            f"--replace only rewrites a directory written by tactus export: {out}",
+        )  # fmt: skip
+    if Path(source).resolve().is_relative_to(out):
+        raise RunError("invalid_request", "request", "export directory must be outside the source run")
+    staging = out.parent / f".{out.name}.replacing-{os.getpid()}"
+    retired = out.parent / f".{out.name}.replaced-{os.getpid()}"
+    for leftover in (staging, retired):
+        if leftover.exists():
+            shutil.rmtree(leftover)
+    result = _deliver(source, out=staging, command=command, params=params)
+    out.rename(retired)
+    staging.rename(out)
+    shutil.rmtree(retired)
+
+    def moved(value: str) -> str:
+        return str(out / Path(value).relative_to(staging))
+
+    return {
+        **result,
+        "directory": str(out),
+        "manifest": moved(result["manifest"]),
+        "files": {name: moved(path) for name, path in result["files"].items()},
+        "replaced": True,
+    }
+
+
+def _deliver(source: Path, *, out: Path, command: Command, params: dict) -> dict:
     from .provenance import begin, finish
 
     source, out = source.resolve(), out.resolve()
