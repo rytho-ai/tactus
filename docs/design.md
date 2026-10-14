@@ -116,7 +116,7 @@ Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都
 
 `tactus take export REF --out DIR` 匯出音訊與 provenance，另一台電腦以 `tactus material add DIR` 匯入得到相同 ref；重新生成所需的 sample libraries、binaries 與 Python 環境需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用演奏的唯一保存處。固定成素材的演奏已在乾淨 pool／Python 環境、斷網的同主機 Linux 容器中重建出相同 WAV；這還不是通用的交接 CLI。見 [Saved takes](../skills/references/runtime.md#saved-takes) 與 [saved takes 測試](../tests/test_takes.py)。
 
-**Agent 指引與 plugin：**指引由單一 [`tactus` plugin](../skills/README.md) 提供，manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，兩個 marketplace 都指向根目錄。四個 skills 放在 `skills/`，共用契約由 `skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的相對引用可獨立使用，runtime 另行安裝。
+**Agent 指引與 plugin：**指引由單一 [`tactus` plugin](../skills/README.md) 提供，manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，兩個 marketplace 都指向根目錄。五個 skills 放在 `skills/`，共用契約由 `skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的相對引用可獨立使用，runtime 另行安裝。
 
 - `compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，保留 caller 要控制的音樂選擇；不只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。
 - `dsp` 負責使用、撰寫與驗證聲音源與 processor（sound design 與訊號處理）；`measure` 涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到這兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法，不要求每首作品走同一流程。
@@ -138,9 +138,9 @@ MV、互動作品與現場演出用到的功能是同一個介面的三個部分
 | 收進決定 | 以參數或演奏檔案接受決定，不合法時丟 `InvalidParameters` | `--params`／`--param-file`，演奏隨 run 保存（見演奏檔案作為輸入）；要在播放中算下一段時用 `tactus serve`（見常駐的渲染服務） |
 | 接得起來 | 在地圖宣告可循環、可離開的位置與可接的片段，把位置交給量測 | 結構與參照檢查；`join` 分析在宣告的位置量測不連續（`seams`）、交叉淡化（`fades`）與拍點相位（`onset_phase`），只回報數值（見驗證與觀察的接縫與循環） |
 
-一首只交付聲音的作品三件都不需要；MV 通常只用第一件；互動作品三件都用。畫面、遊戲規則、狀態轉移與播放器 UI 留在作品或下游：Tactus 不知道「玩家剛才去過哪裡」，作品從演奏紀錄自己算。理由：五件互動作品與三支 MV 各自重寫同一套 `world.json`、速度常數、轉檔與接點檢查，《一卷帶子》改用地圖與 `export web` 後不再有自己的轉檔、雜湊與速度常數，Island 改用 `tactus serve` 後每步從 3.97 秒降到 1.38 秒，兩者聲音逐 byte 相同。
+一首只交付聲音的作品三件都不需要；MV 通常只用第一件；互動作品三件都用。[`interactive` skill](../skills/interactive/SKILL.md) 教這三件的用法與選擇渲染方式，不列舉玩法。畫面、遊戲規則、狀態轉移與播放器 UI 留在作品或下游：Tactus 不知道「玩家剛才去過哪裡」，作品從演奏紀錄自己算。理由：五件互動作品與三支 MV 各自重寫同一套 `world.json`、速度常數、轉檔與接點檢查，《一卷帶子》改用地圖與 `export web` 後不再有自己的轉檔、雜湊與速度常數，Island 改用 `tactus serve` 後每步從 3.97 秒降到 1.38 秒，兩者聲音逐 byte 相同。
 
-**尚未定案：**多份 receipt 組成的一場演奏是否需要 Tactus 的 session 格式；互動作品的 skill 是否獨立於 compose。
+**尚未定案：**多份 receipt 組成的一場演奏是否需要 Tactus 的 session 格式；一起循環的平行 stems 是否需要在地圖裡分組（《門》目前把 segment 掛在其中一軌，其餘由作品自己的資料命名）；`export web` 的 FLAC 是否提供 16-bit（《門》的 bundle 因 PCM24 變成 66 MB）。
 
 ## 套件與工具邊界：自有算法與專門引擎
 

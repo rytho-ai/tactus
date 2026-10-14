@@ -14,7 +14,7 @@ Tactus 負責製作過程中反覆需要正確的工作：音訊與工具間的�
 
 作品的品質問題（例如音量過大）由 Tactus 如實回報，讓 Agent 自己察覺並處理；Tactus 不替 Agent 擋下，因為擋下只會讓 Agent 想辦法繞過去，問題依然存在（2026-09-25，由滿格檢查改為音量回報）。
 
-給 Agent 的 `tactus` plugin 以 `compose`、`dsp`、`measure`、`version` 四個 skills 提供可組合的創作能力：用 functional、modular 的 Python 維護作品，使用或撰寫 DSP 與分析，再把觀察轉成自己的音樂決定，並用 Git 保存修訂。程式的入口、模組契約與實作依 progressive disclosure 組織，讓修訂能逐步找到相關邏輯。範例與內建 source 是可改寫的參考，不規定曲式、風格、固定資料夾或創作順序；套件自己的 API 仍由其文件負責（2026-09-30）。
+給 Agent 的 `tactus` plugin 以 `compose`、`dsp`、`measure`、`version`、`interactive` 五個 skills 提供可組合的創作能力：用 functional、modular 的 Python 維護作品，使用或撰寫 DSP 與分析，再把觀察轉成自己的音樂決定，並用 Git 保存修訂；`interactive` 教作品的介面（原則 8）的機制，不列舉玩法（2026-10-14）。程式的入口、模組契約與實作依 progressive disclosure 組織，讓修訂能逐步找到相關邏輯。範例與內建 source 是可改寫的參考，不規定曲式、風格、固定資料夾或創作順序；套件自己的 API 仍由其文件負責（2026-09-30）。
 
 ## 2. 創作意圖只有一份權威來源
 

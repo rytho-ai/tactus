@@ -41,6 +41,7 @@ def test_marketplaces_resolve_the_same_versioned_plugin():
     assert {p.parent.name for p in SKILLS.glob("*/SKILL.md")} == {
         "compose",
         "dsp",
+        "interactive",
         "measure",
         "version",
     }

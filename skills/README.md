@@ -4,17 +4,19 @@
 
 Arrange, render, analyze, and refine.
 
-Four composable skills for making music with the separately installed Tactus Python runtime:
+Five composable skills for making music with the separately installed Tactus Python runtime:
 
 | Skill | Responsibility |
 |---|---|
 | [compose](compose/SKILL.md) | Develop and maintain a work as functional, modular code, choosing among synthesis, recorded material and devices; render, listen and revise. |
 | [dsp](dsp/SKILL.md) | Use or build sound sources, processors and controls, validate their behavior and accelerate measured bottlenecks. |
-| [measure](measure/SKILL.md) | Use or write analyses, evaluate their limits and supply observations for creative choices. |
+| [measure](measure/SKILL.md) | Use or write analyses, check joins and loop wraps, evaluate their limits and supply observations for creative choices. |
 | [version](version/SKILL.md) | Explore, compare, preserve and reuse versions; use Git to connect source, refs and locks to audio. |
+| [interactive](interactive/SKILL.md) | Give a work an interface: its time map for players and pictures, decisions and performances as inputs, rendering on request, checked joins and browser delivery. |
 
 Compose uses version when starting and adopting revisions, and links to DSP and
-measurement when an idea needs them. All four are independently
+measurement when an idea needs them; interactive builds on compose when other code reads or
+changes the work. All five are independently
 usable. Builtin functions, Pedalboard and local Python are ordinary options. The skills
 provide working methods and adaptable examples; musical form and aesthetics remain yours.
 
@@ -61,6 +63,7 @@ skills/
   dsp/SKILL.md
   measure/SKILL.md
   version/SKILL.md
+  interactive/SKILL.md
   references/
   examples/
 ```
