@@ -136,7 +136,8 @@ new kernel signature compiles code; later processes can load its on-disk cache. 
 use therefore costs more than repeated processing. Fixed-cutoff filtering and saturation
 continue to use NumPy/SciPy. No fast-math transformations are enabled in the DSP kernels.
 
-Owned DSP functions allocate float64 output and do not mutate input or caller state.
+Owned DSP functions allocate float64 output, except `varispeed`, `fit_rms` and
+`fit_loudness`, which retain float32 results. They do not mutate input or caller state.
 They do not clip or normalize output automatically; saturation deliberately shapes
 amplitude. Empty arrays are supported. Audio uses `(frames,)` or `(frames, channels)`.
 Use these functions inside `render()`; no separate DSP CLI or mandatory processor chain is needed.

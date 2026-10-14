@@ -5,6 +5,7 @@ Python functions for arrays; the author decides how the results affect the work.
 Discover categories with `tactus analyze --help`, then use category/command `--help` for
 available analyses, parameters and exact definitions in the installed version.
 
+- [Data schema](#data-schema)
 - [Beat analysis](#beat-analysis)
 - [Level curves and loudness range](#level-curves-and-loudness-range)
 - [Onsets and feature arrays](#onsets-and-feature-arrays)
@@ -17,6 +18,227 @@ number and not the parameters and provenance.
 To write an analysis or register a work-local command, read the
 [measure skill](../skills/measure/SKILL.md) and
 [project command contract](../skills/references/project-commands.md#analyze).
+
+## Data schema
+
+Every builtin returns an additional `schema` object. In Python it is `result["schema"]`;
+in CLI JSON it is `report["result"]["schema"]`, including with `--brief`. It describes
+the data rather than how to draw it. Existing fields, parameter defaults, arrays and
+numeric analysis revisions stay unchanged. `image(result)` and `--image` remain available.
+Project-defined analyses can use the same public helpers below. They are not annotated
+automatically: absent declarations are unknown.
+
+For example:
+
+```python
+from tactus.analysis import level
+
+result = level.rms_curve(audio, sample_rate, window_s=0.02)
+field = result["schema"]["fields"]["rms_dbfs"]
+times = result[field["x"]["key"]]
+values = result["rms_dbfs"]
+# Each value measures [times[i] - field["x"]["width"], times[i]).
+# width is window_samples / sample_rate, after sample rounding.
+```
+
+At 48 kHz the field description is:
+
+```json
+{
+  "shape": "series",
+  "x": {
+    "key": "times_s", "quantity": "time", "unit": "s", "spacing": "linear",
+    "origin": "input_start", "at": "end", "width": 0.02,
+    "hop": 0.01, "padding": "none", "end_exclusive": true
+  },
+  "y": {
+    "quantity": "rms", "unit": "dBFS",
+    "special_values": [{"python": "null", "json": "null", "meaning": "zero_energy"}]
+  }
+}
+```
+
+### Declare and consume custom data
+
+`from tactus.analysis import schema` provides the same constructors used by builtins.
+Field names and quantities belong to the analysis, with no builtin-name registry or
+dependency on a downstream tool. For example, a work-local waveform analysis:
+
+```python
+import numpy as np
+from tactus.analysis import schema
+
+def waveform(audio, sample_rate):
+    # Explicit channel policy: average channels for this particular observation.
+    samples = audio if audio.ndim == 1 else audio.mean(axis=1)
+    return schema.attach(
+        {"clock": np.arange(len(samples)) / sample_rate, "samples": samples},
+        sample_rate=sample_rate,
+        frames=len(samples),
+        coordinate_keys=["clock"],
+        fields={
+            "samples": schema.series(
+                schema.axis("clock", quantity="time", unit="s", spacing="linear",
+                            origin="input_start", at="point"),
+                schema.value("sample_amplitude", "FS"),
+            )
+        },
+    )
+
+result = waveform(audio, sample_rate)
+times = schema.coordinates(result, "samples")
+schema.validate(result)
+```
+
+Register this normal Python function as a work-local analysis to use it through the
+CLI; its NumPy arrays require `--out`. This declares waveform data; it does not add a
+waveform renderer to `image()`.
+
+| Helper | Behavior |
+| --- | --- |
+| `axis(key=None, quantity=None, unit=None, spacing=None, **extra)` | Select a root/record key, inline `values` or row `column`; omitted semantics remain undeclared |
+| `value(quantity, unit, **extra)` | Describe values; `sentinel`, `meaning` and `array=True` can declare Python/JSON/NPZ encodings |
+| `series(x, y, **extra)` | A coordinate vector with value semantics; structured layouts also select the y values |
+| `grid(x, y, value, dimensions=("y", "x"))` | A matrix with declared axis order; `("x", "y")` is also supported |
+| `events(x, **extra)` | Points or spans, optionally with record/row attributes |
+| `summary(quantity, unit, **extra)` | A scalar without an axis |
+| `attach(result, *, sample_rate, frames, fields, coordinate_keys=(), parameter_keys=(), auxiliary_keys=())` | Classify existing keys, attach fresh finite-JSON metadata and validate; return a shallow result copy |
+| `validate(result)` | Check declarations against in-memory data; return None or raise ValueError naming the failing field |
+| `coordinates(result, field, axis="x")` | Resolve declared selectors and factors into an independent NumPy vector; grid axes may be x or y |
+
+Constructors return ordinary dictionaries. Handwritten declarations use the same contract;
+unknown properties can be omitted. `attach` shares existing arrays and values without
+modifying them, copies metadata, and replaces an existing schema only in the returned
+result. When deriving new values or coordinates, redeclare their semantics explicitly.
+
+Validation checks finite-JSON metadata, version, disjoint/exhaustive field roles,
+selectors, matrix order, coordinate lengths, numeric coordinates and declared window
+support. It does not prove the algorithm, physical units, timestamp alignment,
+normalization or sentinel meanings are correct. Independent numeric tests still matter.
+It does not impose a musical verdict or make schemas mandatory for legacy custom analyses.
+
+These helpers operate on Python results. For CLI JSON containing NPZ references, load
+the required arrays first and replace their references with the arrays before validating
+or resolving coordinates. The helpers never open paths, infer undeclared coordinates,
+map project positions, resample data or reconcile units between analyses. Other tools
+can consume the plain JSON declaration without adopting the Python helpers.
+
+### Structure and selectors
+
+`schema.version` is `1`, independent of the analysis's numeric `revision`. Consumers
+should check the schema version and treat omitted properties as undeclared. No guessing
+from array length, field names or another analysis's conventions is necessary.
+
+| Schema member | Meaning |
+| --- | --- |
+| `input` | Original input `sample_rate`, `frames` and `time_origin: "input_start"`; duration is frames/rate, excluding analysis padding |
+| `fields` | Map from existing result key to a data description; enumerate this map to discover measurements |
+| `coordinate_keys` | Existing top-level coordinate arrays used by the measurements, including alternative lag coordinates |
+| `parameter_keys` | Existing top-level resolved calculation settings, such as `window_samples`, `hop_samples` and `gamma_hz` |
+| `auxiliary_keys` | Existing structural metadata, currently STFT's `shape` |
+
+These roles partition the old top-level result fields. Legacy settings remain in their
+original locations for compatibility; they are not additional series. CLI `params`
+continues to record requested arguments, separately from these resolved settings.
+
+Descriptions have one of four shapes:
+
+- `series`: `x` coordinates and `y` value semantics. With no `layout`, values are in the
+  field's result array/list, and coordinate `key` selects another top-level result key.
+- `grid`: `x`, `y` and `value`, with explicit `dimensions: ["y", "x"]` for current
+  matrices. The field's numeric matrix keeps its full original resolution.
+- `events`: `x` gives event points or starts and durations. An empty list is no detected
+  events, not an invented time coordinate.
+- `summary`: `value` describes a scalar over the analyzed input, without a plotting axis.
+
+An axis supplies `quantity`, `unit` and either `key` or inline `values`. Inline values
+are used for MFCC coefficient indices and the starts of beat intervals. `spacing`
+describes the **coordinate sequence**, not a requested display scale: `linear` is
+arithmetic spacing, `logarithmic` is geometric spacing, `nonuniform` makes no equal-spacing
+claim, and `categorical` preserves label order. Read actual coordinates even for a
+regular sequence. A renderer may choose its own linear/log/index presentation.
+
+Structured legacy fields keep their layouts:
+
+- `layout: "records"`: `key` selectors refer to members of each record. `spectral.peaks`
+  uses `freq_hz` and `level_db`, ordered by descending level rather than frequency.
+  `band_levels` uses `low_hz` and `end_key: "high_hz"`; `attributes.share_db` describes
+  the additional measurement. Its `interval` declares right-open bands except the last.
+- `layout: "rows"`: `column` is a zero-based tuple/list column. Clipping events retain
+  `[channel, start_frame, length]`; `x.factor` converts the start column to seconds,
+  and `x.width` independently selects/scales the length column. Attributes identify the
+  zero-based channel. The list retains its existing maximum of ten reported positions.
+
+### Time support, units and special values
+
+Time axes use seconds relative to **this input's start**, with `at` equal to `centre`,
+`start`, `end` or `point`. A scalar `width` is seconds; a list supplies one width per
+time value, except `width_axis: "y"` denotes one width per grid row (CQT/VQT). Clipping's
+row selector form is described above. `hop` is the analysis grid step in seconds, not
+the distance between detected events. Window-end boundaries are exclusive. Padding,
+where declared, describes the windowing stage, not all prior filtering support.
+
+Centered timestamps denote the algorithm's frame center. Discrete windows can have
+odd lengths, and Q filters have different lengths by frequency. Do not reinterpret
+them as arbitrary exact crop boundaries. STFT may include a padded last frame past
+the input duration; centered feature frames can also require audio outside the input,
+filled by zeros. Use actual input frames when slicing audio.
+Legacy centroid allows SciPy to shorten the window on short inputs while keeping its
+requested overlap; its declared width and hop reflect that effective grid.
+
+Onset strength declares **points on the compensated envelope grid**, not centers of a
+single analysis window. Its `alignment` records the centered Hann frontend window,
+the delay in frames and the difference lag. A plotted point is not sample-accurate
+evidence of an onset. Tempogram widths describe windows over that envelope.
+
+Value descriptors use `quantity` and `unit`; optional `range`, `normalization` and
+`silence` clarify bounded features and defined silent values. `unit: "1"` means
+dimensionless. Feature units are not calibrated dBFS. Chroma's 0–1 normalization is
+per-frame maximum; tempogram uses zero-lag energy.
+
+`special_values` records sentinel **encodings and meanings**. Encoding names are strings:
+`"null"` means Python None or JSON null, `"NaN"` means NaN, and `"-inf"` means negative
+infinity. A zero-energy level of -inf is different from an undefined pitch/frequency or
+an unavailable estimate, even when both serialize as JSON null. `python` describes the
+direct result; `json` describes inline CLI values. `npz`, when supplied, describes array
+attachments, which preserve nonfinite floats. Do not apply the inline JSON rule to NPZ.
+An empty `special_values` list declares no special sentinel; zero can be a valid value.
+
+The schema contains finite JSON and no input paths, hashes, run offsets or inferred
+musical position. CLI `path`, `input_sha256`, `analysis`, `params` and provenance retain
+input identity. For excerpt input, time zero is the excerpt's start: follow the
+existing manifest chain and actual start frames to map back to a render. A bare Python
+array does not establish file identity. No original-song or bar mapping is inferred.
+
+### Builtin declaration audit
+
+The declarations are checked against the computation and serialization in
+[schema tests](../tests/test_analysis_schema.py), alongside existing numeric tests.
+
+| Analysis | Shape and coordinates | Value/silence contract |
+| --- | --- | --- |
+| `level.loudness` | Summary | LUFS; null for silence or insufficient gated audio |
+| `level.rms`, `sample_peak`, `true_peak` | Summary | dBFS/dBTP; -inf for zero energy, JSON null |
+| `level.crest_factor` | Summary | dB ratio; null for zero energy |
+| `level.momentary_loudness`, `short_term_loudness` | Series, window ends; resolved window_samples/rate | LUFS; null for zero energy; only complete windows |
+| `level.rms_curve`, `peak_curve`, `crest_factor_curve` | Series, window ends; resolved window_samples/rate | dBFS or dB; null for zero energy; only complete windows |
+| `level.loudness_range` | Summaries, no curve axis | LU/LUFS plus block count, original duration and provisional flag; unavailable levels null |
+| `level.clipping` | Event spans with sample-to-second selectors, plus count/length summaries | Per-channel flat-top runs; no waveform or audible-clipping verdict |
+| `spectral.spectrum` | Series, linear FFT frequency coordinates; entire input | dB re full-scale sine; -inf becomes inline JSON null |
+| `spectral.band_levels` | Record series over frequency intervals | dB re full-scale sine and dB share; zero energy/empty bands -inf |
+| `spectral.peaks` | Record series of frequency/level pairs, descending level | dB re full-scale sine; empty list when no peaks |
+| `spectral.centroid` | Series, centered legacy STFT; separate threshold-crossing summary | Hz; zero power NaN becomes JSON null; crossing absent null |
+| `spectral.stft` | Grid [frequency, time], centers, n_fft/rate; last frame may pass input end | dB re full-scale sine; -inf preserved in NPZ |
+| `spectral.mel` | Grid [frequency, time], centered n_fft/rate; nonuniform Hz centers | Squared FFT magnitude per Hz; silence zero |
+| `spectral.chroma` | Grid [pitch class, time], centered n_fft/rate; categorical C-first rows | Per-frame max-normalized 0–1; silence zero |
+| `spectral.mfcc` | Grid [coefficient index, time], centered n_fft/rate | Orthonormal DCT of log-Mel power; silence finite, not missing |
+| `spectral.cqt`, `vqt` | Grid [frequency, time], centers; window_samples/rate per row; geometric Hz grid | Amplitude features; silence zero |
+| `spectral.tuning` | Summaries | Cents/semitones relative to A440; no qualifying peaks gives null offsets; concentration/count retained |
+| `spectral.bandwidth`, `rolloff`, `flatness` | Series, centered n_fft/rate | Hz or dimensionless ratio; zero power null |
+| `rhythm.beats` | Beat-point events, interval-start tempo series with per-interval widths, median summary | BPM; fewer than two beats gives null median, empty tempo curve |
+| `rhythm.onsets` | Estimated time-point events on envelope grid | Empty list if no estimates; no window-center claim |
+| `rhythm.onset_strength` | Series of compensated grid points; frontend/delay/lag declared | Mean positive Mel dB difference or log10(1+magnitude) difference; silence zero |
+| `rhythm.tempogram` | Grid [tempo, time], centered window_frames*hop_samples/rate; nonuniform BPM from integer lags | Relative periodicity 0–1; zero-lag normalization; silence zero |
 
 ## Beat analysis
 

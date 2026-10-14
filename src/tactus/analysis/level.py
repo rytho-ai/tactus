@@ -29,6 +29,7 @@ from scipy.signal import resample_poly
 
 from . import _level as _windows
 from ._revision import revision as _revision
+from ._schema import describe as _describe
 
 
 def _as_2d(audio: np.ndarray) -> np.ndarray:
@@ -91,6 +92,7 @@ def _flat_runs(audio: np.ndarray, min_length: int, above: float) -> dict[str, An
 
 
 @_revision(1)
+@_describe
 def loudness(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Integrated (gated) loudness, ITU-R BS.1770 with the legacy RBJ K-weighting definition.
 
@@ -109,6 +111,7 @@ def loudness(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
 
 
 @_revision(1)
+@_describe
 def true_peak(audio: np.ndarray, sample_rate: int, *, factor: int = 4) -> dict[str, Any]:
     """BS.1770-4 true peak: `factor`x-oversample (polyphase FIR, `scipy.signal.resample_poly`)
     and take the peak absolute value of the oversampled signal.
@@ -124,6 +127,7 @@ def true_peak(audio: np.ndarray, sample_rate: int, *, factor: int = 4) -> dict[s
 
 
 @_revision(1)
+@_describe
 def sample_peak(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Peak absolute sample value across every channel.
 
@@ -134,6 +138,7 @@ def sample_peak(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
 
 
 @_revision(1)
+@_describe
 def rms(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Plain whole-signal RMS (all samples, all channels, unweighted, ungated).
 
@@ -146,6 +151,7 @@ def rms(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
 
 
 @_revision(1)
+@_describe
 def clipping(
     audio: np.ndarray, sample_rate: int, *, min_length: int = 4, above: float = 0.5
 ) -> dict[str, Any]:
@@ -162,6 +168,7 @@ def clipping(
 
 
 @_revision(1)
+@_describe
 def momentary_loudness(
     audio: np.ndarray, sample_rate: int, *, hop_s: float = 0.01
 ) -> dict[str, Any]:
@@ -189,6 +196,7 @@ def momentary_loudness(
 
 
 @_revision(1)
+@_describe
 def short_term_loudness(
     audio: np.ndarray, sample_rate: int, *, hop_s: float = 0.1
 ) -> dict[str, Any]:
@@ -210,6 +218,7 @@ def short_term_loudness(
 
 
 @_revision(1)
+@_describe
 def loudness_range(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Loudness range (LRA): gated spread of short-term loudness, in LU.
 
@@ -251,6 +260,7 @@ def loudness_range(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
 
 
 @_revision(1)
+@_describe
 def rms_curve(
     audio: np.ndarray, sample_rate: int, *, window_s: float = 0.05, hop_s: float = 0.01
 ) -> dict[str, Any]:
@@ -277,6 +287,7 @@ def rms_curve(
 
 
 @_revision(1)
+@_describe
 def peak_curve(
     audio: np.ndarray, sample_rate: int, *, window_s: float = 0.05, hop_s: float = 0.01
 ) -> dict[str, Any]:
@@ -302,6 +313,7 @@ def peak_curve(
 
 
 @_revision(1)
+@_describe
 def crest_factor(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Whole-input sample crest factor: 20*log10(sample peak / RMS), in dB.
 
@@ -324,6 +336,7 @@ def crest_factor(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
 
 
 @_revision(1)
+@_describe
 def crest_factor_curve(
     audio: np.ndarray, sample_rate: int, *, window_s: float = 0.05, hop_s: float = 0.01
 ) -> dict[str, Any]:

@@ -342,6 +342,55 @@ another section. Use `rms` here, not `loudness`: gated loudness ignores the quie
 so a part that sounds only for a moment (a ringing tail, two pickup hits) reads as loud as
 if it played throughout. This says which part dominates, not whether the balance is right.
 
+### Analysis coordinates and images
+
+Current builtins return `result["schema"]` in Python, or `report["result"]["schema"]`
+in CLI JSON, also with `--brief`. Check `schema.version` (currently 1); older runtimes
+and project-defined analyses may omit it. Missing declarations remain unknown: consult
+the selected implementation before making a coordinate-dependent decision.
+
+- Enumerate `schema.fields` for measurements: `series`, `grid`, `events` or `summary`.
+  `coordinate_keys`, `parameter_keys` and `auxiliary_keys` identify the other existing
+  result fields; window/hop settings are not additional measurement curves.
+- Read axis `quantity`, `unit` and `key` (or inline `values`). Grid `dimensions` gives
+  matrix order. `spacing` describes coordinate spacing, not a required display scale;
+  use the actual coordinates for Mel, Q transforms and BPM axes.
+- Time axes declare `origin: "input_start"` and `at: "centre"`, `"start"`, `"end"` or
+  `"point"`. `width` and `hop` use seconds after sample rounding. Width lists follow
+  time points unless `width_axis: "y"` assigns one width per frequency row. Read
+  `padding` and `alignment` when present; padded frames can extend beyond the input.
+- Value descriptors supply units, normalization and `special_values`: Python `-inf`
+  or NaN can become inline JSON null while NPZ preserves the float. Read the declared
+  meaning before treating silence as missing data or converting null to zero.
+- For structured results, `layout: "records"` selects keys inside each record;
+  `end_key` supplies an interval end. `layout: "rows"` selects tuple columns, with
+  `factor` converting units and `width` selecting/scaling the span independently.
+
+For example, `level.rms_curve(...)` describes `schema.fields.rms_dbfs.x` with
+`at: "end"`: a value at time `t` measures `[t - width, t)`. Read the resolved width;
+the requested duration can round to a different number of samples.
+
+In Python, `from tactus.analysis import schema; x = schema.coordinates(result, field)`
+resolves declared root/record/column/inline selectors and explicit factors; grids also
+accept `axis="y"`. It returns a separate array without inferring origins or converting
+units beyond the declared factor. Use `schema.validate(result)` to check structural
+consistency. Both operate on in-memory results: materialize NPZ references first.
+For declaring custom data with the same helpers, see
+[Project analyses](project-commands.md#analyze).
+
+`schema.input` gives sample rate and original frame count, not file identity or project
+position. Preserve CLI `path`, `input_sha256`, `analysis` and `params` from the full
+report when passing data downstream. For excerpt input, follow the source manifest
+chain and add each saved `range.start_frame` to the local frame position; sum recorded
+frames rather than re-rounding requested seconds. A bare array establishes no lineage.
+
+For supported matrices, `tactus analyze spectral stft PATH --out NEW_DIR --image`
+writes an SVG alongside the numerical result and NPZ arrays. In Python,
+`from tactus.analysis import image; svg = image(result)` renders the direct result.
+The same entry point supports Mel, chroma, MFCC, CQT, VQT and tempogram. A narrowed
+excerpt can reveal features hidden in an overview. Read axis labels and the full
+numerical coordinates: image downsampling does not provide sample-accurate positions.
+
 ## Project commands and export
 
 Register work-owned Python callables in `pyproject.toml`:

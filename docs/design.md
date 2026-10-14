@@ -185,12 +185,14 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 **`tactus.analysis` 的結構：**分析按 category 組織，一個 category 是一個模組，以三層 `--help` 自我描述：`tactus analyze --help` 列出 category，`tactus analyze CATEGORY --help` 列出分析，`tactus analyze CATEGORY NAME --help` 給參數、欄位、單位與定義。每個分析是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳 dict（可含 NumPy arrays）並帶 `revision` int；CLI 從這個結構自動產生子命令，沒有手寫的 per-analysis CLI。分析只回報數值，從不判斷通過或失敗，門檻由作品或 Agent 自己套。內建分析是可選工具，作品自己的 Python 與註冊分析仍是正式途徑。現有 category：
 
 - `level`：`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`、`crest_factor`，以及 `momentary_loudness`、`short_term_loudness`、`loudness_range`、`rms_curve`、`peak_curve`、`crest_factor_curve`。
-- `spectral`：`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`、`bandwidth`、`rolloff`、`flatness`、`mel`、`chroma`、`mfcc`、`cqt`、`vqt`。
+- `spectral`：`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`、`bandwidth`、`rolloff`、`flatness`、`mel`、`chroma`、`mfcc`、`cqt`、`vqt`、`tuning`。
 - `rhythm`：`beats`、`onset_strength`、`onsets`、`tempogram`。
 
 數值定義、單位與限制由 [analysis 文件](analysis.md) 維護；以下只記錄設計邊界。
 
-**音量與動態：**演算法參考 pymixtool 的功能範圍，由 Tactus 以 NumPy／SciPy 實作，不依賴 pymixtool。Integrated LUFS 保留原 pyloudnorm 的濾波器與 gating 規則，LUFS 曲線使用 De Man K-weighting，兩者定義不同。各量不先混成 mono，零能量用 null；LRA 依 EBU 定義，太短時回傳 null 或標示 provisional。Crest factor 不等於 PLR 或 LRA。見 [level curves](analysis.md#level-curves-and-loudness-range) 與 [level curves 測試](../tests/test_level_curves.py)。
+**分析資料的自我描述：**所有內建分析在既有回傳 dict 新增 `schema`，Python 與 CLI 共用同一份宣告；以獨立版本記錄資料形狀、軸與矩陣維度、單位、時間位置、實際視窗寬度和特殊值編碼。現有數值、欄位位置與分析 revision 保留，參數與座標由 schema 的欄位角色清單辨識，不要求下游猜測。時間以這次輸入起點為原點，不推定 render／原曲位置、小節或未宣告的語意。中心視窗、結尾視窗、補償後的 onset 格點與逐頻率 Q 視窗分別描述。`tactus.analysis.schema` 是內建與自訂分析共用的公開介面：用普通 dict 宣告資料，`attach` 複製 metadata 並檢查結構，`validate` 核對宣告與資料形狀，`coordinates` 解讀明確的 selector 與換算因子。檢查不代替演算法正確性驗證；自訂分析仍可不宣告，裸資料與未宣告的語意不會被猜測。既有 v1 格式保留，不另外建立跨工具套件或資料物件框架。基本分析圖片繼續提供；標記與跨工具診斷 workflow 由下游工具負責，schema 不依賴特定產品。契約及逐分析核對表見 [data schema](analysis.md#data-schema)。
+
+**音量與動態：**演算法參考 pymixtool 的功能範圍，由 Tactus 以 NumPy／SciPy 實作，不依賴 pymixtool。Integrated LUFS 保留原 pyloudnorm 的濾波器與 gating 規則，LUFS 曲線使用 De Man K-weighting，兩者定義不同。各量不先混成 mono；零能量的 Python 表示依分析而異（例如 scalar RMS 為 `-inf`，level curves 為 `None`），CLI JSON 的非有限 scalar 轉為 null，確切編碼由 schema 宣告。LRA 依 EBU 定義，太短時回傳 null 或標示 provisional。Crest factor 不等於 PLR 或 LRA。見 [level curves](analysis.md#level-curves-and-loudness-range) 與 [level curves 測試](../tests/test_level_curves.py)。
 
 **頻譜分布：**`bandwidth`／`rolloff`／`flatness` 沿用 Mel/MFCC 的時間格點；flatness 使用相對 floor，讓單純 gain 不改變數值；零 power frame 回傳 null。見 [dynamics and spectral distribution](analysis.md#dynamics-and-spectral-distribution) 與 [descriptor 測試](../tests/test_analysis_descriptors.py)。
 

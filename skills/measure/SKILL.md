@@ -1,6 +1,6 @@
 ---
 name: measure
-description: Use or write objective audio analyses for Tactus. Use for loudness, peaks, spectra, rhythm estimates, custom descriptors, analysis-function validation, registering work-local tactus analyze commands, comparing renders or turning observations into creative control data.
+description: Use or write objective audio analyses for Tactus. Use for loudness, peaks, spectra, rhythm estimates, interpreting analysis coordinates and images, custom descriptors, analysis-function validation, registering work-local tactus analyze commands, comparing renders or turning observations into creative control data.
 ---
 
 # Measure audio and write analyses
@@ -29,6 +29,17 @@ like regions and report how playback level matching or alignment affects the com
 Choose the calculation dtype explicitly for precision-sensitive reductions; the
 [project command contract](../references/project-commands.md#analyze) describes input decoding.
 
+Before plotting, comparing or turning results into cuts, read the result's `schema`.
+Use its field roles, units and actual time support; keep undeclared properties unknown.
+For selectors, missing values and mapping excerpt-local times back to a render, read
+[Analysis coordinates and images](../references/runtime.md#analysis-coordinates-and-images).
+
+Use an analysis image to choose where to listen, measure or revise. Confirm the suspected
+feature against numerical data and the selected audio; an image does not establish
+audibility. Tactus supplies basic matrix views; annotation and diagnostic workflows
+belong to downstream tools. When judging annotated material independently, inspect the
+unmarked view first; use marks afterward to communicate locations.
+
 ## Write an analysis when the question needs one
 
 1. **Define the observation.** Specify its formula or algorithm, units, channel reduction,
@@ -38,6 +49,10 @@ Choose the calculation dtype explicitly for precision-sensitive reductions; the
    Keyword parameters should have useful type annotations and JSON-valued defaults for CLI
    use. Return measurements with clear field names; return time axes with curves. Preserve
    inputs. Use NumPy/SciPy, builtin analyses or another dependency as useful ingredients.
+   When the result needs declared coordinates, use `tactus.analysis.schema.attach` and
+   its shape/axis helpers; the [project command contract](../references/project-commands.md#analyze)
+   includes a custom example. `schema.validate` checks structure; numerical validation
+   remains the next step.
 3. **Validate the claim.** Check signals with known answers and relevant invariants (for
    example, gain invariance of a normalized spectral descriptor). Include silence, short
    input and channels. Estimators need representative real material; distinguish agreement
@@ -51,7 +66,8 @@ Choose the calculation dtype explicitly for precision-sensitive reductions; the
 
 When explicitly contributing a new Tactus builtin, work in the Tactus repository's
 `src/tactus/analysis/`, add the function to its category's `ANALYSES` and maintain its
-definition, revision and independent tests. Follow that repo's development instructions.
+definition, data schema, revision and independent tests. Check declared coordinates and
+window support against the computation. Follow that repo's development instructions.
 A work-specific descriptor can remain local indefinitely.
 
 ## Turn observations into creative choices

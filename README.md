@@ -149,6 +149,23 @@ Beat points are 1-based; `9:17` spans eight intervals. See
 [excerpt contracts](skills/references/runtime.md#listening-to-part-of-a-run) for grid formats
 and variable-tempo boundaries.
 
+## Measure and inspect audio
+
+Analyze a file, a saved run or an excerpt without rendering again:
+
+```bash
+tactus analyze level rms runs/a
+tactus analyze spectral stft excerpts/section --out analyses --image
+```
+
+The second command saves numeric arrays, a JSON record and a labeled SVG heatmap.
+Builtin results include a versioned data `schema`: shapes, axes, units, timestamp
+positions and missing-value conventions. Time coordinates start at the analyzed
+input; excerpt provenance supplies the mapping back to its source run.
+Custom analyses can use the same public schema helpers. Numeric results remain
+authoritative; basic images help locate regions to inspect, and annotation workflows
+belong to downstream tools. See [analysis](docs/analysis.md) for the contract and examples.
+
 ## Go further
 
 - [Creative examples](skills/examples/README.md): custom effects, library combinations, analysis-driven time warping and synthesized instruments.

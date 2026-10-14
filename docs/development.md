@@ -57,6 +57,20 @@ uv tool run --from pyright==1.1.414 pyright --pythonpath .venv/bin/python \
 This is a scoped check, not a claim that the whole codebase is type-checked. Pyright runs
 as a separate development tool and adds no runtime dependency.
 
+## Analysis contributions
+
+Use the public `tactus.analysis.schema` helpers for coordinate declarations; the
+[schema contract and builtin audit table](analysis.md#data-schema) describe the format.
+Check declarations against the actual calculation: window rounding, frame position,
+padding, channel policy, units and special values. `schema.validate` checks structure,
+not whether a physical unit or timestamp convention is true. Keep numerical regression
+tests alongside schema checks; new metadata must preserve existing result fields and
+numeric revisions when the algorithm has not changed.
+
+```bash
+uv run pytest tests/test_analysis_schema.py tests/test_generic_analysis_schema.py
+```
+
 ## Product and design
 
 Read [positioning](positioning.md) for the product principles and [design](design.md) for

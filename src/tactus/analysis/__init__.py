@@ -17,18 +17,23 @@ structure:
 
 See `level.py`, `spectral.py` and `rhythm.py` for the shipped categories, and each analysis's own
 docstring for its parameters, result fields, units and definitions.
+Every builtin result also includes a finite-JSON schema describing data shapes,
+coordinates, timestamp positions, units and special-value encodings. Existing
+numeric fields remain unchanged; schema versioning is independent of revisions.
+The public schema module supplies the same declaration helpers to custom analyses,
+checks structural consistency and resolves declared coordinates without inferring semantics.
 
 image(result, ...) optionally renders supported matrices as a labeled SVG without
 changing their arrays; CLI --image publishes it alongside the numerical attachments.
 
-Reads: level · spectral · rhythm · _image
+Reads: level · spectral · rhythm · schema · _image
 """
 
 from __future__ import annotations
 
-from . import level, rhythm, spectral
+from . import level, rhythm, schema, spectral
 from ._image import image
 
 CATEGORIES = {"level": level, "spectral": spectral, "rhythm": rhythm}
 
-__all__ = ["CATEGORIES", "image", "level", "rhythm", "spectral"]
+__all__ = ["CATEGORIES", "image", "level", "rhythm", "schema", "spectral"]

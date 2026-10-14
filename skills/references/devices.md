@@ -18,7 +18,7 @@ hits = steps.hits("x.x. x..x", "a", bpm=96) + steps.hits("..x. ..x.", "c", bpm=9
 drums = pads.play(hits, kit, sr, frames=n, choke={"a": 1, "c": 1})
 ```
 
-To copy one: `python -c "import tactus.devices.sampler as m; print(m.__file__)"`, then copy
+To copy one: `uv run python -c "import tactus.devices.sampler as m; print(m.__file__)"`, then copy
 that file beside your work and import it under your own name.
 
 ## Where a device ends
@@ -45,8 +45,9 @@ Times are absolute seconds from the start of the output.
 - `play(sample, sample_rate, notes, *, frames, **settings)` renders a whole part.
 - **root** is the pitch the recording really sounds at. Measure it: a file labelled with a
   note name can sit tens of cents off, and a wrong root detunes every note. Autocorrelation
-  or an FFT peak over a steady stretch of the sample gives the frequency;
-  `69 + 12 * log2(hz / 440)` converts it to a MIDI number.
+  or an FFT peak over a steady stretch can suggest a frequency, but harmonics can cause
+  octave errors. Check the candidate against the waveform's periodicity and other peaks;
+  `69 + 12 * log2(hz / 440)` converts a confirmed frequency to a MIDI number.
 - **start_s** skips into the source, for example past a noisy or off-pitch onset.
 - **loop** `(start_s, end_s)` in source seconds sustains a note longer than the recording.
   Pick a steady stretch, begin it at least `xfade_s` into the source, and make its length a

@@ -10,9 +10,13 @@ create a new one. For example, from the Tactus checkout (choose a new destinatio
 tactus init /tmp/tactus-connections --tactus-path "$PWD"
 cp skills/examples/*.py /tmp/tactus-connections/
 cd /tmp/tactus-connections
+git add .
+git commit -m "Start creative connection examples"
 tactus run taps.py --out runs/taps
 tactus run mixed.py --out runs/mixed
 uv run python prepare.py
+git add decisions.py
+git commit -m "Freeze source analysis and warp decisions"
 tactus run warp.py --out runs/warp
 ```
 

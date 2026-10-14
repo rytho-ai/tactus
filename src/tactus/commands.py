@@ -155,7 +155,7 @@ def identity(command: Command) -> CommandIdentity:
     from .inputs.pool import hash_file
 
     fn = command.load()
-    path = inspect.getsourcefile(fn)
+    path = inspect.getsourcefile(inspect.unwrap(fn))
     return {
         "name": command.name,
         "callable": command.target or f"{fn.__module__}:{fn.__name__}",

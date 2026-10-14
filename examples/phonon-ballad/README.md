@@ -5,8 +5,9 @@ An original instrumental pop-ballad study. The reference is Fish Leong's "Accept
 arc. No audio, melody, lyrics, or sampled material from the reference enters the render.
 
 The arrangement is ordinary Python: harmony, melody, performance, timbre selection, section timing
-and mixing are defined by `song.py`'s `render(*, palette, drums, sfz_piano)`. The fixed seed makes
-regeneration deterministic. `tactus run` publishes the outputs and a receipt; nothing is written
+and mixing are defined by `song.py`'s `render(*, palette, drums, sfz_piano)`. A fixed seed controls
+the authored randomness; external instruments can still vary between runs. `tactus run` publishes
+the outputs and a receipt; nothing is written
 by this example itself.
 
 ## Import the pinned inputs
@@ -54,8 +55,8 @@ The `sfz` palette is the preferred listening path. It serializes the complete pi
 (note timing, velocity, and sustain pedal) into one Standard MIDI file, then runs it through
 `sfizz_render` (declared via `tactus.tool` at point of use) against the SFZ piano at `sfz_piano`.
 It replaces the synthetic lead, guitar, strings, and bass with piano-register orchestration, while
-retaining the pinned Rytho one-shot drums. No SFZ piano exists on this machine yet, so `sfz_piano`
-stays an explicit, unpinned path parameter — install `sfizz_render` separately and keep the chosen
+retaining the pinned Rytho one-shot drums. This example accepts `sfz_piano`
+as an explicit, unpinned path parameter — install `sfizz_render` separately and keep the chosen
 SFZ library outside this repository; the receipt records the exact local path used for a render.
 
 Set `"drums": "none"` to render the exact same piano performance without any percussion.

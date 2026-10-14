@@ -32,8 +32,10 @@ To carry source-time controls through that warp, map each output frame back to s
 time, then sample the source control there. To synchronize an independent groove to the
 output, generate that control in output time instead. Both are valid artistic choices.
 
-Check each analysis's coordinates: RMS uses window-end timestamps; spectral features may
-use frame centers; onsets are estimates. Explicitly choose interpolation, edge behavior,
+Read each result's `schema` for its coordinates: `rms_curve` uses window-end timestamps;
+spectral features may use frame centers; onsets are estimates. Use
+`tactus.analysis.schema.coordinates` to read declared positions (see
+[analysis coordinates](runtime.md#analysis-coordinates-and-images)), then explicitly choose interpolation, edge behavior,
 and a meaning for missing/silent values. Features are not already sample-rate automation.
 
 ## Adaptable examples

@@ -55,7 +55,12 @@ def test_tuning_of_pure_tones_is_exact_and_feeds_chroma():
 
 def test_tuning_silence_noise_stereo_and_gain():
     empty = spectral.tuning(np.zeros(SR), SR)
-    assert empty == {"offset_cents": None, "offset_semitones": None, "concentration": 0.0, "peaks": 0}
+    assert {key: value for key, value in empty.items() if key != "schema"} == {
+        "offset_cents": None,
+        "offset_semitones": None,
+        "concentration": 0.0,
+        "peaks": 0,
+    }
     noise = spectral.tuning(0.3 * np.random.default_rng(1).standard_normal(SR * 3), SR)
     assert noise["concentration"] < 0.05
     mono = chords(20)
@@ -104,5 +109,7 @@ def test_tuning_follows_a_known_repitch_within_a_cent(shift):
     audio = chords(12, seconds=6.0) + 0.02 * rng.standard_normal(SR * 6)
     rate = 2 ** (shift / 1200)
     repitched = np.interp(np.arange(0, len(audio) - 1, rate), np.arange(len(audio)), audio)
-    change = spectral.tuning(repitched, SR)["offset_cents"] - spectral.tuning(audio, SR)["offset_cents"]
+    change = (
+        spectral.tuning(repitched, SR)["offset_cents"] - spectral.tuning(audio, SR)["offset_cents"]
+    )
     assert abs(wrapped(change - shift)) <= 1.0

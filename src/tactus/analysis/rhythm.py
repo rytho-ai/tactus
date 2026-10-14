@@ -21,9 +21,11 @@ import pyqmdsp
 
 from . import _features, _onset
 from ._revision import revision as _revision
+from ._schema import describe as _describe
 
 
 @_revision(1)
+@_describe
 def beats(audio: np.ndarray, sample_rate: int) -> dict[str, Any]:
     """Estimate beat times using qm-dsp's DetectionFunction and TempoTrackV2.
 
@@ -82,6 +84,7 @@ def _onset_envelope(
 
 
 @_revision(1)
+@_describe
 def onset_strength(
     audio: np.ndarray,
     sample_rate: int,
@@ -147,6 +150,7 @@ def onset_strength(
 
 
 @_revision(1)
+@_describe
 def onsets(
     audio: np.ndarray,
     sample_rate: int,
@@ -216,6 +220,7 @@ def onsets(
 
 
 @_revision(1)
+@_describe
 def tempogram(
     audio: np.ndarray,
     sample_rate: int,

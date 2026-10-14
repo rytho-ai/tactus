@@ -53,8 +53,10 @@ candidate = run(
 Each invocation uses a fresh process. Relative imports and assets resolve from the
 entry's directory. A parameter candidate does not edit source. Listen to/compare
 the returned files with your audio tools. To accept a candidate in this first
-version, explicitly edit the source default and run again; automatic promotion
-and stateful range audition are not implemented.
+version, adopt the source default and follow the
+[version workflow](../../skills/version/SKILL.md). Save a selected performance when
+it must survive regeneration; rerunning source alone does not guarantee identical audio.
+Automatic promotion and stateful range computation are not implemented.
 
 ## Attribution and saved results
 

@@ -39,7 +39,7 @@ uv run tactus run song.py --out runs/final/source --params '{"mode":"source"}'
 uv run tactus run song.py --out runs/final/fixed --params '{"mode":"fixed"}'
 uv run tactus run song.py --out runs/final/warp --params '{"mode":"warp"}'
 uv run --with librosa python evaluate.py
-python3 -m http.server 4186 --bind 127.0.0.1
+uv run python -m http.server 4186 --bind 127.0.0.1
 ```
 
 `prepare.py` prints the pinned identities. They must match `SOURCE` and `BEAT_REPORT` in

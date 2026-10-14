@@ -64,7 +64,12 @@ def test_tracks_tempo_change():
 
 @pytest.mark.parametrize("audio", [np.zeros(48000 * 12), clicks(48000, [0, 0.5, 1])])
 def test_no_estimate_is_json_null(audio):
-    assert rhythm.beats(audio, 48000) == {"beats_s": [], "bpm": None, "tempo_curve": []}
+    result = rhythm.beats(audio, 48000)
+    assert {key: value for key, value in result.items() if key != "schema"} == {
+        "beats_s": [],
+        "bpm": None,
+        "tempo_curve": [],
+    }
 
 
 @pytest.mark.parametrize(

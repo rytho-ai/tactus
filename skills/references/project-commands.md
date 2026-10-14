@@ -202,12 +202,47 @@ It returns a dict. Each input produces one JSON line with `path`, `analysis`,
 WAVs and adds each output name. It does not substitute original arrays for the heard audio.
 Non-finite scalar measurements become null.
 
+Builtin results also include the data declarations described in
+[Analysis coordinates and images](runtime.md#analysis-coordinates-and-images).
+Custom functions own their returned metadata; the runtime does not infer or attach a
+schema for them. If reusing a builtin result while changing its values or coordinates,
+update its declarations to describe the new result.
+
+Use `from tactus.analysis import schema` to declare custom data with the same public
+helpers as builtins. For example, a signed mono waveform observation (channels averaged):
+
+```python
+import numpy as np
+from tactus.analysis import schema
+
+def waveform(audio, sample_rate):
+    samples = audio if audio.ndim == 1 else audio.mean(axis=1)
+    return schema.attach(
+        {"clock": np.arange(len(samples)) / sample_rate, "samples": samples},
+        sample_rate=sample_rate, frames=len(samples), coordinate_keys=["clock"],
+        fields={"samples": schema.series(
+            schema.axis("clock", "time", "s", "linear", origin="input_start", at="point"),
+            schema.value("sample_amplitude", "FS"),
+        )},
+    )
+```
+
+`attach` returns a shallow result copy with fresh metadata and validates field roles,
+selectors, dimensions and window support. Existing arrays stay unchanged. Use `grid`
+with explicit `dimensions`, `events` for points/spans, or `summary` for a scalar;
+constructors return plain dictionaries. Classify other existing keys using
+`coordinate_keys`, `parameter_keys` or `auxiliary_keys`. Unknown semantics can be omitted
+in handwritten descriptors. `schema.validate(result)` also checks handwritten schemas;
+it does not verify algorithmic correctness, units or estimator accuracy. Legacy custom
+results without schema remain supported. This example needs `--out` for arrays and
+does not add waveform image support.
+
 `--out DIR` saves each result under its own input/command identity directory, along with
 `result.json`. Nested NumPy arrays become attachments in `arrays.npz`; their JSON references
 include `file`, `key`, `shape` and `dtype`. Arrays require `--out`; object arrays are rejected.
 Existing result directories are preserved and rejected on repeat; choose a new destination
 for a fresh execution. A callable may reserve keyword-only `out` to receive a runtime-owned
-NPZ file path (or None), as the built-in STFT does; returning arrays is simpler for new code.
+NPZ file path (or None); returning arrays is simpler for new code, including current STFT.
 Logs go to stderr. Freeze accepted analysis results as materials or constants before using
 them for creative decisions in `render`.
 

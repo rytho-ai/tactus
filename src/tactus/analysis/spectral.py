@@ -38,6 +38,7 @@ from scipy.signal import stft as _scipy_stft
 from . import _features
 from ._acceleration import fft_workers
 from ._revision import revision as _revision
+from ._schema import describe as _describe
 
 _FS_SINE_MEAN_SQUARE = 0.5
 _STFT_CHUNK_WORK = 1 << 20
@@ -180,6 +181,7 @@ def _when_crosses(times: np.ndarray, values: np.ndarray, threshold: float) -> fl
 
 
 @_revision(1)
+@_describe
 def spectrum(
     audio: np.ndarray,
     sample_rate: int,
@@ -211,6 +213,7 @@ def spectrum(
 
 
 @_revision(1)
+@_describe
 def band_levels(
     audio: np.ndarray,
     sample_rate: int,
@@ -262,6 +265,7 @@ def band_levels(
 
 
 @_revision(1)
+@_describe
 def centroid(
     audio: np.ndarray,
     sample_rate: int,
@@ -304,6 +308,7 @@ def centroid(
 
 
 @_revision(1)
+@_describe
 def peaks(
     audio: np.ndarray,
     sample_rate: int,
@@ -357,6 +362,7 @@ def peaks(
 
 
 @_revision(2)
+@_describe
 def stft(
     audio: np.ndarray,
     sample_rate: int,
@@ -406,6 +412,7 @@ def stft(
 
 
 @_revision(1)
+@_describe
 def mel(
     audio: np.ndarray,
     sample_rate: int,
@@ -442,6 +449,7 @@ def mel(
 
 
 @_revision(1)
+@_describe
 def chroma(
     audio: np.ndarray,
     sample_rate: int,
@@ -481,6 +489,7 @@ def chroma(
 
 
 @_revision(1)
+@_describe
 def tuning(
     audio: np.ndarray,
     sample_rate: int,
@@ -554,6 +563,7 @@ def tuning(
 
 
 @_revision(1)
+@_describe
 def mfcc(
     audio: np.ndarray,
     sample_rate: int,
@@ -596,6 +606,7 @@ def mfcc(
 
 
 @_revision(1)
+@_describe
 def cqt(
     audio: np.ndarray,
     sample_rate: int,
@@ -634,6 +645,7 @@ def cqt(
 
 
 @_revision(1)
+@_describe
 def vqt(
     audio: np.ndarray,
     sample_rate: int,
@@ -678,6 +690,7 @@ def _descriptor_result(values, field, valid, sample_rate, n_fft, hop):
 
 
 @_revision(1)
+@_describe
 def bandwidth(
     audio: np.ndarray, sample_rate: int, *, n_fft: int = 2048, hop: int = 512
 ) -> dict[str, Any]:
@@ -706,6 +719,7 @@ def bandwidth(
 
 
 @_revision(1)
+@_describe
 def rolloff(
     audio: np.ndarray,
     sample_rate: int,
@@ -746,6 +760,7 @@ def rolloff(
 
 
 @_revision(1)
+@_describe
 def flatness(
     audio: np.ndarray,
     sample_rate: int,
