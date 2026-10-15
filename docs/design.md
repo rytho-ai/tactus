@@ -32,13 +32,13 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 **尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
-## 外部資源：下載音檔並保留取得依據
+## 外部資源：取得音檔與 VST 並保留驗證依據
 
-`resources` skill 負責找來源、核對單筆素材的價格與使用條件、取得完整音檔並驗證解碼，將來源、授權、檔案 hash 與驗證範圍交給作品。來源清單與操作指引隨 plugin 一起提供，取得音檔後沿用 `material add`；runtime 不加入網站下載器或供應商 API。理由是網站的下載流程與條件會改變，Agent 應查當前來源，作品則固定已採用的內容身分。
+`resources` skill 負責找音檔與 VST 來源、核對價格與使用條件，分別驗證音訊解碼與外掛 host 行為，將來源、授權、檔案 hash 與驗證範圍交給作品。音檔與 VST 使用獨立 reference，清單與操作指引隨 plugin 一起提供；音檔沿用 `material add`，外掛 bundle 與必要資料以 `tool()` 記錄。Runtime 不加入網站下載器或供應商 API。理由是網站的下載流程與條件會改變，Agent 應查當前來源，作品則固定已採用的內容身分。
 
-成功的交付是實際音檔與來源紀錄；搜尋頁、試聽串流、下載工具與 plugin installer 都不能替代音檔。零元取得、登入門檻、使用授權與檔案有效性分別記錄；測過一筆素材不代表整站全部免費可用。純取得素材不需要 render；繼續創作時接回 compose 與既有 run receipt 流程。見 [resources](../skills/resources/SKILL.md)。
+音檔請求的成功交付是實際音檔與來源紀錄；搜尋頁、試聽串流、下載工具與 plugin installer 都不能替代音檔。零元取得、登入門檻、使用授權與檔案有效性分別記錄；測過一筆素材不代表整站全部免費可用。純取得素材不需要 render；外掛出聲測試與繼續創作接回 compose 及既有 run receipt 流程。見 [resources](../skills/resources/SKILL.md)。
 
-VST 清單保留為獨立的資源類別，未收錄前不宣稱已有相容性驗證。後續項目需記錄 OS／架構、格式、價格與授權、安裝門檻與實際 host 測試；不把安裝檔計入音檔取得成果。
+[VST 清單](../skills/resources/references/vst-sources.md) 依用途精選有具體評介支持的免費外掛，記錄評價來源與日期，不以數量或杜撰評分代替推薦理由。每項分開列出 OS／架構、格式、版本、下載與授權、factory data 需求、載入／音訊處理／GUI 的實測範圍；歷史口碑不代表當前 build 相容。Native 測試以獨立 process 執行，保留警訊與失敗；在一個 Linux VST3 上通過的短測試不延伸成所有平台、預設與長時間穩定性的承諾。軟體再散布權與產生音樂的使用條件分開核對。
 
 ## 時間表達：Temporal abstraction 有價值，但 clock 可選
 

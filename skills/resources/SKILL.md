@@ -1,13 +1,13 @@
 ---
 name: resources
-description: Find and download external audio for Tactus works, including samples, loops, recordings and sound effects. Use when sourcing material, checking free download and reuse conditions, or maintaining resource lists. Delivers actual audio files with provenance; plugin installers and streaming previews do not satisfy an audio request.
+description: Find and acquire external audio and VST instruments or effects for Tactus works. Use when sourcing samples, loops or recordings, choosing well-reviewed free plugins, checking download and use conditions, or maintaining resource catalogs. Verify audio files and plugin host operation separately, preserving provenance.
 ---
 
 # Resources
 
-Turn a musical need into usable local audio with its source and use conditions preserved.
-The current catalog covers audio files; VST instruments and effects can be added later as
-a separate catalog, with their own platform, installation and compatibility evidence.
+Turn a musical need into usable local audio or an available plugin, with its source and
+use conditions preserved. Use the audio workflow for files and the
+[plugin workflow](#find-and-verify-vst-plugins) for instruments/effects.
 
 ## Find and acquire audio
 
@@ -61,11 +61,40 @@ returned material refs, and deliver the resulting audio from a Tactus run. Nativ
 binaries belong to the separate `tool()` workflow described in Inputs; downloading one
 does not deliver samples or demonstrate that it runs on the user's platform.
 
+## Find and verify VST plugins
+
+1. **Choose for a job and host.** Read [VST sources](references/vst-sources.md) for a small
+   reviewed shortlist. Establish OS, CPU architecture, supported plugin format and desired
+   role. Explain the sonic/workflow reason for a recommendation and cite independent
+   hands-on reviews with their dates; distinguish historical reputation from tests of the
+   current build. For free requests, select the full free edition, recording account or
+   activation requirements and separating paid upgrades, trials and promotions.
+2. **Acquire the exact build.** Follow official stable downloads, retain version, URL,
+   bytes/hash, license and required factory data. Inspect archive integrity and paths;
+   extract to an isolated location when possible and preserve existing installations.
+   Confirm the binary's format/architecture, not just the download page's platform list.
+   Keep permission to make music separate from rights to redistribute binaries or presets.
+3. **Verify at the available depth.** Record download, extraction, host loading, audio
+   processing and GUI/preset checks separately. A plugin that enumerates parameters may
+   still fail to sound. Use the work's locked host, declare bundles and external data with
+   `tool("/absolute/path")`, and follow [compose](../compose/SKILL.md) for a receipted
+   `tactus run` test. For instruments compare MIDI note output with a no-note control;
+   for effects compare processed audio with dry input and check the intended response or
+   tail. Inspect finite/nonempty output, warnings and the actual parameter values; read
+   [plugin helpers](../references/runtime.md#helpers-from-tactus-import-fx) for units,
+   warm-up and layouts. Isolate native-plugin tests in separate processes. Retain errors
+   and label partial results; a Linux VST3 pass does not certify AU, other OS builds,
+   sibling plugins, every preset or musical quality.
+4. **Hand off what was verified.** Give the local bundle/package and its provenance,
+   supported host conditions and any receipted test audio. Describe installation or data
+   placement still needed. Keep unverified candidates out of the tested shortlist;
+   plugin acquisition is a separate deliverable from the audio-file catalog.
+
 ## Maintain the catalogs
 
-Add sources to the audio reference with the exact tested item, official source and license
-links, checked date, download path and validation scope. Keep price, access, rights and
-file validity separate. Move stale or blocked entries out of verified recommendations;
-do not expand a single success into a site-wide claim. Future VST entries should live in
-their own reference and include OS/architecture, format, price/license, account/installer
-requirements and actual host-test status; an empty VST list is not needed today.
+Maintain [audio sources](references/audio-sources.md) and [VST sources](references/vst-sources.md)
+separately. Each entry names its tested item/build, official source and license, checked
+date, acquisition path and verification scope. Plugin entries also retain platform,
+format, factory-data requirements and the evidence behind their recommendation. Keep
+price, access, rights and validity separate. Move stale or blocked entries out of verified
+recommendations; do not expand a single success into a site-wide compatibility claim.
