@@ -1,6 +1,6 @@
 ---
 name: visual
-description: Make pictures that follow a Tactus work's time, in any form — a video, a page that plays, live visuals, a lyric video, an installation. Use when a picture must meet the music: taking bars, sections, levels, events and lyrics from a run, rendering frames or a playing page, measuring sync, and the people, places and licences the picture involves.
+description: Make pictures that follow a Tactus work's time, in any form — a video, a page that plays, live visuals, a lyric video, an installation. Use when a picture must meet the music: taking bars, sections, levels, events and lyrics from a run, rendering frames or a playing page, measuring sync, choosing a tool (suggestions: Blender, three.js or React Three Fiber, Remotion, HyperFrames), and the people, places and licences the picture involves.
 ---
 
 # Pictures that follow the music
@@ -76,13 +76,26 @@ Render offline, frame by frame, never by screen-recording real time.
   only from your renderer: a whole film once came out blue because the drawing library's pixels were BGRA
   and ffmpeg was told RGB. Keep entry points for one frame at a given time, a contact sheet of chosen times,
   and the frame without titles. Load fonts before the first frame.
-- **Browser and GPU traps.**
-  - Log the WebGL renderer string; software GL is about 4 frames/s. Shadow maps can come out black in
-    headless Vulkan; bake or fake shadows (a soft plane under each object).
+- **Browser and GPU traps.** Most failures here are silent: the frame is black, white, fogged or wrong and
+  nothing reports an error. Look at frames extracted from the encoded file every time.
+  - Headless Chrome with the GPU: `--use-angle=vulkan --enable-features=Vulkan --ignore-gpu-blocklist
+    --disable-gpu-compositing`. Without the last flag the WebGL context was lost after a while (whole
+    frames black or white); it can still drop once early and recover, so check each read-back frame (an
+    alpha that is not 255 means a blank frame: wait and render it again). Log the WebGL renderer string;
+    software GL is about 4 frames/s. Shadow maps can come out black; bake or fake shadows.
+  - Drive time yourself: stop the library's own render loop and render once per captured frame from the
+    song time you inject. Never rely on its clock, animation system or particle system.
+  - Read frames back over a WebSocket or as a Blob: posting a typed array with `fetch` cost 0.5 s per
+    1080p frame. Blobs fill Chrome's memory unless garbage is collected every few frames.
   - One render at a time on a GPU: two renders, or a leftover browser, slow to ~1 frame/s and corrupt the
     file. Take a lock (`flock -n .render.lock`) around every render.
-  - A JavaScript module with a syntax error stops a page silently and the render waits forever: check
-    modules (`node --check`) after each edit and forward console errors to the capture log.
+  - A JavaScript module with a syntax error or a failed import stops a page silently and the render waits
+    forever: check modules (`node --check`), forward console and page errors to the capture log, and give
+    the capture a timeout.
+  - Keep Chrome's temporary folder on a short path (a long one breaks its socket), and pin the port.
+- **Audio and telemetry.** Do not let a video tool mux the sound: several resample, limit or re-encode it.
+  Mux the run's original audio with ffmpeg yourself. Turn telemetry off in every tool that has it, and keep
+  its home and cache folders inside the project.
 - **Disk.** Frame folders and masters are large (a grainy 3-minute 1080p master can pass 1 GB). Delete frames
   after muxing; deliver a two-pass encode tuned to the picture (`-tune grain` keeps halftone dots).
 - **Figures** read stiff when cut from single shapes; joint them (shoulder, elbow, wrist, fingers).
@@ -90,7 +103,57 @@ Render offline, frame by frame, never by screen-recording real time.
   another uv project (for example under a Tactus checkout) joins that workspace silently: use
   `uv init --no-workspace`, or `tactus init` for a Tactus work.
 - **Review and revise.** Review the cut against the plan (a video-watching model can report per shot; a
-  person judges taste), fix, and show before/after stills of each change.
+  person judges taste), fix, and show before/after stills of each change. Drop a direction that stays ugly
+  after a few rounds: in one trial a realistic bell chamber kept looking like a game set, and the film
+  became beautiful only after the agent switched to a calm lake.
+
+## Suggested tools
+
+Suggestions, not requirements: any tool that can render `frame(t)` offline works, and plain CPU drawing
+(Skia, Cairo, Pillow piped to ffmpeg) needs no tool at all. These five rendered a whole 2:31 track in one
+trial, with every strike landing within a frame, and their films were the ones the listener liked. What made
+a film beautiful was the idea and the willingness to drop a weak one, more than the tool.
+
+| What you want | Suggested | Speed seen (1080p30, RTX 4090) |
+|---|---|---|
+| Light, water, fog, reflections, depth of field: physically rendered beauty | Blender, scripted | ~0.7 s per frame (EEVEE) |
+| A 3D space, materials and a moving camera; or 3D you will later make playable in a page | three.js, or React Three Fiber | 6–7 frames/s |
+| Type, lyrics, letters, layout | Remotion, or HyperFrames | Remotion ~7 frames/s; HyperFrames faster than real time |
+| 2D shapes, lines, patterns | CPU drawing piped to ffmpeg (no tool) | tens of frames/s |
+
+- **Blender (bpy, headless).** Unpack an official release inside the project and run `blender -b -P
+  scene.py`. Build and light the scene in Python, set every animated value from `t` (keyframes computed from
+  the map, or a frame-change handler). Use EEVEE unless you need Cycles (several seconds per frame).
+  - Fits: beauty from light and matter, with the music driving a few parameters (a flash, a ripple, a sky).
+  - Does not fit: text and layout, pages that play live, objects that need careful modelling you have no
+    time for.
+  - Traps: a handler is not saved in the .blend; load it with `-P` on every render or the scene stays still
+    without an error. Blender 5 changed the animation API (F-curves through a channelbag). Compare decoded
+    pixels, not file hashes. Keep its cache folders inside the project.
+- **three.js / React Three Fiber.** three.js for direct control; React Three Fiber when you think in
+  components (less scene code, the same three.js underneath). Render on demand (`frameloop="never"` and
+  `advance`, or set everything from `t`), capture with the browser recipe above.
+  - Fits: 3D space, metal and glass, light shafts, camera moves; the same scene can later run in an
+    interactive page.
+  - Does not fit: a quick beautiful result without writing shaders and lighting; flat 2D.
+  - Traps: postprocessing in React Three Fiber merges adjacent effects into one pass, so depth of field or
+    bloom can read the image before your own effect (wrap it in an `EffectGroup`); three.js `ShaderPass` can
+    drop a render target texture with only a warning; GLSL `smoothstep` with reversed edges is undefined.
+    Bells and props built from primitives read as plastic: spend effort on materials and light.
+- **Remotion.** React components of `useCurrentFrame()`, rendered by its CLI or renderer.
+  - Fits: lyric videos, letters, scores, posters: text and layout that must land on the beat.
+  - Does not fit: thousands of particles, full-screen filters, fast turnaround (it slows as elements grow).
+  - Traps: its own muxing re-encodes the audio (16-bit, AAC, shifted); mux yourself. Licence: free for
+    individuals, companies of up to three people, non-profits and evaluation; larger companies need a paid
+    licence. Passing a licence key sends usage data; omit it. Copy files into `public/` rather than linking.
+- **HyperFrames.** HTML, CSS and JavaScript compositions captured frame by frame (it bundles GSAP).
+  - Fits: title cards and type; or wrapping a `draw(t)` you already wrote in Canvas/WebGL to capture it
+    fast and repeatably.
+  - Does not fit: a single full-screen shader with nothing else (it only opens the browser for you).
+  - Traps: it limits and resamples audio (remux the original); telemetry is on by default and it sends
+    snapshots to a model when a key is set (turn both off, keep `HOME` inside the project); `-o` is relative
+    to the project; some preview and check commands have hung, so keep your own screenshot script; it picks
+    its own port.
 
 ## Pictures in a page that plays
 
