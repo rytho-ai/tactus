@@ -56,14 +56,11 @@ numbers copied into picture code.
   build, the review and any page about it. No look is a default: not a famous painter's homage, not 3D, not
   a rainy neon night; if earlier works used a look, consider differing deliberately. The music's own
   structure can be the picture.
-- **Story and camera.** Decide what happens before how it looks: who or what we follow, where, and what
-  has changed by the end (a start, a turn, an ending), drawn from the words and the song's form. Then plan
-  shots like a director: framing (wide, close, detail, point of view), camera movement (push, pan, track,
-  crane, handheld) and cuts, each placed on the map (cut on bar lines and phrase starts, cut faster in a
-  chorus, hold a long take in an interlude, move the camera on a build). Compute camera paths from `t` like
-  any motion. A single fixed shot or an abstract field with no events is a deliberate choice to justify in
-  the plan, not the default: in a check, a film with a beautiful sky and no story or camera move was the
-  one thing the viewer missed.
+- **Something happens.** A picture that only looks beautiful is a backdrop. Decide what changes over the
+  piece and what drives the change, as well as the look: in a video the author sets it in advance (a
+  story, shots, a camera), in a page that plays the listener's choices set it. A still field with no events
+  is a choice to justify in the plan, not the default: in a check, a film with a beautiful sky and no story
+  or camera move was the one thing the viewer missed. Each form's section below says how.
 - **Measure sync, do not only watch it.** Pick the visual events that should meet music events (a cut on a
   bar line, a flash on a hit, a word on its syllable) and check their frame times against the map or the
   onsets numerically, in the encoded file as well as in your renderer. Nearest-onset matching misleads on
@@ -76,7 +73,21 @@ numbers copied into picture code.
   internal; what goes on a public page is decided by the person you work for.
 - **Say what was not checked.** End with what nobody has watched in real time or heard.
 
-## Rendering a video
+## Videos
+
+A video's time is fixed, so the author decides everything that happens in it, like a director.
+
+- **Story from the song.** Decide who or what we follow, where, and what has changed by the end (a start,
+  a turn, an ending), drawn from the words and the song's form. One image per lyric line and one line through
+  the whole song are both ways; verses and choruses should look different, and a return of the chorus can
+  return to a place changed.
+- **A shot list on the map.** Write each shot with its music time, framing (wide, close, detail, point of
+  view), camera movement (push, pan, track, crane, handheld) and the music event it meets. Cut on bar lines
+  and phrase starts, cut faster in a chorus, hold a long take in an interlude, move the camera on a build.
+  Compute camera paths from `t` like any motion. This list is the plan the build and the review follow.
+- **Words on screen.** Lyrics are part of the picture's design (place, size, how they enter), timed from the
+  lyrics lane; decide when a line counts as on time (here: the first frame it is fully shown, against the
+  line's start) and measure that.
 
 Render offline, frame by frame, never by screen-recording real time.
 
@@ -210,6 +221,11 @@ atmosphere, a structure that grows) and name the motifs already used enough, rat
 ## Pictures in a page that plays
 
 A page plays the music live while it draws; its clock is the audio clock.
+
+- **What happens comes from the listener.** No shot list: the listener's choices move the picture (where
+  they went, what they chose, what they left behind), and the picture can keep a trace of this visit. The
+  view follows the listener instead of cutting; changes of scene wait for the bar line the music changes
+  on. The story is how this visit went, not a line written in advance.
 
 - **Time from the bundle.** Load `bundle.json` (from `tactus export web`, or a `tactus serve` request with
   `deliver`) and take bar lines, loop lengths and cues from `map_seconds`; nothing musical is restated in the
