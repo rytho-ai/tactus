@@ -64,13 +64,12 @@ Checked **2026-10-15**. Free acquisition, account requirements and release right
 separate. The two downloaded MP3s below passed full FFmpeg and SoundFile decoding with
 empty error output, positive frames and finite samples. They are publisher-offered MP3
 downloads, not converted previews. These conditional entries are outside the 23-source
-recommendation totals above; Looperman remains an account-gated candidate.
+recommendation totals above.
 
 | Library | Free access and actual check | Use conditions / remaining scope |
 |---|---|---|
 | [Loopazon](https://www.loopazon.com/) | Home → free loop → Download works anonymously without payment. `Guitar Loop Theorist - Young Thug Future Style`, GrimyVibe, listed 151 BPM / A minor: [official download](https://www.loopazon.com/index.php?dispatch=products.get_file&file_id=20713&v=367899), **367,899-byte MP3**, 44.1 kHz stereo, 25.430 s; repeat download matches SHA-256 | [Official terms](https://www.loopazon.com/about-us-faq) permit remix and commercial use of free community loops without compensation; Premium Loops are sold separately. The homepage also asks users to check item/uploader terms. This [item's detail page](https://www.loopazon.com/free-loops/guitar-loop-theorist-young-thug-future-style-348082) encountered a security check, so download is verified but item-specific rights review remains incomplete. Resolve before adopting it in a released work |
 | [NDA Samples / NDA Company](https://ndacompany.de/) | A card's **Download mp3** button works anonymously without payment. `Koherent`, sample ID `d3bacb800de7`, listed 140 BPM / D-sharp minor: **3,135,581-byte MP3**, 48 kHz stereo, 208.286 s. WAV requires a free account; WAV acquisition untested | [License](https://ndacompany.de/terms.html) allows free download and production, but commercial releases require contacting NDA and a **50/50 publishing/composition-rights split**, including independent releases. Not royalty-free; keep as a conditional resource rather than a default for royalty-free music requests |
-| [Looperman](https://www.looperman.com/loops) | [Official FAQ](https://www.looperman.com/help/faq/loops) describes free account-based WAV downloads, with per-minute/day rate limits. Actual browser Download controls showed **Login**; no authorized account was available and no original WAV was acquired | Loops may be incorporated into commercial derivative works under the [terms](https://www.looperman.com/help/terms); no raw sample-pack redistribution. [Acapellas](https://www.looperman.com/help/faq/acapellas) have different creator-specific conditions. Mark download **unverified**, not paid or verified-free solely from the website claim |
 
 For file identity, the downloaded Loopazon MP3 SHA-256 is
 `e074373786f3832d2231e1551310961c334ecab8abecc952e9848c08f9378959`;
