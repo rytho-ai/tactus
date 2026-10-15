@@ -12,6 +12,9 @@ the selected item's current page and license. This is technical verification, no
 listening evaluation or a guarantee about other files on the same service. Sources that
 failed or did not deliver original audio are separated below.
 
+For Splice-like browsing by BPM, key and instrument, see
+[searchable loop libraries](#searchable-loop-libraries-download-and-use-status).
+
 ## Creator libraries and sample packs
 
 | Source / creator | What to retrieve | Rights and access | Verified scope |
@@ -54,6 +57,27 @@ this small test file.
 | [Citizen DJ Edison collection](https://citizen-dj.labs.loc.gov/loc-edison/use/) | Collection offers samples for new music; preserve the selected recording metadata and collection use statement | “Till the boys come home” official 6.711 s WAV sample, 1,288,556 bytes; full decode and finite-sample check pass. Complete sample, not complete song |
 | [Mak Camera Sounds Pack](https://makvocc.itch.io/camera-sounds-pack) | Anonymous Download button; CC0, credit optional. Camera mechanisms, switches, UI and alerts | Live 31-file version: 886,918-byte ZIP; all CRCs and **31 MP3s** fully decoded. Older cached pages describe a 20-file version |
 | [SFXMint acoustic drum kit kick 01](https://sfxmint.com/sounds/acoustic-drum-kit-kick-01) | Official [WAV download](https://sfxmint.com/dl/acoustic-drum-kit-kick-01.wav); [CC0](https://sfxmint.com/license), no account. **AI-generated** existing sound, not a recorded acoustic drum; paid generation is separate | 220,578-byte WAV fully decoded, finite samples, 44.1 kHz stereo, 1.25 s |
+
+## Searchable loop libraries: download and use status
+
+Checked **2026-10-15**. Free acquisition, account requirements and release rights are
+separate. The two downloaded MP3s below passed full FFmpeg and SoundFile decoding with
+empty error output, positive frames and finite samples. They are publisher-offered MP3
+downloads, not converted previews. These conditional entries are outside the 23-source
+recommendation totals above; Looperman remains an account-gated candidate.
+
+| Library | Free access and actual check | Use conditions / remaining scope |
+|---|---|---|
+| [Loopazon](https://www.loopazon.com/) | Home → free loop → Download works anonymously without payment. `Guitar Loop Theorist - Young Thug Future Style`, GrimyVibe, listed 151 BPM / A minor: [official download](https://www.loopazon.com/index.php?dispatch=products.get_file&file_id=20713&v=367899), **367,899-byte MP3**, 44.1 kHz stereo, 25.430 s; repeat download matches SHA-256 | [Official terms](https://www.loopazon.com/about-us-faq) permit remix and commercial use of free community loops without compensation; Premium Loops are sold separately. The homepage also asks users to check item/uploader terms. This [item's detail page](https://www.loopazon.com/free-loops/guitar-loop-theorist-young-thug-future-style-348082) encountered a security check, so download is verified but item-specific rights review remains incomplete. Resolve before adopting it in a released work |
+| [NDA Samples / NDA Company](https://ndacompany.de/) | A card's **Download mp3** button works anonymously without payment. `Koherent`, sample ID `d3bacb800de7`, listed 140 BPM / D-sharp minor: **3,135,581-byte MP3**, 48 kHz stereo, 208.286 s. WAV requires a free account; WAV acquisition untested | [License](https://ndacompany.de/terms.html) allows free download and production, but commercial releases require contacting NDA and a **50/50 publishing/composition-rights split**, including independent releases. Not royalty-free; keep as a conditional resource rather than a default for royalty-free music requests |
+| [Looperman](https://www.looperman.com/loops) | [Official FAQ](https://www.looperman.com/help/faq/loops) describes free account-based WAV downloads, with per-minute/day rate limits. Actual browser Download controls showed **Login**; no authorized account was available and no original WAV was acquired | Loops may be incorporated into commercial derivative works under the [terms](https://www.looperman.com/help/terms); no raw sample-pack redistribution. [Acapellas](https://www.looperman.com/help/faq/acapellas) have different creator-specific conditions. Mark download **unverified**, not paid or verified-free solely from the website claim |
+
+For file identity, the downloaded Loopazon MP3 SHA-256 is
+`e074373786f3832d2231e1551310961c334ecab8abecc952e9848c08f9378959`;
+NDA `Koherent` is
+`2c7be0965ad8a0b031da295cdd963b5f24a28906a1f4df84ec5e165fc8d24653`.
+A technical decode does not validate the site's BPM/key labels, seamless looping, or
+other entries in either library. Preserve the selected item's current terms with it.
 
 ## Known damaged pack: excluded from recommendations
 
