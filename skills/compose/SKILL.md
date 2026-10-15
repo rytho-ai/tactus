@@ -38,7 +38,9 @@ these steps, with the same steps.
    Read [Creating a work](../references/runtime.md#creating-a-work) when installing.
    Follow [version](../version/SKILL.md) to verify the work is tracked and
    commit its starting source before the first render.
-2. **Pin inputs.** Use `tactus material add FILE_OR_DIR` and keep the returned ref in source;
+2. **Pin inputs.** When source audio is missing, use [resources](../resources/SKILL.md) to find and download
+   usable files with their provenance and use conditions.
+   Use `tactus material add FILE_OR_DIR` and keep the returned ref in source;
    resolve it with `material(REF)`. Declare external binaries and plugin bundles with
    `tool()`. See [Inputs](../references/runtime.md#inputs) for folder materials and loading.
    When chopping loops or mixing from saved stems, read

@@ -68,7 +68,8 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 
 ### Agent skills
 
-The `tactus` plugin provides **compose** (write and revise works), **dsp** (design sounds and build
+The `tactus` plugin provides **compose** (write and revise works),
+**[resources](skills/resources/SKILL.md)** (find and download audio with provenance), **dsp** (design sounds and build
 effects), **measure** (use or write analyses), **version** (track work revisions
 with Git), **interactive** (give a work an interface: time map, decisions as input, checked
 joins, browser delivery) and **visual** (join pictures to the music's time — videos, pages, live
