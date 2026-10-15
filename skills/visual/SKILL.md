@@ -1,6 +1,6 @@
 ---
 name: visual
-description: Make pictures that follow a Tactus work's time, in any form — a video, a page that plays, live visuals, a lyric video, an installation. Use when a picture must meet the music: taking bars, sections, levels, events and lyrics from a run, rendering frames or a playing page, measuring sync, choosing a tool (suggestions: Blender, three.js or React Three Fiber, Remotion, HyperFrames), and the people, places and licences the picture involves.
+description: Make pictures that follow a Tactus work's time, in any form — a video, a page that plays, live visuals, a lyric video, an installation. Use when a picture must meet the music: taking bars, sections, levels, events and lyrics from a run, rendering frames or a playing page, measuring sync, choosing a tool (suggestions: Blender, three.js, a GLSL shader, anime.js, HyperFrames), and the people, places and licences the picture involves.
 ---
 
 # Pictures that follow the music
@@ -110,16 +110,21 @@ Render offline, frame by frame, never by screen-recording real time.
 ## Suggested tools
 
 Suggestions, not requirements: any tool that can render `frame(t)` offline works, and plain CPU drawing
-(Skia, Cairo, Pillow piped to ffmpeg) needs no tool at all. These five rendered a whole 2:31 track in one
-trial, with every strike landing within a frame, and their films were the ones the listener liked. What made
-a film beautiful was the idea and the willingness to drop a weak one, more than the tool.
+(Skia, Cairo, Pillow piped to ffmpeg) needs no tool at all. Eighteen tools rendered the same 2:31 track in
+trials, every one with strikes landing within a frame; these five lanes held the films the listener liked,
+with tools that were practical for an agent. What made a film beautiful was the idea and the willingness to
+drop a weak one, more than the tool.
 
-| What you want | Suggested | Speed seen (1080p30, RTX 4090) |
-|---|---|---|
-| Light, water, fog, reflections, depth of field: physically rendered beauty | Blender, scripted | ~0.7 s per frame (EEVEE) |
-| A 3D space, materials and a moving camera; or 3D you will later make playable in a page | three.js, or React Three Fiber | 6–7 frames/s |
-| Type, lyrics, letters, layout | Remotion, or HyperFrames | Remotion ~7 frames/s; HyperFrames faster than real time |
-| 2D shapes, lines, patterns | CPU drawing piped to ffmpeg (no tool) | tens of frames/s |
+A picture stacks layers: drawing (shader, 3D scene or 2D shapes), motion (when and how things move) and
+output (video frames or a playing page). Some tools cover one layer, some all three.
+
+| What you want | Main tool | Same lane | Speed seen (1080p30, RTX 4090) |
+|---|---|---|---|
+| Light, water, fog, reflections, depth of field: physically rendered beauty | Blender, scripted | — | ~0.7 s/frame (EEVEE) |
+| A 3D space, materials and a moving camera; or 3D you may later make playable in a page | three.js | React Three Fiber when you think in React; A-Frame when you would rather write the scene as HTML tags; TSL for materials and shaders | 6–30 frames/s |
+| A continuous space computed per pixel: sky, fog, water, terrain, light | a fragment shader (GLSL) run with moderngl, no browser | — | ~37 frames/s |
+| 2D motion design: shapes, paths, easing, keyframes | anime.js on SVG or Canvas, captured by HyperFrames or a headless browser | — | ~9 frames/s (6 browsers) |
+| Type, lyrics, letters, layout | HyperFrames | — | faster than real time |
 
 - **Blender (bpy, headless).** Unpack an official release inside the project and run `blender -b -P
   scene.py`. Build and light the scene in Python, set every animated value from `t` (keyframes computed from
@@ -130,30 +135,57 @@ a film beautiful was the idea and the willingness to drop a weak one, more than 
   - Traps: a handler is not saved in the .blend; load it with `-P` on every render or the scene stays still
     without an error. Blender 5 changed the animation API (F-curves through a channelbag). Compare decoded
     pixels, not file hashes. Keep its cache folders inside the project.
-- **three.js / React Three Fiber.** three.js for direct control; React Three Fiber when you think in
-  components (less scene code, the same three.js underneath). Render on demand (`frameloop="never"` and
+- **three.js (and React Three Fiber, A-Frame, TSL).** three.js for direct control; React Three Fiber when you
+  think in components (less scene code, the same three.js underneath); A-Frame when the scene's objects,
+  lights and camera read well as HTML tags, with the music in a few components; TSL (Three Shading Language) to write materials
+  and shaders as JavaScript, compiled for WebGPU or WebGL. Render on demand (`frameloop="never"` and
   `advance`, or set everything from `t`), capture with the browser recipe above.
-  - Fits: 3D space, metal and glass, light shafts, camera moves; the same scene can later run in an
+  - Fits: 3D space, metal, glass, sand, light shafts, camera moves; the same scene can later run in an
     interactive page.
   - Does not fit: a quick beautiful result without writing shaders and lighting; flat 2D.
   - Traps: postprocessing in React Three Fiber merges adjacent effects into one pass, so depth of field or
-    bloom can read the image before your own effect (wrap it in an `EffectGroup`); three.js `ShaderPass` can
-    drop a render target texture with only a warning; GLSL `smoothstep` with reversed edges is undefined.
-    Bells and props built from primitives read as plastic: spend effort on materials and light.
-- **Remotion.** React components of `useCurrentFrame()`, rendered by its CLI or renderer.
-  - Fits: lyric videos, letters, scores, posters: text and layout that must land on the beat.
-  - Does not fit: thousands of particles, full-screen filters, fast turnaround (it slows as elements grow).
-  - Traps: its own muxing re-encodes the audio (16-bit, AAC, shifted); mux yourself. Licence: free for
-    individuals, companies of up to three people, non-profits and evaluation; larger companies need a paid
-    licence. Passing a licence key sends usage data; omit it. Copy files into `public/` rather than linking.
+    bloom can read the image before your own effect (wrap it in an `EffectGroup`); `ShaderPass` can drop a
+    render target texture with only a warning; GLSL `smoothstep` with reversed edges is undefined. TSL
+    coerces mismatched types silently and a JavaScript `if` inside a TSL function is not a shader branch
+    (use `If`): keep a reference frame known to be right and compare. WebGPU read-back rows run top-down
+    (WebGL bottom-up); the first frame of a new browser can be wrong, so render twice before capturing.
+    Props built from primitives read as plastic: spend effort on materials and light. A-Frame runs its own
+    loop: after `renderstart` call `renderer.setAnimationLoop(null)`, then for each frame call
+    `sceneEl.tick(t * 1000, dt)` and render; compute every component from `time` (no `animation` component,
+    no `Math.random`). Its camera entity is a group looking down −z, so `lookAt` on the group points it
+    backwards; once custom shaders and geometry dominate, plain three.js has fewer traps.
+- **A fragment shader (GLSL) with moderngl.** One shader computes each pixel from its position, `t` and
+  uniforms (recent strikes, row, section, level, passed from the map); a standalone EGL context renders on
+  the GPU without a browser, and frames go to ffmpeg. Several passes are fine; feedback between frames is not
+  (it breaks `frame(t)`).
+  - Fits: one continuous space — sky, sea of cloud, fog, water, terrain, light over the whole piece — with
+    the music moving a few parameters and a slow arc of light.
+  - Does not fit: text, characters, many recognisable objects, or anything that must accumulate the past.
+  - Traps: compile errors arrive with line numbers (`#line` per file), but wrong results are silent:
+    render stills after each change and add debug views (draw one term as colour). Check helper libraries'
+    licences (much of lygia is not open source).
+- **anime.js.** Timelines built from the map and never played: seek the timeline to `t` for each captured
+  frame. It draws nothing itself; pair it with SVG or Canvas, and capture with HyperFrames or the browser
+  recipe above. MIT licence.
+  - Fits: 2D vector motion design with fine easing and keyframes, motion paths, hundreds to thousands of
+    events.
+  - Does not fit: masses of particles, full-screen filters, 3D or physical light.
+  - Traps: adding the same property of the same target to a timeline more than once gives wrong values when
+    seeking backwards, silently; give each event its own element or one tween per property. CSS-scaled
+    layers can rasterise differently depending on earlier seeks; avoid CSS zoom for camera moves. Heavy SVG
+    blur is CPU-bound; run several browsers in parallel.
 - **HyperFrames.** HTML, CSS and JavaScript compositions captured frame by frame (it bundles GSAP).
-  - Fits: title cards and type; or wrapping a `draw(t)` you already wrote in Canvas/WebGL to capture it
-    fast and repeatably.
+  - Fits: title cards, type and lyrics; or wrapping a `draw(t)` you already wrote in Canvas/WebGL/SVG (for
+    example with anime.js) to capture it fast and repeatably.
   - Does not fit: a single full-screen shader with nothing else (it only opens the browser for you).
   - Traps: it limits and resamples audio (remux the original); telemetry is on by default and it sends
     snapshots to a model when a key is set (turn both off, keep `HOME` inside the project); `-o` is relative
     to the project; some preview and check commands have hung, so keep your own screenshot script; it picks
     its own port.
+
+**Writing a brief for another agent or yourself.** Named examples become templates: when a brief quoted a
+favourite film with lamps, two of three new films drew lamps. Describe the qualities wanted (depth,
+atmosphere, a structure that grows) and name the motifs already used enough, rather than the films liked.
 
 ## Pictures in a page that plays
 
