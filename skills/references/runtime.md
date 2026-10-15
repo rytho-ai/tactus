@@ -82,7 +82,10 @@ return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
 ```
 
 - `outputs.NAME.grid`: `bars` are the frames where bars start (non-decreasing), numbered from
-  `first_bar` (default 1, as in `Clock`); `end` (optional) is the frame after the last bar and
+  `first_bar` (default 1, as in `Clock`) and lying inside the output (0 to its length): when bar 1
+  starts before 0 s (a recording whose first downbeat falls a few ms early, a pickup), start the
+  grid at the first bar line at or after 0 and name it, e.g. `Clock.grid(2, last)` gives
+  `first_bar` 2; `end` (optional) is the frame after the last bar and
   may exceed the output (a master that stops before its last bar line); `beats_per_bar` is one
   number or one per bar (quarter beats, 7/8 is 3.5); `beats` optionally lists beat frames.
   `Clock.grid(first, last, offset=0)` builds it through `frame_of` (nearest frame); any frame

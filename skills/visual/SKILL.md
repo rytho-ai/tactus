@@ -22,7 +22,13 @@ numbers copied into picture code.
   ([Delivering with the map](../references/project-commands.md#delivering-with-the-map-web-srt-curves)).
   If the music is a finished recording rather than a Tactus run, make a small Tactus work that loads it as a
   material and returns a map (beats fitted with `timing.fit_tempo`, sections as a lane), so the timing still
-  lives in one place. Do not restate a tempo, bar length or section time in the picture code; read it.
+  lives in one place. Check the fit before building on it: a tracker can drift in quiet passages (look at
+  its residuals over time and at onsets there), a half-time beat fits both 69 and 138, and which beat is bar
+  1 is the work's choice (snare or kick energy per beat, phrase lengths of the words; `fold` in
+  [Musical time](../references/runtime.md#musical-time-optional)). A wrong bar length moves every event
+  meant for a bar line. Draft lyrics from an SRT become the `lyrics` lane in that work: parse it into items
+  with `text` and a `status` (`draft` until checked) so `export srt` and the picture read the same lines.
+  Its material goes to the shared pool unless `TACTUS_POOL` is set for every command. Do not restate a tempo, bar length or section time in the picture code; read it.
 - **Reading curves.json.** Arrays have one value per video frame (`frames` of them, at each frame's
   `frame_time`, here its start):
 
@@ -69,7 +75,8 @@ Render offline, frame by frame, never by screen-recording real time.
 - **Two pipelines.** Drawing on the CPU (Skia, Cairo, Pillow) and piping raw frames into ffmpeg is simple,
   fast for 2D work, parallel across worker processes and needs no GPU or browser. A browser program
   (Canvas, WebGL, three.js) renders `frame(t)` in a headless browser that posts each frame to a small local
-  endpoint, or uses a frame-accurate capture tool. Either way mux with the run's audio unchanged.
+  endpoint, or uses a frame-accurate capture tool. Either way mux with the run's audio unchanged (for a wrapped recording that is the run's PCM, not the
+  original file). Do not mux with `-shortest`: it dropped the last frames twice; cut to the frame count instead.
 - **Check the file.** Frame count against the duration; decoded audio identical to the run (hash it). MP4
   cannot carry the lossless PCM: keep a master in MKV or MOV with the run's PCM and share an MP4 with AAC.
   Some video tools limit or resample audio; remux the original. Extract frames from the encoded file, not
@@ -88,7 +95,8 @@ Render offline, frame by frame, never by screen-recording real time.
   - Read frames back over a WebSocket or as a Blob: posting a typed array with `fetch` cost 0.5 s per
     1080p frame. Blobs fill Chrome's memory unless garbage is collected every few frames.
   - One render at a time on a GPU: two renders, or a leftover browser, slow to ~1 frame/s and corrupt the
-    file. Take a lock (`flock -n .render.lock`) around every render.
+    file. Take a lock that waits (`flock /shared/path/gpu.lock CMD`, without `-n`) around every render,
+    in one path all renders on the machine share.
   - A JavaScript module with a syntax error or a failed import stops a page silently and the render waits
     forever: check modules (`node --check`), forward console and page errors to the capture log, and give
     the capture a timeout.
@@ -122,7 +130,7 @@ output (video frames or a playing page). Some tools cover one layer, some all th
 |---|---|---|---|
 | Light, water, fog, reflections, depth of field: physically rendered beauty | Blender, scripted | — | ~0.7 s/frame (EEVEE) |
 | A 3D space, materials and a moving camera; or 3D you may later make playable in a page | three.js | React Three Fiber when you think in React; A-Frame when you would rather write the scene as HTML tags; TSL for materials and shaders | 6–30 frames/s |
-| A continuous space computed per pixel: sky, fog, water, terrain, light | a fragment shader (GLSL) run with moderngl, no browser | — | ~37 frames/s |
+| A continuous space computed per pixel: sky, fog, water, terrain, light | a fragment shader (GLSL) run with moderngl, no browser | — | ~37 frames/s (~28 with x264 in the same pipe) |
 | 2D motion design: shapes, paths, easing, keyframes | anime.js on SVG or Canvas, captured by HyperFrames or a headless browser | — | ~9 frames/s (6 browsers) |
 | Type, lyrics, letters, layout | HyperFrames | — | faster than real time |
 
@@ -161,6 +169,8 @@ output (video frames or a playing page). Some tools cover one layer, some all th
   - Fits: one continuous space — sky, sea of cloud, fog, water, terrain, light over the whole piece — with
     the music moving a few parameters and a slow arc of light.
   - Does not fit: text, characters, many recognisable objects, or anything that must accumulate the past.
+    For words, draw them on the CPU (Pillow, Skia) into a texture and composite it in the shader. A CJK
+    `.ttc` holds several faces: pick the one for the language (Noto CJK's default face is Japanese).
   - Traps: compile errors arrive with line numbers (`#line` per file), but wrong results are silent:
     render stills after each change and add debug views (draw one term as colour). Check helper libraries'
     licences (much of lygia is not open source).
