@@ -1,9 +1,13 @@
 # Downloadable audio sources
 
-Use this when selecting audio to acquire. The two tables contain **13 sources** with
+Use this when selecting audio to acquire. The two recommendation tables contain **23 sources** with
 specific zero-payment downloads checked on **2026-10-15**, without accounts, email
 submission or paid trials. Every audio file in the listed downloaded packs, and each
-listed individual file, passed full decoding; the scope is **887 audio files**. Recheck
+listed individual file, passed full decoding; the scope is **6,142 audio-file entries**,
+including **4,358 single-cycle synthesis waveforms**. One bundled demo was also decoded
+but is not counted as usable sample material. These are file entries, not a claim of
+unique sounds or thousands of ready-made music loops (AKWF includes four duplicate pairs).
+Recheck
 the selected item's current page and license. This is technical verification, not a
 listening evaluation or a guarantee about other files on the same service. Sources that
 failed or did not deliver original audio are separated below.
@@ -18,6 +22,17 @@ failed or did not deliver original audio are separated below.
 | [FreePats Upright Piano KW small](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html) | Select KW **SFZ + FLAC** small package on page | CC0 stated for this instrument on source page | 3,092,715-byte 7z; integrity and all **26 FLACs** pass full decode; all SFZ sample references resolve. WAV edition uses a compression combination some extractors cannot handle |
 | [AVL Drumkits — Glen MacArthur](https://www.bandshed.net/avldrumkits/) | Blonde Bop **SFZ** ZIP containing WAVs, rather than a plugin binary | Page states CC BY-SA 3.0 with an author exception for music-use attribution; preserve the actual terms for redistribution | 18,894,875-byte ZIP, all CRCs and **135 WAVs** pass full decode; all SFZ sample references resolve. Instrument host playback not tested |
 | [SampleRadar 808 weight](https://www.musicradar.com/music-tech/samples/sampleradar-105-free-808-weight-samples) | Pack pages link to downloadable ZIPs; [808 weight ZIP](https://cdn.mos.musicradar.com/audio/samples/musicradar-808-weight-samples.zip) | Pack page permits music use without credit; no redistribution as samples | 60,144,839-byte ZIP, all CRCs and **105 audio files** pass full decode; AppleDouble metadata excluded from the audio count |
+| [Karoryfer Shinyguitar](https://shop.karoryfer.com/pages/free-shinyguitar) | Original guitar WAVs in [sample repository](https://github.com/sfzinstruments/karoryfer.shinyguitar/tree/57243cca85277dbcc120ce17c6178032f93c80f3) | [Author's free-sample terms](https://shop.karoryfer.com/pages/free-samples) place Shinyguitar under CC0; do not extend this to the explicitly excepted Marie Ork | `Samples/acoustic/a2_vl1_rr1_1.wav`, 930,284 bytes, full decode; only this WAV tested, not the other 845 samples |
+| [Dim Cabasa — kinwie / Dimas Syah](https://github.com/sfzinstruments/kinwie.dim-cabasa/tree/016457e51a3e6558ab49676789260b54ff52ff1b) | Download the fixed-revision repository ZIP; use its FLAC recordings | [CC BY 4.0](https://github.com/sfzinstruments/kinwie.dim-cabasa/blob/016457e51a3e6558ab49676789260b54ff52ff1b/LICENSE); preserve credits, license and change notice | 10,825,373-byte ZIP; all CRCs and **250 FLACs** pass full decode |
+| [Greg Sullivan E-Pianos](https://www.sullivang.net/conversions) | Author links to [CP80, Pianet T and Wurlitzer sample repository](https://github.com/sfzinstruments/GregSullivan.E-Pianos/tree/8c3e581acda3594b553948ff0222d4f84a698376); retrieve FLACs in ZIP | [CC BY 3.0](https://github.com/sfzinstruments/GregSullivan.E-Pianos/blob/8c3e581acda3594b553948ff0222d4f84a698376/LICENSE); preserve Greg Sullivan's credit and kinwie's conversion provenance | 19,263,422-byte ZIP; all CRCs and **172 FLACs** pass full decode |
+| [Ethan Winer original samples](https://ethanwiner.com/ewsf2.html) | [SFZ/FLAC conversion](https://github.com/sfzinstruments/EthanWiner.Soundfonts/tree/173e3f897a922dc9fb9b96ae743f82c9d5ad1e19) exposes individual recordings | Author's custom permission allows royalty-free commercial use of his samples without attribution; **not CC0**. Separate SFZ mapping redistribution permission is not established | 15,201,317-byte ZIP; all CRCs and **141 FLACs** pass full decode |
+| [TriSamples 808 Trapstep Vol 1](https://trisamples.com/808-trapstep-pack-vol-1/) | Official [ZIP](https://trisamples.com/EDC/Free/TriSamples_-_808_Trapstep_Pack_Vol_1.zip): 808 bass, drums, chants and FX | Page and bundled README allow production use; no resale or distributing samples as one's own creation | 23,940,028-byte ZIP; all CRCs and **103 samples plus 1 demo WAV** pass full decode. Demo excluded from usable-material count; AppleDouble excluded |
+| [Codec_Spurt / Rekkerd C_S_02](https://rekkerd.org/free-samples-rekkerd-loops-c_s_02/) | Official [RAR](https://rekkerd.org/samples/REKKERD_Loops-%20C_S_02.rar), chiefly beat loops plus melodic loops | Page and bundled info permit commercial/noncommercial productions; no resale or inclusion in sample libraries | 74,906,088-byte RAR; every file's CRC passes; all **57 WAVs** fully decoded, 24-bit/44.1 kHz stereo |
+| [Adventure Kid — Kristoffer Ekstrand, AKWF](https://www.adventurekid.se/akrt/waveforms/adventure-kid-waveforms/) | Official [AKWF.zip](https://www.adventurekid.se/AKRTfiles/AKWF/AKWF.zip); oscillator/sampler inputs | CC0 on author's page and [repository license](https://github.com/KristofferKarlAxelEkstrand/AKWF-FREE/blob/main/LICENSE.md) | 6,007,440-byte ZIP; all CRCs and **4,358 WAVs** fully decoded. Each is a 600-sample single cycle, not a complete musical loop |
+| [ClipCraft free drum kit](https://clipcraft.ai/downloads/free-drum-kit) | Official [complete ZIP](https://clipcraft.ai/downloads/packs/clipcraft-free-drum-kit.zip) | [Download terms](https://clipcraft.ai/downloads) and bundled README allow commercial music/video use without attribution; no resale or repackaging the samples | 10,314,321-byte ZIP; all CRCs and **17 WAVs + 124 MP3s** fully decoded. The MP3s are original supplied deliverables, not lossless recordings |
+
+For the newly listed SFZ/FLAC libraries, the checks cover audio and archive integrity;
+SFZ reference resolution and instrument-host playback were not tested.
 
 For a small, reproducible original-audio download, this [VSCO violin WAV](https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/Pizz/VlnEns_Pizz_D5_v1_rr2.wav)
 is pinned to a repository revision. SHA-256:
@@ -37,6 +52,8 @@ this small test file.
 | [Mixkit rain sound effects](https://mixkit.co/free-sound-effects/rain/) | Actual download button gives WAV; [SFX license](https://mixkit.co/license/modal/sfxFree/) allows audio end products, including commercial work; no raw/stock redistribution or rights-management registration. This is not the music license | Item `2393.wav`, 2,646,730 bytes, full decode, 44.1 kHz stereo, 15 s |
 | [NPS rain](https://www.nps.gov/subjects/sound/sounds-rain.htm) | Download Original MP3; this [sound gallery](https://www.nps.gov/subjects/sound/gallery.htm) states public domain and requests credit | RainDEPO.mp3, 81,986 bytes, full decode, 44.1 kHz mono; ffprobe reports 4.971 s |
 | [Citizen DJ Edison collection](https://citizen-dj.labs.loc.gov/loc-edison/use/) | Collection offers samples for new music; preserve the selected recording metadata and collection use statement | “Till the boys come home” official 6.711 s WAV sample, 1,288,556 bytes; full decode and finite-sample check pass. Complete sample, not complete song |
+| [Mak Camera Sounds Pack](https://makvocc.itch.io/camera-sounds-pack) | Anonymous Download button; CC0, credit optional. Camera mechanisms, switches, UI and alerts | Live 31-file version: 886,918-byte ZIP; all CRCs and **31 MP3s** fully decoded. Older cached pages describe a 20-file version |
+| [SFXMint acoustic drum kit kick 01](https://sfxmint.com/sounds/acoustic-drum-kit-kick-01) | Official [WAV download](https://sfxmint.com/dl/acoustic-drum-kit-kick-01.wav); [CC0](https://sfxmint.com/license), no account. **AI-generated** existing sound, not a recorded acoustic drum; paid generation is separate | 220,578-byte WAV fully decoded, finite samples, 44.1 kHz stereo, 1.25 s |
 
 ## Known damaged pack: excluded from recommendations
 
@@ -51,6 +68,11 @@ original and report the failure; any selected usable files need their own eviden
 
 ## Personal Splice-like projects: separate from verified audio
 
+- [SeaWav](https://seawav.org/oneshot): personal sample-map browser; search and playback
+  worked, but the tested save shortcut did not produce an original file. For selected
+  `347166__dvbeats__kick-drum-1.wav`, playback fetched a compressed `_cmp.m4a` preview.
+  The [original DVBeats item](https://freesound.org/people/DVBeats/sounds/347166/) is CC0;
+  that verifies this item's rights, not SeaWav's original-download path or whole catalog.
 - [Sonura](https://app.sonurastudio.com/samples): community library exists, with Free Sounds,
   search and download buttons. Tested download requires sign-in; no original audio acquired.
   Its [terms §4.2](https://sonurastudio.com/terms/) dedicate publicly shared samples to CC0.
@@ -68,3 +90,22 @@ original and report the failure; any selected usable files need their own eviden
 Account-gated sites may still offer free audio, but remain unverified until an authorized
 download succeeds. Keep those results separate instead of filling the deliverable with
 landing-page links.
+
+## Additional composer checks: not default sampling recommendations
+
+- [Soundimage / Eric Matyas](https://soundimage.org/world/): `Exotic-Dangers.mp3` downloaded
+  free and fully decoded (894,587 bytes). Its [custom license](https://soundimage.org/sample-page/)
+  is not CC BY and prohibits obscene/pornographic uses. [Attribution instructions](https://soundimage.org/attribution-info/)
+  require credit within the project and direct unlisted uses to the author; standalone
+  music release needs clarification. Suitable credited media use is a separate decision.
+- [Patrick de Arteaga](https://patrickdearteaga.com/royalty-free-music/):
+  `The Biggest Discovery.ogg` downloaded free and fully decoded (1,780,839 bytes).
+  [Licensing](https://patrickdearteaga.com/en/licensing/) allows credited adaptations but
+  separately restricts audio-only resale and monetized individual music distribution;
+  do not treat it as unrestricted clearance for standalone tracks.
+- [Audionautix / Jason Shaw](https://audionautix.com/): tested `FallingSky.mp3`
+  (4,443,686 bytes) triggers a SoundFile/libmpg123 dequantization warning despite an
+  error-free FFmpeg run. This file is excluded pending a clean original.
+- [TeknoAXE](https://teknoaxe.com/): the tested official `direct_download.php` response
+  contains PHP Warning HTML before the MP3 data. Tolerant decoders succeeding does not
+  make that response a clean audio download; excluded without repairing the original.

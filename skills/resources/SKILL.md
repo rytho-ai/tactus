@@ -29,10 +29,13 @@ a separate catalog, with their own platform, installation and compatibility evid
    installer, demo mix or converted streaming preview as the requested original asset.
    A full MP3 can be the publisher's actual deliverable; converting it to WAV does not
    make it lossless source audio. Keep downloads outside `render`.
-4. **Verify what arrived.** Record bytes and SHA-256, inspect the format and fully decode
+4. **Verify what arrived.** Record bytes and SHA-256, inspect the actual container/header
+   for login pages or server-error text mixed into the payload, and fully decode
    selected audio with an available decoder such as FFmpeg or SoundFile. Require a successful
    decode with no reported decoding errors; an exit code of zero alone can miss a malformed
-   final PCM packet. Check positive duration, sample rate and channel count. For archives, check integrity and paths before
+   final PCM packet or skip an HTML error prefix. If another decoder reports a problem,
+   retain that finding instead of declaring the file clean. Check positive duration,
+   sample rate and channel count. For archives, check integrity and paths before
    extraction. A fully verified pack requires full decoding of every audio member;
    if only selected members were checked, label the pack partially verified and name that
    scope. Keep relative paths for SFZ/sample folders.
