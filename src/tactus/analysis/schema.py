@@ -1,9 +1,10 @@
-"""Shared v1 analysis declarations for builtin and work-local Python results.
+"""Shared analysis declarations (schema v1/v2) for builtin and work-local Python results.
 
 Constructors return ordinary dictionaries; attach owns the finite-JSON envelope.
 Validation checks declared structure against data, without judging an analysis's
 accuracy or inferring missing semantics. Coordinate selectors have one implementation
-for root arrays, record keys, row columns and inline values. No files are opened.
+for root arrays, record keys, row columns and inline values; a selector may take a
+`slice`, so a declaration points to existing data instead of copying it. No files are opened.
 
 Reads: numpy · json
 """
@@ -19,6 +20,7 @@ __all__ = [
     "attach",
     "axis",
     "coordinates",
+    "ends",
     "events",
     "grid",
     "series",
@@ -78,7 +80,11 @@ def attach(
     parameter_keys=(),
     auxiliary_keys=(),
 ) -> dict:
-    """Return a shallow result copy with fresh, validated schema v1 metadata.
+    """Return a shallow result copy with fresh, validated schema metadata.
+
+    The declaration is version 1, or version 2 when a selector uses `slice` or an axis
+    gives interval ends as an `end` selector (so an older reader refuses it instead of
+    misreading it).
 
     Arrays/values are shared unchanged; metadata is copied into finite JSON.
     Explicitly classify every original result key. An existing schema is replaced,
@@ -88,7 +94,7 @@ def attach(
         **result,
         "schema": _plain(
             {
-                "version": 1,
+                "version": 2 if _uses_v2(fields) else 1,
                 "input": {
                     "sample_rate": sample_rate,
                     "frames": frames,
@@ -126,8 +132,43 @@ def coordinates(result: dict, field: str, axis: str = "x") -> np.ndarray:
     return _select(result, field, desc, desc[axis], where).copy()
 
 
+def ends(result: dict, field: str, axis: str = "x") -> np.ndarray:
+    """Read the interval ends of a declared axis, in the axis's units.
+
+    Resolved from an `end` selector, `end_key`, or `width` with `at` ("start": start +
+    width, "centre": centre + width / 2, "end": the coordinate itself). Point axes and
+    axes without width or ends have no interval ends. Returns an independent array.
+    """
+    declaration = _declaration(result)
+    desc = declaration["fields"].get(field)
+    where = f"schema.fields.{field}.{axis}"
+    if not isinstance(desc, dict) or not isinstance(desc.get(axis), dict):
+        _fail(where, "coordinate axis is undeclared")
+    spec = desc[axis]
+    coords = _select(result, field, desc, spec, where)
+    if "end" in spec:
+        return _select(result, field, desc, spec["end"], where + ".end").copy()
+    if "end_key" in spec:
+        selector = {"key": spec["end_key"], **({"factor": spec["factor"]} if "factor" in spec else {})}
+        return _select(result, field, desc, selector, where + ".end_key").copy()
+    if "width" not in spec or spec.get("width_axis") not in (None, axis):
+        _fail(where, "declares no interval ends")
+    width = spec["width"]
+    if isinstance(width, dict):
+        width = _select(result, field, desc, width, where + ".width")
+    width = np.asarray(width, dtype=float)
+    at = spec.get("at")
+    if at == "start":
+        return coords + width
+    if at == "centre":
+        return coords + width / 2
+    if at == "end":
+        return np.array(coords, dtype=float)
+    _fail(where, "declares no interval ends")
+
+
 def validate(result: dict) -> None:
-    """Check v1 declarations, selectors, dimensions and window support; raise ValueError.
+    """Check v1/v2 declarations, selectors, dimensions and window support; raise ValueError.
 
     This is structural validation, not proof of correct units, normalization,
     timestamp alignment, sentinel meaning or numerical algorithms. Omitted semantic
@@ -239,13 +280,26 @@ def _declaration(result):
         json.dumps(declaration, allow_nan=False)
     except (TypeError, ValueError) as exc:
         _fail("schema", f"must contain finite JSON: {exc}")
-    if type(declaration.get("version")) is not int or declaration["version"] != 1:
-        _fail("schema.version", "only version 1 is supported")
+    if type(declaration.get("version")) is not int or declaration["version"] not in (1, 2):
+        _fail("schema.version", "only versions 1 and 2 are supported")
     if not isinstance(declaration.get("fields"), dict):
         _fail("schema.fields", "must be an object")
+    if declaration["version"] == 1 and _uses_v2(declaration["fields"]):
+        _fail("schema.version", "slice and end selectors need version 2")
     if not all(isinstance(key, str) for key in declaration["fields"]):
         _fail("schema.fields", "measurement keys must be strings")
     return declaration
+
+
+def _uses_v2(item):
+    """Whether a declaration uses a version 2 feature: a `slice` or an `end` selector."""
+    if isinstance(item, Mapping):
+        if "slice" in item or isinstance(item.get("end"), Mapping):
+            return True
+        return any(_uses_v2(v) for v in item.values())
+    if isinstance(item, (list, tuple)):
+        return any(_uses_v2(v) for v in item)
+    return False
 
 
 def _attachment(data):
@@ -280,6 +334,15 @@ def _select(result, field, desc, selector, where):
         _fail(where, f"selector must resolve to a vector: {exc}")
     if vector.ndim != 1:
         _fail(where, "selector must resolve to a one-dimensional vector")
+    if "slice" in selector:
+        bounds = selector["slice"]
+        if (
+            not isinstance(bounds, list)
+            or len(bounds) != 2
+            or not all(b is None or type(b) is int for b in bounds)
+        ):
+            _fail(where + ".slice", "must be [start, stop] integers or null")
+        vector = vector[bounds[0] : bounds[1]]
     if "factor" in selector:
         factor = selector["factor"]
         if (
@@ -322,8 +385,8 @@ def _axis_support(result, field, desc, spec, coords, lengths, where):
         and (coords.dtype.kind not in "iuf" or not np.isfinite(coords).all())
     ):
         _fail(where, "numeric coordinates must be finite; use categorical spacing for labels")
-    if spec.get("at") in {"start", "end"} and "width" not in spec and "end_key" not in spec:
-        _fail(where, "start/end timestamps require width or end_key")
+    if spec.get("at") in {"start", "end"} and not {"width", "end_key", "end"} & spec.keys():
+        _fail(where, "start/end timestamps require width, end_key or end")
     if "hop" in spec and (
         isinstance(spec["hop"], bool)
         or not isinstance(spec["hop"], (int, float))
@@ -346,6 +409,14 @@ def _axis_support(result, field, desc, spec, coords, lengths, where):
         count = lengths[spec["width_axis"]] if "width_axis" in spec else len(coords)
         if widths.ndim > 1 or (widths.ndim == 1 and len(widths) != count):
             _fail(where + ".width", "width count must match its declared dimension")
+    if "end" in spec:
+        if "end_key" in spec:
+            _fail(where, "declare end or end_key, not both")
+        ends = _select(result, field, desc, spec["end"], where + ".end")
+        if len(ends) != len(coords) or ends.dtype.kind not in "iuf" or not np.isfinite(ends).all():
+            _fail(where + ".end", "interval ends must be finite and match coordinates")
+        if np.any(ends < coords):
+            _fail(where + ".end", "interval ends must not precede starts")
     if "end_key" in spec:
         selector = {"key": spec["end_key"]}
         if "factor" in spec:

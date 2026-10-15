@@ -11,8 +11,6 @@ import inspect
 from functools import wraps
 from typing import Any
 
-import numpy as np
-
 from . import schema
 
 
@@ -186,7 +184,7 @@ def _spectral(name, result, rate, params, frames):
         if name in {"cqt", "vqt"}:
             time = _time(
                 at="centre",
-                width=(result["window_samples"] / rate).tolist(),
+                width={"key": "window_samples", "factor": 1 / rate},
                 width_axis="y",
                 hop=result["hop_samples"] / rate,
                 padding="zero",
@@ -253,10 +251,13 @@ def _rhythm(name, result, rate, params):
         time = _time(at="point")
         time.update(key="beats_s", spacing="nonuniform")
         fields["beats_s"] = {"shape": "events", "x": time, "empty": "no_estimates"}
-        times = result["beats_s"]
-        intervals = _time(at="start", width=np.diff(times).tolist(), end_exclusive=True)
-        intervals.pop("key")
-        intervals.update(values=times[:-1], spacing="nonuniform")
+        intervals = _time(at="start", end_exclusive=True)
+        intervals.update(
+            key="beats_s",
+            slice=[0, -1],
+            end={"key": "beats_s", "slice": [1, None]},
+            spacing="nonuniform",
+        )
         fields["tempo_curve"] = schema.series(intervals, schema.value("tempo", "BPM"))
         fields["bpm"] = schema.summary(
             "median_tempo", "BPM", sentinel="null", meaning="fewer_than_two_beats"

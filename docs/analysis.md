@@ -106,6 +106,7 @@ waveform renderer to `image()`.
 | `attach(result, *, sample_rate, frames, fields, coordinate_keys=(), parameter_keys=(), auxiliary_keys=())` | Classify existing keys, attach fresh finite-JSON metadata and validate; return a shallow result copy |
 | `validate(result)` | Check declarations against in-memory data; return None or raise ValueError naming the failing field |
 | `coordinates(result, field, axis="x")` | Resolve declared selectors and factors into an independent NumPy vector; grid axes may be x or y |
+| `ends(result, field, axis="x")` | Resolve interval ends from `end`, `end_key` or `width` with `at`; points and per-row widths have none |
 
 Constructors return ordinary dictionaries. Handwritten declarations use the same contract;
 unknown properties can be omitted. `attach` shares existing arrays and values without
@@ -126,8 +127,11 @@ can consume the plain JSON declaration without adopting the Python helpers.
 
 ### Structure and selectors
 
-`schema.version` is `1`, independent of the analysis's numeric `revision`. Consumers
-should check the schema version and treat omitted properties as undeclared. No guessing
+`schema.version` is `1`, or `2` when a declaration uses a `slice` or an `end` selector
+(today only `rhythm.beats`); it is independent of the analysis's numeric `revision`.
+Version 1 declarations cannot use those features, so a reader that knows only version 1
+refuses a version 2 result instead of misreading it. Consumers should check the schema
+version and treat omitted properties as undeclared. No guessing
 from array length, field names or another analysis's conventions is necessary.
 
 | Schema member | Meaning |
@@ -152,8 +156,14 @@ Descriptions have one of four shapes:
   events, not an invented time coordinate.
 - `summary`: `value` describes a scalar over the analyzed input, without a plotting axis.
 
-An axis supplies `quantity`, `unit` and either `key` or inline `values`. Inline values
-are used for MFCC coefficient indices and the starts of beat intervals. `spacing`
+An axis supplies `quantity`, `unit` and either `key` or inline `values`. A declaration
+points to data and never copies it: a selector may add `"slice": [start, stop]` (Python
+slice bounds, `null` open), and an axis may give interval ends as a selector `"end"`.
+Beat intervals are `{"key": "beats_s", "slice": [0, -1], "end": {"key": "beats_s",
+"slice": [1, null]}}`; Q-transform widths are `{"key": "window_samples", "factor": 1/rate}`.
+Inline values are left for labels that are not data, such as MFCC coefficient indices.
+A test runs every builtin on a short and a long input and fails if a declaration grows
+with the input. `spacing`
 describes the **coordinate sequence**, not a requested display scale: `linear` is
 arithmetic spacing, `logarithmic` is geometric spacing, `nonuniform` makes no equal-spacing
 claim, and `categorical` preserves label order. Read actual coordinates even for a

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from tactus.analysis import CATEGORIES, image, level, rhythm, spectral
+from tactus.analysis import CATEGORIES, image, level, rhythm, schema, spectral
 from tactus.cli import main
 from tactus.inputs.pool import hash_file
 
@@ -40,7 +40,7 @@ def test_every_builtin_is_additive_finite_and_classifies_all_existing_fields(fn,
     same({k: v for k, v in result.items() if k != "schema"}, expected)
     np.testing.assert_array_equal(audio, before)
     assert json.loads(json.dumps(schema, allow_nan=False)) == schema
-    assert schema["version"] == 1
+    assert schema["version"] == (2 if fn.__name__ == "beats" else 1)  # beats points to beats_s with slice/end
     assert schema["input"] == {
         "sample_rate": rate,
         "frames": len(audio),
@@ -143,8 +143,11 @@ def test_q_windows_are_per_frequency_and_not_a_single_guessed_width(name):
     result = getattr(spectral, name)(np.zeros(211), 22050, fmin=220, n_bins=6, hop=71)
     d = result["schema"]["fields"]["magnitude"]
     assert d["x"]["at"] == "centre" and d["x"]["width_axis"] == "y"
-    np.testing.assert_array_equal(d["x"]["width"], result["window_samples"] / 22050)
-    assert len(set(d["x"]["width"])) > 1
+    assert d["x"]["width"] == {"key": "window_samples", "factor": 1 / 22050}
+    widths = result["window_samples"] / 22050
+    assert len(set(widths)) > 1
+    with pytest.raises(ValueError, match="no interval ends"):
+        schema.ends(result, "magnitude")  # widths are per frequency row, not per time
     assert d["y"]["spacing"] == "logarithmic"
     np.testing.assert_allclose(np.diff(np.log2(result["freqs_hz"])), 1 / 12)
 
@@ -212,9 +215,11 @@ def test_beats_intervals_use_each_actual_pair(monkeypatch):
     d = r["schema"]["fields"]
     assert d["beats_s"]["x"]["at"] == "point"
     assert d["tempo_curve"]["x"]["at"] == "start"
-    np.testing.assert_array_equal(d["tempo_curve"]["x"]["values"], r["beats_s"][:-1])
-    np.testing.assert_array_equal(d["tempo_curve"]["x"]["width"], np.diff(r["beats_s"]))
-    np.testing.assert_allclose(r["tempo_curve"], 60 / np.array(d["tempo_curve"]["x"]["width"]))
+    starts = schema.coordinates(r, "tempo_curve")
+    np.testing.assert_array_equal(starts, r["beats_s"][:-1])
+    np.testing.assert_array_equal(schema.ends(r, "tempo_curve"), r["beats_s"][1:])
+    np.testing.assert_allclose(r["tempo_curve"], 60 / (schema.ends(r, "tempo_curve") - starts))
+    assert "values" not in d["tempo_curve"]["x"] and r["schema"]["version"] == 2
 
 
 def test_clipping_event_selectors_recover_true_sample_span():
@@ -284,3 +289,19 @@ def test_schema_is_fresh_and_images_are_unchanged():
     assert spectral.stft(audio, 22050)["schema"]["fields"]["level_db"]["x"]["unit"] == "s"
     r = rhythm.onset_strength(audio, np.int64(22050), n_fft=np.int64(1024), lag=np.int64(2))
     json.dumps(r["schema"], allow_nan=False)
+
+
+def _clicks(seconds, rate=22050, bpm=120):
+    audio = 0.01 * np.sin(2 * np.pi * 330 * np.arange(int(seconds * rate)) / rate)
+    for start in np.arange(0, seconds, 60 / bpm):
+        i = int(start * rate)
+        audio[i : i + 200] += np.hanning(400)[200:] * 0.8
+    return audio
+
+
+@pytest.mark.parametrize("fn", BUILTINS, ids=lambda fn: fn.__name__)
+def test_no_builtin_schema_grows_with_the_input(fn):
+    """A declaration points to result data; it never copies arrays that scale with the input."""
+    rate = 22050
+    short, long = (json.dumps(fn(_clicks(s), rate)["schema"]) for s in (6, 24))
+    assert len(long) - len(short) < 64, (len(short), len(long))  # digits of frames/durations only

@@ -202,7 +202,7 @@ def test_unknown_semantics_stay_unknown_and_summary_has_no_coordinates():
 @pytest.mark.parametrize(
     "edit,match",
     [
-        (lambda r: r["schema"].update(version=2), "version"),
+        (lambda r: r["schema"].update(version=3), "version"),
         (lambda r: r["schema"].update(version=True), "version"),
         (lambda r: r["schema"].update(parameter_keys=["gain", "left"]), "overlap"),
         (lambda r: r.update(extra=0), "every result key"),
@@ -311,3 +311,59 @@ def waveform(audio, sample_rate):
             result[key] = arrays[ref["key"]]
     schema.validate(result)
     np.testing.assert_array_equal(schema.coordinates(result, "signal"), np.arange(64) / 8000)
+
+
+def intervals_result(x_axis, **raw):
+    data = {"onsets": np.array([0.0, 0.5, 1.25, 2.0]), "level": np.array([1.0, 2.0, 3.0]), **raw}
+    return schema.attach(
+        data, sample_rate=1000, frames=3000, coordinate_keys=[k for k in data if k != "level"],
+        fields={"level": schema.series(x_axis, schema.value("level", "1"))},
+    )
+
+
+def test_slice_and_end_point_to_existing_data_with_version_2():
+    x = schema.axis("onsets", "time", "s", "nonuniform", origin="input_start", at="start",
+                    slice=[0, -1], end={"key": "onsets", "slice": [1, None]})
+    r = intervals_result(x)
+    assert r["schema"]["version"] == 2
+    np.testing.assert_array_equal(schema.coordinates(r, "level"), [0.0, 0.5, 1.25])
+    np.testing.assert_array_equal(schema.ends(r, "level"), [0.5, 1.25, 2.0])
+
+
+def test_version_1_is_kept_without_slice_or_end_and_rejects_them():
+    x = schema.axis("starts", "time", "s", "nonuniform", origin="input_start", at="start", width=0.25)
+    r = intervals_result(x, starts=np.array([0.0, 1.0, 2.0]))
+    assert r["schema"]["version"] == 1
+    np.testing.assert_array_equal(schema.ends(r, "level"), [0.25, 1.25, 2.25])
+    r["schema"]["fields"]["level"]["x"]["slice"] = [0, 3]
+    with pytest.raises(ValueError, match="need version 2"):
+        schema.validate(r)
+
+
+@pytest.mark.parametrize(
+    "change,match",
+    [
+        ({"slice": [0]}, "slice"),
+        ({"slice": [0.5, None]}, "slice"),
+        ({"slice": [1, None], "end": {"key": "onsets", "slice": [0, -1]}}, "must not precede"),
+        ({"slice": [0, -1], "end": {"key": "onsets"}}, "match coordinates"),
+        ({"slice": [0, -1], "end": {"key": "onsets", "slice": [1, None]}, "end_key": "onsets"}, "not both"),
+    ],
+)
+def test_slice_and_end_are_checked(change, match):
+    x = {**schema.axis("onsets", "time", "s", "nonuniform", origin="input_start", at="start",
+                       width=0.1), **change}
+    if "end" in change or "end_key" in change:
+        x.pop("width")
+    with pytest.raises(ValueError, match=match):
+        intervals_result(x)
+
+
+def test_ends_of_centre_end_and_point_axes():
+    for at, expected in (("centre", [0.05, 0.55, 1.3]), ("end", [0.0, 0.5, 1.25])):
+        x = schema.axis("onsets", "time", "s", "nonuniform", origin="input_start", at=at,
+                        width=0.1, slice=[0, -1])
+        np.testing.assert_allclose(schema.ends(intervals_result(x), "level"), expected)
+    x = schema.axis("onsets", "time", "s", "nonuniform", origin="input_start", at="point", slice=[1, None])
+    with pytest.raises(ValueError, match="no interval ends"):
+        schema.ends(intervals_result(x), "level")
