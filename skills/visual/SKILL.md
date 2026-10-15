@@ -27,7 +27,20 @@ numbers copied into picture code.
   1 is the work's choice (snare or kick energy per beat, phrase lengths of the words; `fold` in
   [Musical time](../references/runtime.md#musical-time-optional)). A wrong bar length moves every event
   meant for a bar line. Draft lyrics from an SRT become the `lyrics` lane in that work: parse it into items
-  with `text` and a `status` (`draft` until checked) so `export srt` and the picture read the same lines.
+  in seconds with `text` and a `status` (`draft` until checked) and convert them with
+  `timemap.from_seconds`, so `export srt` and the picture read the same lines:
+
+  ```python
+  def srt_items(text):  # 1 / 00:00:14,740 --> 00:00:16,900 / words
+      def sec(t): h, m, s = t.replace(",", ".").split(":"); return int(h) * 3600 + int(m) * 60 + float(s)
+      for block in text.strip().split("\n\n"):
+          lines = block.strip().split("\n"); a, b = lines[1].split(" --> ")
+          yield {"start": sec(a), "end": sec(b), "text": " ".join(lines[2:]), "status": "draft"}
+
+  lanes = {"lyrics": {"kind": "spans", "items": list(srt_items(srt_text))}}
+  time_map = timemap.from_seconds({"outputs": {"mix": {"lanes": lanes}}}, sample_rate)
+  ```
+
   Its material goes to the shared pool unless `TACTUS_POOL` is set for every command. Do not restate a tempo, bar length or section time in the picture code; read it.
 - **Reading curves.json.** Arrays have one value per video frame (`frames` of them, at each frame's
   `frame_time`, here its start):

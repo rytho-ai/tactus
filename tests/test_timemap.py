@@ -158,6 +158,36 @@ def test_to_seconds_converts_positions_only():
     assert seconds["segments"]["loop"]["joins"][0]["at"] == "bars"
 
 
+def test_from_seconds_inverts_to_seconds():
+    checked = timemap.validate(good_map(), OUTPUTS)
+    for rate in (100, 44100, 48000):
+        assert timemap.from_seconds(timemap.to_seconds(checked, rate), rate) == checked
+
+
+def test_from_seconds_rounds_like_frame_of_and_copies_other_fields():
+    items = [
+        {"start": 0.005, "end": 0.015, "text": "one", "status": "draft"},
+        {"start": 0.0149, "end": 0.02},
+    ]
+    seconds = {"outputs": {"tape": {"lanes": {"words": {"kind": "spans", "items": items}}}},
+               "clock_hint": {"tempo": 0.5}}
+    frames = timemap.from_seconds(seconds, 100)
+    got = frames["outputs"]["tape"]["lanes"]["words"]["items"]
+    assert got[0] == {"start": 1, "end": 2, "text": "one", "status": "draft"}  # half a sample -> later
+    assert got[1] == {"start": 1, "end": 2}
+    assert frames["clock_hint"] == {"tempo": 0.5} and items[0]["start"] == 0.005
+    timemap.validate(frames, OUTPUTS)
+
+
+def test_from_seconds_does_not_sort_or_clamp():
+    items = [{"at": 0.5}, {"at": 0.25}]
+    frames = timemap.from_seconds(
+        {"outputs": {"tape": {"lanes": {"cues": {"kind": "points", "items": items}}}}}, 100)
+    assert [i["at"] for i in frames["outputs"]["tape"]["lanes"]["cues"]["items"]] == [50, 25]
+    with pytest.raises(ValueError, match="map.outputs.tape.lanes.cues"):
+        timemap.validate(frames, OUTPUTS)
+
+
 @pytest.mark.parametrize(
     "tempo,meter,start",
     [

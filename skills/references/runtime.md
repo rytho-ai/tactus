@@ -105,7 +105,10 @@ return {"sample_rate": 48000, "outputs": {"loop": loop, "mix": mix}, "map": {
 - `clock_hint` is any JSON, informational only. Unknown keys are rejected; every error names
   the field, e.g. `map.outputs.mix.grid.bars[3]: frames must not decrease`. The run fails
   with `invalid_output`. `tactus.timemap.validate(map, outputs)` is the same check for a
-  work's tests; `timemap.to_seconds(map, rate)` converts every position to seconds.
+  work's tests; `timemap.to_seconds(map, rate)` converts every position to seconds, and
+  `timemap.from_seconds(map, rate)` is its inverse for timing that arrives in seconds (subtitles,
+  editor labels, onsets, cues): the same fields become frames by `frame_of`, other fields are kept,
+  and nothing is sorted or clamped, so validation still reports a wrong input by its path.
 
 ## Creating a work
 
@@ -422,14 +425,16 @@ if it played throughout. This says which part dominates, not whether the balance
 ### Analysis coordinates and images
 
 Current builtins return `result["schema"]` in Python, or `report["result"]["schema"]`
-in CLI JSON, also with `--brief`. Check `schema.version` (currently 1); older runtimes
+in CLI JSON, also with `--brief`. Check `schema.version` (1, or 2 when a selector uses
+`slice` or `end`, today only `rhythm.beats`); older runtimes
 and project-defined analyses may omit it. Missing declarations remain unknown: consult
 the selected implementation before making a coordinate-dependent decision.
 
 - Enumerate `schema.fields` for measurements: `series`, `grid`, `events` or `summary`.
   `coordinate_keys`, `parameter_keys` and `auxiliary_keys` identify the other existing
   result fields; window/hop settings are not additional measurement curves.
-- Read axis `quantity`, `unit` and `key` (or inline `values`). Grid `dimensions` gives
+- Read axis `quantity`, `unit` and `key` (or inline `values`); a `slice` takes part of
+  that key, so beat intervals point to `beats_s` instead of repeating it. Grid `dimensions` gives
   matrix order. `spacing` describes coordinate spacing, not a required display scale;
   use the actual coordinates for Mel, Q transforms and BPM axes.
 - Time axes declare `origin: "input_start"` and `at: "centre"`, `"start"`, `"end"` or
@@ -440,7 +445,8 @@ the selected implementation before making a coordinate-dependent decision.
   or NaN can become inline JSON null while NPZ preserves the float. Read the declared
   meaning before treating silence as missing data or converting null to zero.
 - For structured results, `layout: "records"` selects keys inside each record;
-  `end_key` supplies an interval end. `layout: "rows"` selects tuple columns, with
+  `end_key` (or an `end` selector) supplies an interval end; `schema.ends(result, field)`
+  resolves ends from either, or from `width` and `at`. `layout: "rows"` selects tuple columns, with
   `factor` converting units and `width` selecting/scaling the span independently.
 
 For example, `level.rms_curve(...)` describes `schema.fields.rms_dbfs.x` with

@@ -10,6 +10,7 @@ join sounds right. `run` applies `validate` and saves the result as `map.json`.
     from tactus import timemap
     checked = timemap.validate(time_map, {"mix": audio})   # the same check `run` applies
     timemap.to_seconds(checked, 48000)                     # every position as seconds
+    timemap.from_seconds(map_in_seconds, 48000)            # the inverse, for timing given in seconds
 
 Shape (every key optional unless noted; positions are frames of that output):
 
@@ -23,7 +24,7 @@ Shape (every key optional unless noted; positions are frames of that output):
                                     {"tags": [...]}, "keep_phase": false, "label": str}]}},
      "clock_hint": any JSON (informational, never re-resolved)}
 
-Reads: numpy · store
+Reads: numpy · store · timing (frame_of)
 """
 
 from __future__ import annotations
@@ -35,8 +36,9 @@ from typing import Any
 import numpy as np
 
 from .store import NAME_PATTERN
+from .timing import frame_of
 
-__all__ = ["to_seconds", "validate"]
+__all__ = ["from_seconds", "to_seconds", "validate"]
 
 _TOP = {"outputs", "segments", "clock_hint"}
 _OUTPUT = {"grid", "lanes"}
@@ -294,6 +296,37 @@ def validate(time_map: Any, outputs: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _positions(time_map: dict[str, Any], convert) -> dict[str, Any]:
+    """A deep copy of the map with every position field passed through `convert`.
+
+    The one list of position fields shared by `to_seconds` and `from_seconds`: grid
+    `bars`/`end`/`beats`, lane item `start`/`end`/`at`, segment `start`/`end`/`tail_end` and
+    list-valued join `at`. Every other field is copied unchanged.
+    """
+    result = json.loads(json.dumps(time_map))
+    for entry in result.get("outputs", {}).values():
+        grid = entry.get("grid")
+        if grid:
+            grid["bars"] = [convert(f) for f in grid["bars"]]
+            if "end" in grid:
+                grid["end"] = convert(grid["end"])
+            if "beats" in grid:
+                grid["beats"] = [convert(f) for f in grid["beats"]]
+        for lane in entry.get("lanes", {}).values():
+            for item in lane["items"]:
+                for key in ("start", "end", "at"):
+                    if key in item:
+                        item[key] = convert(item[key])
+    for segment in result.get("segments", {}).values():
+        for key in ("start", "end", "tail_end"):
+            if key in segment:
+                segment[key] = convert(segment[key])
+        for join in segment.get("joins", []):
+            if isinstance(join.get("at"), list):
+                join["at"] = [convert(f) for f in join["at"]]
+    return result
+
+
 def to_seconds(time_map: dict[str, Any], sample_rate: int) -> dict[str, Any]:
     """The same map with every position field divided by `sample_rate` (floats, seconds).
 
@@ -301,28 +334,21 @@ def to_seconds(time_map: dict[str, Any], sample_rate: int) -> dict[str, Any]:
     `start`/`end`/`tail_end` and list-valued join `at` (still relative to the segment
     start). Every other field is copied unchanged.
     """
+    return _positions(time_map, lambda frame: frame / sample_rate)
 
-    def s(frame: int) -> float:
-        return frame / sample_rate
 
-    result = json.loads(json.dumps(time_map))
-    for entry in result.get("outputs", {}).values():
-        grid = entry.get("grid")
-        if grid:
-            grid["bars"] = [s(f) for f in grid["bars"]]
-            if "end" in grid:
-                grid["end"] = s(grid["end"])
-            if "beats" in grid:
-                grid["beats"] = [s(f) for f in grid["beats"]]
-        for lane in entry.get("lanes", {}).values():
-            for item in lane["items"]:
-                for key in ("start", "end", "at"):
-                    if key in item:
-                        item[key] = s(item[key])
-    for segment in result.get("segments", {}).values():
-        for key in ("start", "end", "tail_end"):
-            segment[key] = s(segment[key])
-        for join in segment["joins"]:
-            if isinstance(join["at"], list):
-                join["at"] = [s(f) for f in join["at"]]
-    return result
+def from_seconds(time_map: dict[str, Any], sample_rate: int) -> dict[str, Any]:
+    """The inverse of `to_seconds`: a map written in seconds, with every position as frames.
+
+    For timing that arrives in seconds (subtitles, labels, onsets, cues). The same fields
+    `to_seconds` converts become `timing.frame_of(seconds, sample_rate)`, Tactus's one
+    rounding rule; every other field (`text`, `status`, `label`, `clock_hint`, ...) is copied
+    unchanged. It does not sort, clamp or validate: `run` validates what `render` returns,
+    and a work's tests call `validate`, so an out-of-order or out-of-range input is reported
+    with its field path instead of being hidden.
+
+        lines = [{"start": 14.74, "end": 16.9, "text": "...", "status": "draft"}]
+        timemap.from_seconds({"outputs": {"mix": {"lanes": {"lyrics":
+            {"kind": "spans", "items": lines}}}}}, 44100)
+    """
+    return _positions(time_map, lambda seconds: frame_of(seconds, sample_rate))
