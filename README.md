@@ -166,7 +166,8 @@ tactus analyze spectral stft excerpts/section --out analyses --image
 
 The second command saves numeric arrays, a JSON record and a labeled SVG heatmap.
 Builtin results include a versioned data `schema`: shapes, axes, units, timestamp
-positions and missing-value conventions. Time coordinates start at the analyzed
+positions and missing-value conventions. A schema points to the result's own arrays
+rather than copying them, so it stays small however long the input. Time coordinates start at the analyzed
 input; excerpt provenance supplies the mapping back to its source run.
 Custom analyses can use the same public schema helpers. Numeric results remain
 authoritative; basic images help locate regions to inspect, and annotation workflows
@@ -215,11 +216,14 @@ Tactus does not draw pictures; it gives out the music's time, and the picture re
 takes bars, sections and levels per frame from `export curves` and words from `export srt`; a
 page that plays takes the map from `export web` and keeps time with the audio clock. For a
 finished recording, make a small work that loads it as a material, fits its beats with
-`tactus.timing.fit_tempo` and returns a map, so the timing still lives in one place.
+`tactus.timing.fit_tempo` and returns a map, so the timing still lives in one place. Timing
+that arrives in seconds (draft lyrics from subtitles, editor labels, cues) becomes map
+positions with `tactus.timemap.from_seconds`.
 The [visual skill](skills/visual/SKILL.md) asks what happens in the picture and how it is filmed,
 renders every frame as a function of the song's time, measures sync in the encoded file, and
 suggests (does not require) five kinds of tool: Blender, three.js, a GLSL shader, anime.js
-and HyperFrames.
+and HyperFrames. How good a film is (research, references, storyboard, review and revision)
+is a film workflow outside Tactus.
 
 ## Go further
 
