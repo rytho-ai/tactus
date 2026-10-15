@@ -165,8 +165,9 @@ parameters keyword-only. They remain directly callable from Python.
 Parameters become flags: `window_ms: float = 100` becomes `--window-ms 100`. Parameters
 without defaults are required. `bool` becomes `--flag` / `--no-flag`; `str`, `int`, `float`
 use those types; lists/dicts and other annotations parse JSON. An unannotated flag takes a
-string. Use annotations and JSON-valued defaults. `out`, help and dispatch fields are
-reserved. Type parsing does not replace validation inside your function.
+string. Use annotations and JSON-valued defaults. `out`, `brief`, an exporter's `replace`,
+help and dispatch fields are reserved; a parameter with one of these names is an error.
+Type parsing does not replace validation inside your function.
 
 ## Analyze
 
@@ -302,7 +303,11 @@ there and return a finite JSON dict, using relative paths for your files. The ru
 all files and writes `export.json` last, with source identity, callable, effective parameters,
 result and provenance. This filename is reserved; symlinks and special files are rejected.
 On failure only the newly created delivery directory is removed. Existing output locations
-are rejected before calling your exporter. Exporting never invokes the original render code.
+are rejected before calling your exporter, unless `--replace` names a directory an earlier
+`tactus export` wrote: the exporter then writes a new directory beside it (that is its `out`,
+so return relative paths), which replaces the earlier one only after it succeeds. `--brief`
+prints the status, directory, record, file count and a short result instead of every file
+path. Exporting never invokes the original render code.
 
 An exporter that also declares keyword-only `time_map=None` and/or `run_identity=None`
 receives the run's verified map (the dict from `map.json`, or `None` when the run has none)

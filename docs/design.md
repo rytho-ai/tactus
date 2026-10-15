@@ -121,6 +121,7 @@ Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都
 - `compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，保留 caller 要控制的音樂選擇；不只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。
 - `dsp` 負責使用、撰寫與驗證聲音源與 processor（sound design 與訊號處理）；`measure` 涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到這兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法，不要求每首作品走同一流程。
 - `version` 指導 Agent 用版本探索、比較、保留與重用創作方向，並負責 Git 操作紀律：確認作品實際被追蹤、初始 commit、候選採用與舊版本恢復。Compose 在開始作品與接受修訂時使用它。
+- `interactive` 與 `visual` 負責作品交出時間、收進決定與接點檢查，以及畫面怎麼對上音樂的時間，見下方「作品的介面」。
 
 `init` 要求 Git 可用並建立作品自己的 repository，即使作品位於外層 checkout；缺失或失敗明確報錯。Commit 由 Agent 在 source 準備好後直接操作 Git；renderer 只唯讀記錄，`doctor` 不檢查 Git。Git binary 與 ancestor HEAD 都不足以證明作品已保存；生成音訊在 Git 外保存，receipt 保留當次執行的原始身分。
 

@@ -1,8 +1,8 @@
 # Tactus reference
 
 Shared execution contracts for the [compose](../compose/SKILL.md),
-[dsp](../dsp/SKILL.md), [measure](../measure/SKILL.md) and
-[interactive](../interactive/SKILL.md) skills.
+[dsp](../dsp/SKILL.md), [measure](../measure/SKILL.md),
+[interactive](../interactive/SKILL.md) and [visual](../visual/SKILL.md) skills.
 Read the relevant section on demand; installed help describes the work's pinned version.
 Use [version](../version/SKILL.md) when establishing Git history,
 adopting a candidate or recovering a work revision.

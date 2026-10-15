@@ -682,8 +682,8 @@ step there, however clean each clip's own wrap is. The recipe is exercised by
 **Measure on whole outputs.** An excerpt starts its own clock at zero and its whole-input
 summaries describe only the excerpt; give positions on that clock if you must measure one.
 
-**Delivered files.** A codec can break a loop that was exact in the run. `tactus export web`
-with AAC trims each file to the length a browser plays, equal to the source frames, so a
-delivered loop can be checked by decoding it to WAV outside Tactus (with the decoder whose
+**Delivered files.** A codec can break a loop that was exact in the run. An AAC file from
+`tactus export web` declares the source length, which is what a browser plays (Tactus trims
+only its own decode check to it; the file is unchanged), so a delivered loop can be checked by decoding it to WAV outside Tactus (with the decoder whose
 trimming matters, such as the browser's) and measuring that WAV with `--wrap`. `analyze`
 reads through libsndfile and does not decode AAC or M4A itself.
