@@ -58,9 +58,9 @@ numbers copied into picture code.
   structure can be the picture.
 - **Something happens.** A picture that only looks beautiful is a backdrop. Decide what changes over the
   piece and what drives the change, as well as the look: in a video the author sets it in advance (a
-  story, shots, a camera), in a page that plays the listener's choices set it. A still field with no events
-  is a choice to justify in the plan, not the default: in a check, a film with a beautiful sky and no story
-  or camera move was the one thing the viewer missed. Each form's section below says how.
+  story, shots, a camera), in a page that plays the listener's choices set it. Stillness can be the idea, when chosen: in a check, a
+  film with a beautiful sky and no story or camera move, chosen by default, was what the viewer missed.
+  Each form's section below has questions to answer.
 - **Measure sync, do not only watch it.** Pick the visual events that should meet music events (a cut on a
   bar line, a flash on a hit, a word on its syllable) and check their frame times against the map or the
   onsets numerically, in the encoded file as well as in your renderer. Nearest-onset matching misleads on
@@ -75,19 +75,18 @@ numbers copied into picture code.
 
 ## Videos
 
-A video's time is fixed, so the author decides everything that happens in it, like a director.
+A video's time is fixed, so the author decides everything that happens in it, like a director. These are
+decisions to make, not a recipe: any answer is fine, including one that breaks film convention, as long as
+it was chosen.
 
-- **Story from the song.** Decide who or what we follow, where, and what has changed by the end (a start,
-  a turn, an ending), drawn from the words and the song's form. One image per lyric line and one line through
-  the whole song are both ways; verses and choruses should look different, and a return of the chorus can
-  return to a place changed.
-- **A shot list on the map.** Write each shot with its music time, framing (wide, close, detail, point of
-  view), camera movement (push, pan, track, crane, handheld) and the music event it meets. Cut on bar lines
-  and phrase starts, cut faster in a chorus, hold a long take in an interlude, move the camera on a build.
-  Compute camera paths from `t` like any motion. This list is the plan the build and the review follow.
-- **Words on screen.** Lyrics are part of the picture's design (place, size, how they enter), timed from the
-  lyrics lane; decide when a line counts as on time (here: the first frame it is fully shown, against the
-  line's start) and measure that.
+- **What happens.** What do we follow, and what has changed by the end? It may be a story, a transformation,
+  a journey, an argument with the words, or something with no name yet.
+- **How it is filmed.** Where is the viewer, and how does the view change over time: framing, movement,
+  cuts, or one unbroken take? Write the plan on the map (each shot or movement with its music time and the
+  music event it meets, if any) and compute camera paths from `t` like any motion. The plan is what the
+  build and the review follow.
+- **Words on screen.** If lyrics appear, they are part of the design, timed from the lyrics lane; say when a
+  line counts as on time (for example the first frame it is fully shown) and measure that.
 
 Render offline, frame by frame, never by screen-recording real time.
 
@@ -132,8 +131,8 @@ Render offline, frame by frame, never by screen-recording real time.
 - **Review and revise.** Review the cut against the plan (a video-watching model can report per shot; a
   person judges taste), fix, and show before/after stills of each change. Drop a direction that stays ugly
   after a few rounds: in one trial a realistic bell chamber kept looking like a game set, and the film
-  became beautiful only after the agent switched to a different scene. Review the story and the camera too:
-  does something happen, and does the camera move or cut where the music does?
+  became beautiful only after the agent switched to a different scene. Review what happens and how it is
+  filmed against the plan, not only the look.
 
 ## Suggested tools
 
@@ -222,11 +221,10 @@ atmosphere, a structure that grows) and name the motifs already used enough, rat
 
 A page plays the music live while it draws; its clock is the audio clock.
 
-- **What happens comes from the listener.** No shot list: the listener's choices move the picture (where
-  they went, what they chose, what they left behind), and the picture can keep a trace of this visit. The
-  view follows the listener instead of cutting; changes of scene wait for the bar line the music changes
-  on. The story is how this visit went, not a line written in advance.
-
+- **What happens comes from the listener.** Ask how the listener's choices change the picture and whether
+  it keeps a trace of this visit; where the view is and how it moves; when a change of scene lands (often
+  the bar line the music changes on). Here the story is usually how this visit went rather than a line
+  written in advance.
 - **Time from the bundle.** Load `bundle.json` (from `tactus export web`, or a `tactus serve` request with
   `deliver`) and take bar lines, loop lengths and cues from `map_seconds`; nothing musical is restated in the
   page. Drive the picture from `audioContext.currentTime` against those times; an analyser's level may shape
