@@ -194,6 +194,7 @@ tactus run song.py --out runs/b --param-file route=route.json   # a performance 
 tactus export web runs/b --codec flac --out delivery/web          # browser audio + bundle.json with the map
 tactus export srt runs/b --output mix --lane words --out delivery/subs
 tactus export curves runs/b --fps 30 --out delivery/curves        # levels and bars per video frame
+tactus export web runs/b --codec flac --out delivery/web --replace --brief  # redeliver in place, short output
 tactus analyze join seams runs/b --at-s '[2.0, 4.0]' --reference-s '[0.5, 1.0, 1.5]'
 tactus serve song.py --static player --out runs/serve --port 4300  # the page and a local API for the work
 ```
@@ -207,6 +208,18 @@ and the work decides what counts as a click. See the [interactive skill](skills/
 [the time map](skills/references/runtime.md#the-time-map-optional),
 [delivering with the map](skills/references/project-commands.md#delivering-with-the-map-web-srt-curves)
 and [`tactus serve`](skills/references/serve.md).
+
+## Pictures that follow the music
+
+Tactus does not draw pictures; it gives out the music's time, and the picture reads it. A video
+takes bars, sections and levels per frame from `export curves` and words from `export srt`; a
+page that plays takes the map from `export web` and keeps time with the audio clock. For a
+finished recording, make a small work that loads it as a material, fits its beats with
+`tactus.timing.fit_tempo` and returns a map, so the timing still lives in one place.
+The [visual skill](skills/visual/SKILL.md) asks what happens in the picture and how it is filmed,
+renders every frame as a function of the song's time, measures sync in the encoded file, and
+suggests (does not require) five kinds of tool: Blender, three.js, a GLSL shader, anime.js
+and HyperFrames.
 
 ## Go further
 
