@@ -56,6 +56,14 @@ numbers copied into picture code.
   build, the review and any page about it. No look is a default: not a famous painter's homage, not 3D, not
   a rainy neon night; if earlier works used a look, consider differing deliberately. The music's own
   structure can be the picture.
+- **Story and camera.** Decide what happens before how it looks: who or what we follow, where, and what
+  has changed by the end (a start, a turn, an ending), drawn from the words and the song's form. Then plan
+  shots like a director: framing (wide, close, detail, point of view), camera movement (push, pan, track,
+  crane, handheld) and cuts, each placed on the map (cut on bar lines and phrase starts, cut faster in a
+  chorus, hold a long take in an interlude, move the camera on a build). Compute camera paths from `t` like
+  any motion. A single fixed shot or an abstract field with no events is a deliberate choice to justify in
+  the plan, not the default: in a check, a film with a beautiful sky and no story or camera move was the
+  one thing the viewer missed.
 - **Measure sync, do not only watch it.** Pick the visual events that should meet music events (a cut on a
   bar line, a flash on a hit, a word on its syllable) and check their frame times against the map or the
   onsets numerically, in the encoded file as well as in your renderer. Nearest-onset matching misleads on
@@ -113,7 +121,8 @@ Render offline, frame by frame, never by screen-recording real time.
 - **Review and revise.** Review the cut against the plan (a video-watching model can report per shot; a
   person judges taste), fix, and show before/after stills of each change. Drop a direction that stays ugly
   after a few rounds: in one trial a realistic bell chamber kept looking like a game set, and the film
-  became beautiful only after the agent switched to a calm lake.
+  became beautiful only after the agent switched to a different scene. Review the story and the camera too:
+  does something happen, and does the camera move or cut where the music does?
 
 ## Suggested tools
 
@@ -168,7 +177,8 @@ output (video frames or a playing page). Some tools cover one layer, some all th
   (it breaks `frame(t)`).
   - Fits: one continuous space — sky, sea of cloud, fog, water, terrain, light over the whole piece — with
     the music moving a few parameters and a slow arc of light.
-  - Does not fit: text, characters, many recognisable objects, or anything that must accumulate the past.
+  - Does not fit: text, characters, a story told in shots, many recognisable objects, or anything that must
+    accumulate the past. It can still be one layer (a sky, weather) under a 3D or 2D scene that carries the story.
     For words, draw them on the CPU (Pillow, Skia) into a texture and composite it in the shader. A CJK
     `.ttc` holds several faces: pick the one for the language (Noto CJK's default face is Japanese).
   - Traps: compile errors arrive with line numbers (`#line` per file), but wrong results are silent:
