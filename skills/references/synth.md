@@ -1,11 +1,13 @@
 # Synthesis building blocks
 
-`tactus.synth` provides building blocks for making sound, not instruments or preset
-timbres. Waveform, detune, envelope shape, decay, brightness and grain choices are yours;
+`tactus.synth` provides synthesis building blocks and physical piano/bowed-string
+models. For `piano` and `bowed_string`, read [instrument models](instruments.md) for
+notes, pedals, continuous bow events, voicing and licensing. Waveform, detune,
+envelope shape, decay, brightness and grain choices are yours;
 every timbre-shaping value is an explicit argument. Combine the blocks with NumPy,
 [builtin DSP](dsp.md), Pedalboard or your own functions. The
 [instrument examples](../examples/README.md#synthesis-examples) show one way to assemble
-them and are meant to be rewritten. The implementations are short and oracle-checked; when
+them and are meant to be rewritten. The building-block implementations are short and oracle-checked; when
 you need a variation, read one with `inspect.getsource(tactus.synth.saw)` and copy it into
 the work as your own function.
 
@@ -25,11 +27,11 @@ hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675],
 ## Conventions
 
 - Generators return mono float64 `(frames,)`; pan with `dsp.pan` and mix with NumPy.
-  `grains` with per-grain `pan` is the only stereo `(frames, 2)` result.
+  `piano` and `grains` with per-grain `pan` return stereo `(frames, 2)`.
 - Frequency, width and `phase_mod` accept a scalar or one value per frame.
 - Phase is in cycles everywhere (`phase()` output, `phase=`, `phase_mod=`), never radians.
-- Output is deterministic for identical arguments. Randomness exists only in `noise`,
-  whose `seed` is required; use different seeds for independent layers. NumPy does not
+- Output is deterministic for identical arguments. `noise`, `piano` and `bowed_string`
+  require explicit seeds; use different seeds for independent layers. NumPy does not
   guarantee identical random streams across its versions: noise is reproducible within the
   work's locked environment, and a NumPy upgrade can change it.
 - Inputs are never modified. Outputs are not clipped or normalized.

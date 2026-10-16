@@ -14,7 +14,7 @@ Installed with the current Tactus runtime:
 | `tactus.fx` | Plugin parameters, MIDI instrument rendering, block automation, varispeed and RMS fitting | [Helpers](runtime.md#helpers-from-tactus-import-fx) and the MIDI/plugin notes below. |
 | `tactus.timing` | Optional clocks, placement, envelopes, groove and rhythmic helpers; `Clock.grid` for a map, `fit_tempo`, `warp_markers` and `fold` to fit a recording to a grid | [Musical time](runtime.md#musical-time-optional): 0-based quarter-note beats, bar numbering and rounding. |
 | `tactus.analysis` | Defined level/spectral observations, beat/onset estimates and curves, and `join` measurements at seams and loop wraps | [measure](../measure/SKILL.md); installed `tactus analyze ... --help` supplies definitions. |
-| `tactus.synth`, `tactus.devices` | Synthesis building blocks; a sampler, pads and a step sequencer | [Synthesis](synth.md) and [Devices](devices.md). |
+| `tactus.synth`, `tactus.devices` | Synthesis blocks and physical piano/bowed-string models; a sampler, pads and a step sequencer | [Synthesis](synth.md) and [Devices](devices.md). |
 | `tactus.timemap` | Checking and converting a render's time map | [The time map](runtime.md#the-time-map-optional): frames of an output, validated at `run`. |
 | NumPy | Audio arrays, synthesis, slicing, mixing, modulation and event data | Views can alias their source; preserve caller arrays. Align a per-frame curve with stereo as `curve[:, None]`. |
 | SciPy | Filters, resampling, FFT/STFT, interpolation and numerical algorithms | Set the time axis explicitly for frames-first audio. Carry filter state for continuity; zero-phase filtering has different timing from a causal filter. |

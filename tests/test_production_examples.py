@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import runpy
 from pathlib import Path
 
@@ -115,3 +116,14 @@ def test_route_example_takes_a_performance_and_gives_out_its_map(tmp_path):
         run(EXAMPLES / "route.py", out=tmp_path / "bad", param_files={"route": bad})
     assert failure.value.code == "invalid_parameters" and "room must be one of" in str(
         failure.value)
+
+
+def test_builtin_instrument_example_runs_without_external_assets(tmp_path):
+    result = run(EXAMPLES / "instruments.py", out=tmp_path / "instruments")
+    assert set(result["outputs"]) == {"piano", "bowed", "mix"}
+    for path in result["outputs"].values():
+        audio, rate = sf.read(path, always_2d=True)
+        assert rate == 24000 and audio.shape == (144000, 2)
+        assert np.isfinite(audio).all() and 0 < np.max(abs(audio)) < 1
+    receipt = json.loads(Path(result["receipt"]).read_text())
+    assert receipt["tools"] == [] and receipt["materials"] == []

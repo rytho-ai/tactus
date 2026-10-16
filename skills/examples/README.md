@@ -52,6 +52,8 @@ Git history. It contains refs generated in your pool, so these examples carry no
 Instruments assembled from [synthesis building blocks](../references/synth.md). Every
 waveform, ratio, decay and grain choice is the example's own; rewrite them freely.
 
+- [instruments.py](instruments.py): builtin acoustic piano with sustain pedal and a
+  continuous bowed-string phrase with explicit slurs; no external sound assets.
 - [voices.py](voices.py): a detuned PolyBLEP saw lead with pitch scoop, vibrato, an
   enveloped SVF sweep and light saturation, plus an FM bell with a decaying index.
 - [physical.py](physical.py): struck metal from noise bursts through a free-bar modal
