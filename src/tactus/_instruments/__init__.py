@@ -1,1 +1,1 @@
-"""Private physical instrument models; public entry points live in tactus.synth."""
+"""Private physical piano model; public entry point lives in tactus.synth."""

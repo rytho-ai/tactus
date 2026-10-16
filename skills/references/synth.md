@@ -1,8 +1,8 @@
 # Synthesis building blocks
 
-`tactus.synth` provides synthesis building blocks and physical piano/bowed-string
-models. For `piano` and `bowed_string`, read [instrument models](instruments.md) for
-notes, pedals, continuous bow events, voicing and licensing. Waveform, detune,
+`tactus.synth` provides synthesis building blocks and a physical piano
+model. For `piano`, read [instrument models](instruments.md) for
+notes, pedals, voicing and licensing. Waveform, detune,
 envelope shape, decay, brightness and grain choices are yours;
 every timbre-shaping value is an explicit argument. Combine the blocks with NumPy,
 [builtin DSP](dsp.md), Pedalboard or your own functions. The
@@ -30,7 +30,7 @@ hit = synth.resonators(synth.noise(4800, seed=3), sr, freqs_hz=[310, 854, 1675],
   `piano` and `grains` with per-grain `pan` return stereo `(frames, 2)`.
 - Frequency, width and `phase_mod` accept a scalar or one value per frame.
 - Phase is in cycles everywhere (`phase()` output, `phase=`, `phase_mod=`), never radians.
-- Output is deterministic for identical arguments. `noise`, `piano` and `bowed_string`
+- Output is deterministic for identical arguments. `noise` and `piano`
   require explicit seeds; use different seeds for independent layers. NumPy does not
   guarantee identical random streams across its versions: noise is reproducible within the
   work's locked environment, and a NumPy upgrade can change it.

@@ -1,16 +1,16 @@
 """Optional sound-generating building blocks: phase, oscillators, noise, envelopes,
-resonators, plucked strings, grains and physical piano/bowed-string models.
+resonators, plucked strings, grains and a physical piano model.
 
 Every function returns a new float64 array and never mutates its inputs. Generators
 return mono `(frames,)`; place, pan and mix them with ordinary NumPy or `tactus.dsp`.
 `piano` and `grains` with per-grain `pan` return stereo `(frames, 2)`. Phase is measured
 in cycles for the primitive oscillators (never radians). Primitive controls are scalar
-or per-frame; physical models use seconds-based events/curves documented below.
-Randomized `noise`, `piano` and `bowed_string` require explicit seeds. Timbre-shaping choices
+or per-frame; the piano model uses seconds-based notes and pedals documented below.
+Randomized `noise` and `piano` require explicit seeds. Timbre-shaping choices
 (waveform, width, decay, brightness, curve, window) are explicit arguments.
 
 The original building blocks use published methods; no Csound or SuperCollider source
-was read or copied for them. Piano/bowed-string models adapt DAWG under MIT;
+was read or copied for them. The piano model adapts DAWG under MIT;
 see _instruments/NOTICE.md and LICENSE.dawg. Csound serves as a behavioral oracle
 for the original blocks; SC and Csound names below identify comparable units:
 PolyBLEP/PolyBLAMP band-limiting (Välimäki et al.; cf. Csound vco2, SC Saw/Pulse/LFTri),
@@ -35,7 +35,6 @@ from .dsp import _audio, _control, _finite_result, _rate, _scalar
 from .timing import frame_of
 
 __all__ = [
-    "bowed_string",
     "envelope",
     "grains",
     "noise",
@@ -532,66 +531,5 @@ def piano(
             soft_pedal=soft_pedal,
             tail_s=tail_s,
             tail_fade_s=tail_fade_s,
-        )
-    )
-
-
-def bowed_string(
-    freq_hz: float,
-    sample_rate: int,
-    *,
-    frames: int,
-    hold_s: float,
-    seed: int,
-    velocity: float = 0.8,
-    parameters=None,
-    body_size: float | None = None,
-    controls=(),
-    pitch_curve=(),
-    vibrato_hz: float = 0.0,
-    vibrato_cents: float = 0.0,
-    events=(),
-) -> np.ndarray:
-    """One continuous bowed waveguide voice, mono float64 with retained headroom.
-
-    Hz is 20..0.4*sample_rate (exclusive upper bound). Hold is seconds to bow lift;
-    frames includes the desired release and body tail, or cuts the note early.
-    Seed is an explicit uint32. Parameters override pressure, speed, position,
-    loss, attack/release, mute and tremolo; the complete ranges are documented in
-    skills/references/instruments.md. body_size=None returns the string; a size
-    >=0.05 applies a scaled violin-body filter (1 violin, 2.4 cello-sized).
-
-    Controls are `(time_s, pressure, speed, sord, dyn)` rows, values 0..1; pitch
-    curve rows are `(time_s, cents)` within +/-100 cents. Curves interpolate
-    linearly and hold endpoints. Vibrato is a sine in cents. Events are dicts:
-    `{'kind':'slur', 'time_s':..., 'freq_hz':..., 'hold_s':..., 'pitch_curve':...}`
-    or `{'kind':'release', 'time_s':...}`. A slur keeps bow/vibrato/control state;
-    its pitch curve starts at the event. Slurs beyond two octaves from the first
-    note or across the 2x-rate boundary raise ValueError; no automatic retrigger.
-
-    Calls start fresh, read controls every 32 samples, and do not normalize or
-    add a room/ensemble/sympathetic bank. High notes run at 2x with half-band
-    decimation. First use compiles the state machine; warm throughput excludes
-    that cost. DAWG MIT adaptation: _instruments/NOTICE.md and LICENSE.dawg.
-    """
-    _rate(sample_rate)
-    frames = _frames(frames)
-    from ._instruments.bow import render_bowed_string
-
-    return _finite_result(
-        render_bowed_string(
-            freq_hz,
-            int(sample_rate),
-            frames=frames,
-            hold_s=hold_s,
-            seed=seed,
-            velocity=velocity,
-            parameters=parameters,
-            body_size=body_size,
-            controls=controls,
-            pitch_curve=pitch_curve,
-            vibrato_hz=vibrato_hz,
-            vibrato_cents=vibrato_cents,
-            events=events,
         )
     )

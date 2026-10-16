@@ -120,7 +120,7 @@ def test_route_example_takes_a_performance_and_gives_out_its_map(tmp_path):
 
 def test_builtin_instrument_example_runs_without_external_assets(tmp_path):
     result = run(EXAMPLES / "instruments.py", out=tmp_path / "instruments")
-    assert set(result["outputs"]) == {"piano", "bowed", "mix"}
+    assert set(result["outputs"]) == {"piano", "mix"}
     for path in result["outputs"].values():
         audio, rate = sf.read(path, always_2d=True)
         assert rate == 24000 and audio.shape == (144000, 2)

@@ -33,27 +33,6 @@ def cases():
             **changes,
         }
         yield {"name": "piano-" + name, "kind": "piano", "rate": rate, "recipe": spec}
-    for name, rate, changes in [
-        ("plain", 44100, {}),
-        ("cello", 48000, {"hz": 110.0, "body_size": 2.4, "spec": {"decay": 0.9, "pos": 0.1}}),
-        ("high", 22050, {"hz": 3000.0, "vibrato_hz": 5.0, "vibrato_cents": 10.0}),
-        ("slur", 48000, {"events": [{"time": 0.8, "kind": "slur", "hz": 660.0, "hold": 1.2}]}),
-        ("tremolo", 44100, {"spec": {"tremhz": 8.0}}),
-        (
-            "curves",
-            48000,
-            {
-                "cents": [[0, -20], [0.5, 30], [1.5, 0]],
-                "controls": [
-                    [0, 0.1, 0.2, 0, 0.2],
-                    [0.8, 0.8, 0.9, 0.7, 1],
-                    [1.5, 0.2, 0.3, 0.1, 0.5],
-                ],
-            },
-        ),
-    ]:
-        spec = {"hz": 440.0, "hold": 1.5, "seconds": 3.0, "velocity": 0.7, "seed": 17, **changes}
-        yield {"name": "bow-" + name, "kind": "bow", "rate": rate, "recipe": spec}
 
 
 def main():
@@ -79,9 +58,8 @@ def main():
         for case in cases():
             recipe = case["recipe"]
             rate = case["rate"]
-            kind = case["kind"]
             (tmp / "input.json").write_text(json.dumps(recipe))
-            bridge = root / f"{kind}-reference.ts"
+            bridge = root / "piano-reference.ts"
             subprocess.run(
                 [
                     str(args.bun.resolve()),
@@ -95,9 +73,7 @@ def main():
                 capture_output=True,
                 text=True,
             )
-            audio = np.fromfile(tmp / "audio.f64", dtype="<f8").reshape(
-                -1, 2 if kind == "piano" else 1
-            )
+            audio = np.fromfile(tmp / "audio.f64", dtype="<f8").reshape(-1, 2)
             starts = [
                 round(t * rate) for t in (0, 0.1, 0.4, 0.58, 0.7, 0.81, 1.0, 1.4, 1.8, 2.01, 2.5)
             ]

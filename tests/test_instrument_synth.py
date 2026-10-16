@@ -8,33 +8,9 @@ import numpy as np
 import pytest
 
 from tactus import synth
-from tactus._instruments.bow import make_voice
 
 FIXTURES = Path(__file__).parent / "fixtures/instruments"
 CASES = json.loads((FIXTURES / "reference.json").read_text())["cases"]
-
-
-def bow_arguments(recipe):
-    events = []
-    for event in recipe.get("events", []):
-        item = {"kind": event["kind"], "time_s": event["time"]}
-        if event["kind"] == "slur":
-            item.update(
-                freq_hz=event["hz"], hold_s=event["hold"], pitch_curve=event.get("cents", [])
-            )
-        events.append(item)
-    return {
-        "hold_s": recipe["hold"],
-        "seed": recipe["seed"],
-        "velocity": recipe["velocity"],
-        "parameters": recipe.get("spec"),
-        "body_size": recipe.get("body_size"),
-        "controls": recipe.get("controls", ()),
-        "pitch_curve": recipe.get("cents", ()),
-        "vibrato_hz": recipe.get("vibrato_hz", 0),
-        "vibrato_cents": recipe.get("vibrato_cents", 0),
-        "events": events,
-    }
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda c: c["name"])
@@ -42,25 +18,19 @@ def test_against_original_dawg_fixtures(case):
     recipe = case["recipe"]
     rate = case["rate"]
     before = copy.deepcopy(recipe)
-    if case["kind"] == "piano":
-        n = recipe["notes"][0]
-        # For this one onset-zero note, the explicit prefix reproduces the oracle's
-        # v:n0:0 strike seed. The public API does not introduce an upstream tick grid.
-        audio = synth.piano(
-            [(n["start"], n["pitch"], n["duration"], n["velocity"])],
-            rate,
-            frames=case["frames"],
-            seed="v:n0",
-            family=recipe.get("family", "grand"),
-            pedal=[(e["time"], e["state"]) for e in recipe.get("pedal", [])],
-            soft_pedal=[(e["time"], e["state"]) for e in recipe.get("softPedal", [])],
-        )
-        tolerance = 1e-10
-    else:
-        audio = synth.bowed_string(
-            recipe["hz"], rate, frames=case["frames"], **bow_arguments(recipe)
-        )[:, None]
-        tolerance = 1e-9
+    n = recipe["notes"][0]
+    # For this one onset-zero note, the explicit prefix reproduces the oracle's
+    # v:n0:0 strike seed. The public API does not introduce an upstream tick grid.
+    audio = synth.piano(
+        [(n["start"], n["pitch"], n["duration"], n["velocity"])],
+        rate,
+        frames=case["frames"],
+        seed="v:n0",
+        family=recipe.get("family", "grand"),
+        pedal=[(e["time"], e["state"]) for e in recipe.get("pedal", [])],
+        soft_pedal=[(e["time"], e["state"]) for e in recipe.get("softPedal", [])],
+    )
+    tolerance = 1e-10
     actual = np.stack([audio[i : i + case["window_frames"]] for i in case["starts"]])
     with np.load(FIXTURES / "reference.npz", allow_pickle=False) as oracle:
         np.testing.assert_allclose(actual, oracle[case["name"]], rtol=0, atol=tolerance)
@@ -103,55 +73,9 @@ def test_piano_placement_polyphony_fractional_pitch_and_inputs_unchanged():
     assert np.isfinite(many).all() and many.shape == (32, 2)
 
 
-def test_bow_stream_state_and_readable_reference():
-    recipe = {
-        "hz": 3000.0,
-        "velocity": 0.7,
-        "hold": 1.0,
-        "seconds": 2.0,
-        "seed": 17,
-        "spec": {"tremhz": 7.0},
-        "vibrato_hz": 5.0,
-        "vibrato_cents": 10.0,
-    }
-    a, b = make_voice(recipe, 44100), make_voice(recipe, 44100)
-    whole = a.process(4096)
-    split = np.concatenate([b.process(n) for n in (1, 7, 32, 64, 129, 3863)])
-    np.testing.assert_array_equal(whole, split)
-    for name in ("nb", "bb", "history"):
-        np.testing.assert_array_equal(getattr(a, name), getattr(b, name))
-    readable = make_voice(recipe, 44100, compiled=False).process(4096)
-    np.testing.assert_allclose(whole, readable, rtol=0, atol=1e-10)
-
-
-def test_bow_silence_slur_and_tail_controls():
-    assert not np.any(synth.bowed_string(440, 44100, frames=4410, hold_s=0.1, seed=1, velocity=0))
-    audio = synth.bowed_string(
-        440,
-        44100,
-        frames=110250,
-        hold_s=1.0,
-        seed=1,
-        events=[{"kind": "slur", "time_s": 0.5, "freq_hz": 660, "hold_s": 0.7}],
-    )
-    assert np.isfinite(audio).all() and np.max(abs(audio[-22050:])) < 1e-4
-    with pytest.raises(ValueError, match="boundary"):
-        synth.bowed_string(
-            440,
-            44100,
-            frames=44100,
-            hold_s=1.0,
-            seed=1,
-            events=[{"kind": "slur", "time_s": 0.5, "freq_hz": 3000, "hold_s": 1}],
-        )
-
-
 @pytest.mark.parametrize("frames", [0, 1, 17])
 def test_short_outputs(frames):
     assert synth.piano([], np.int64(44100), frames=frames, seed="empty").shape == (frames, 2)
-    assert synth.bowed_string(440, 44100, frames=frames, hold_s=2, seed=np.uint32(1)).shape == (
-        frames,
-    )
 
 
 @pytest.mark.parametrize(
@@ -161,35 +85,8 @@ def test_short_outputs(frames):
 def test_invalid_common_inputs(argument, value):
     p = {"sample_rate": 44100, "frames": 100, "seed": "test"}
     p[argument] = value
-    b = {"sample_rate": 44100, "frames": 100, "hold_s": 0.1, "seed": 1}
-    b[argument] = value
     with pytest.raises((ValueError, TypeError)):
         synth.piano([], **p)
-    with pytest.raises((ValueError, TypeError)):
-        synth.bowed_string(440, **b)
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"seed": True},
-        {"seed": -1},
-        {"hold_s": -1},
-        {"parameters": {"pressure": 2}},
-        {"parameters": {"nonsense": 1}},
-        {"body_size": 0},
-        {"body_size": float("nan")},
-        {"controls": [[0, "x", 0, 0, 1]]},
-        {"pitch_curve": [[1, 0], [0, 2]]},
-        {"pitch_curve": [[0, 101]]},
-        {"events": [{"kind": "slur", "time_s": 0.1}]},
-        {"velocity": float("nan")},
-    ],
-)
-def test_invalid_bow_inputs(kwargs):
-    options = {"frames": 4410, "hold_s": 0.1, "seed": 1, **kwargs}
-    with pytest.raises((ValueError, TypeError)):
-        synth.bowed_string(440, 44100, **options)
 
 
 @pytest.mark.parametrize(

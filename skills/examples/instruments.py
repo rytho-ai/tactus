@@ -1,8 +1,8 @@
-"""Acoustic piano and bowed string through synth; no external instruments or assets."""
+"""Acoustic piano through synth; no external instruments or assets."""
 
 import numpy as np
 
-from tactus import dsp, synth
+from tactus import synth
 
 
 def render(*, piano_family="felt"):
@@ -26,24 +26,8 @@ def render(*, piano_family="felt"):
         family=piano_family,
         pedal=[(0, "down"), (1.9, "up"), (2, "down"), (4.5, "up")],
     )
-    string = synth.bowed_string(
-        293.664767917,
-        rate,
-        frames=frames,
-        hold_s=1.5,
-        seed=17,
-        velocity=0.65,
-        body_size=1.0,
-        vibrato_hz=5.0,
-        vibrato_cents=10.0,
-        events=[
-            {"kind": "slur", "time_s": 1.4, "freq_hz": 349.228231433, "hold_s": 1.5},
-            {"kind": "slur", "time_s": 2.8, "freq_hz": 329.627556913, "hold_s": 1.4},
-        ],
-    )
-    # Explicit gain and placement; source models do not normalize or add effects.
+    # Explicit gain; the source model does not normalize or add effects.
     keys = keys * 2.5
-    strings = dsp.pan(string, -0.2) * 0.2
-    mix = (keys + strings) * 0.7
+    mix = keys * 0.7
     mix[-600:] *= np.linspace(1, 0, 600)[:, None]
-    return {"sample_rate": rate, "outputs": {"piano": keys, "bowed": strings, "mix": mix}}
+    return {"sample_rate": rate, "outputs": {"piano": keys, "mix": mix}}
