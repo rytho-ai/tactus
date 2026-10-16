@@ -32,6 +32,16 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 **尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
+## 外部 DAW：REAPER bridge
+
+`tactus.bridges.reaper` 以 `execute` 把作品提供的普通 Lua 與資料送到 REAPER 原生 ReaScript，回傳有限 JSON 資料。REAPER 內執行隨套件提供的 Lua script，Python 以本機檔案佇列連接；不依賴 MCP。理由是 Agent 能直接撰寫既有 `reaper.*` 語法，橋接只共用傳輸、完成與錯誤處理，不逐一包裝原生函式，也不引入 DAW／Track／Session 創作模型。其他 DAW 有需要時另做自己的 bridge；尚無共用 DAW interface。
+
+`export_project` 符合既有 custom exporter 契約，從保存的音訊建立新的原生工程 tab，保留相對素材、明確秒數位置與長度。作品選擇分軌、markers 與可選 tempo；time map 不自動解讀。原有 tab 不被覆蓋；新工程保存後恢復先前選取的 tab。生成樂器與交接工程是獨立路徑。任意 Python 不承諾可逆轉為 MIDI、automation 或完整 DAW 工程。
+
+活的 DAW 狀態是外部輸入。作品固定需要的工程／素材、宣告工具並保存選定音訊；receipt 不自動保存整個 DAW 狀態。Lua 在主執行緒執行，timeout 不代表取消或 rollback，不自動 retry；原生 userdata 應轉成 GUID 或讀回資料。設定、資料轉換與限制見 [REAPER bridge](../skills/references/reaper.md)，完整可改寫範例見 [REAPER example](../examples/reaper/README.md)。
+
+尚未驗證其他 DAW、平台、任意 plugin／preset 或人與 Agent 同時操作；bridge 不自動啟動 DAW，也不處理雙向同步。是否值得加入其他共用機制，依實際作品需求判斷。
+
 ## 外部資源：取得音檔與 VST 並保留驗證依據
 
 `resources` skill 負責找音檔與 VST 來源、核對價格與使用條件，分別驗證音訊解碼與外掛 host 行為，將來源、授權、檔案 hash 與驗證範圍交給作品。音檔與 VST 使用獨立 reference，清單與操作指引隨 plugin 一起提供；音檔沿用 `material add`，外掛 bundle 與必要資料以 `tool()` 記錄。Runtime 不加入網站下載器或供應商 API。理由是網站的下載流程與條件會改變，Agent 應查當前來源，作品則固定已採用的內容身分。

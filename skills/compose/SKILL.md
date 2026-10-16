@@ -20,6 +20,8 @@ import or copy.
 When choosing a package or connecting its audio/MIDI to the work, read
 [Packages and integration notes](../references/packages.md) for available tools,
 installation scope, layouts, time units and state/reproducibility caveats.
+For native REAPER calls or handing a saved run to REAPER, read the
+[REAPER bridge](../references/reaper.md).
 
 ## Develop the work
 
