@@ -6,6 +6,25 @@ separately; the bridge has no MCP dependency. Python remains the work's source, 
 DAW-specific decisions. The [ReaScript API](https://www.reaper.fm/sdk/reascript/reascripthelp.html)
 is the function reference; REAPER can generate documentation for its installed version.
 
+## Choose the lifecycle path
+
+Start from new MIDI, an existing live project or an accepted render:
+
+1. Read project identity/selection and the user's intended scope. Author the native
+   queries the task needs; the bridge accepts ordinary Lua.
+2. Borrow instruments/effects or co-work through short scoped edits.
+3. Read back actual state; keep the edit's Undo separate from later human actions.
+4. Adopt accepted project/media, MIDI/FX data or audio as material refs in source.
+5. Render/version in Tactus. Pin chosen audio for replay with REAPER stopped.
+6. Hand off native editable state or printed outputs. Later DAW edits become new
+   accepted inputs, continuing the cycle.
+
+The matching runtime source distribution/repository's `examples/reaper/README.md`
+walks through these routes. `project.py`/`project.lua` capture/rebuild accepted native
+state; `accepted.py` renders the pinned project or audio. Copy these recipes into
+the work, or author ordinary Lua directly. A plugin-cache copy contains this
+reference; executable examples come from the matching runtime source distribution.
+
 ## Start the connection
 
 REAPER and Tactus must share the local filesystem. In the work's locked environment:
@@ -119,6 +138,25 @@ identities in source and commit them. Live state is an input to adopt, not autom
 two-way synchronization with the original generator. Preserve accepted audio through
 the normal compose/run workflow; arbitrary GUI edits cannot be inverted into Python.
 
+### Capture and rebuild accepted state
+
+The example's `project.py capture --out NEW_DIRECTORY` saves a stopped live project
+copy, collects/rebinds ordinary file-backed takes, verifies native reopening, checks
+the live state is unchanged, then writes capture.json. Pin that directory with
+`tactus material add`; use the tree ref as project_ref in accepted.py and commit
+source/Lua/lock/refs before rendering. Native MIDI/FX/routing/automation remain in
+the RPP. Inline MIDI and ordinary file takes are handled; wrapped sources,
+subprojects/video or missing media require a work-authored recipe. Declare plugin
+binaries and plugin-owned libraries/IRs separately; take-media collection cannot
+discover every opaque plugin dependency.
+
+Rebuild from a real scratch copy, render the explicitly chosen range in a private
+tab and restore the live tab. Material trees can use hardlinks: saving directly
+inside material(ref) can corrupt the pool. The recipe retains scratch on failure
+or timeout, since native execution can continue. Pin the chosen audio afterward;
+accepted.py's audio_ref route needs no REAPER. Native capture and printed-stem
+export support editable-state and preserved-sound handoffs respectively.
+
 ## Hand completed audio to REAPER
 
 Register the library function in the work:
@@ -168,3 +206,11 @@ directory. User-authored Lua must coordinate project selection and any manual ed
 The bridge does not launch/quit REAPER or infer which live project you meant. Query
 project identity first when operating on existing work. Reconnecting to live state,
 replaying saved audio and rebuilding a DAW project have different evidence requirements.
+
+For work-authored mutations, compare actual target state as well as any native
+change counter: setters do not always increment it. Native Undo also depends on
+the preceding checkpoint. Record a programmatic fixture's complete baseline or
+reopen its saved RPP before checking Undo; otherwise older unrelated state may
+return. Choose Undo flags for the edited scope. Reconnect by ending the old bridge
+action and running the packaged script again, then inspect the current project
+and take fresh selection snapshots. Stop that action or quit REAPER to disconnect.

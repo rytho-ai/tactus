@@ -234,7 +234,7 @@ is a film workflow outside Tactus.
 - [Interactive works](skills/interactive/SKILL.md): maps, performances as input, rendering on request, checked joins and delivery.
 - [Pictures that follow the music](skills/visual/SKILL.md): videos, playing pages and live visuals timed from a run.
 - [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
-- [REAPER bridge](skills/references/reaper.md): call native Lua, co-work on selected MIDI or hand saved stems to an editable project; no MCP dependency.
+- [REAPER bridge](skills/references/reaper.md): read live state, borrow native instruments/effects, co-work, capture accepted projects for pinned rebuild/replay, and hand off native state or saved stems; no MCP dependency. See the [lifecycle example](examples/reaper/README.md).
 - [Physical synthesis](skills/references/instruments.md): `synth.piano` (grand/felt, pedals), with no external sound assets.
 - [Devices](skills/references/devices.md) (sampler, pads, step sequencer), [synthesis](skills/references/synth.md), [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Visual style, tokens and brand assets](design/README.md). The listening and review interface is a separate package, `audition-ui`.

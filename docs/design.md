@@ -46,6 +46,16 @@ Co-working 以原生 Lua 的短操作讀取現場、核對目標與局部修改�
 
 尚未驗證其他 DAW、平台、任意 plugin／preset、真人協作手感或無爆音播放；bridge 不自動啟動 DAW，也不處理雙向同步。是否值得加入其他共用機制，依實際作品需求判斷。
 
+Accepted native state 透過 work-local project capture／rebuild 範例回到既有 material／run
+流程：保存原生副本，複製並重綁一般 take 音檔，重開驗證相對素材，確認 live state
+未變後才完成 capture。採用 tree ref 由 source／Git 記錄；重新渲染先複製 material
+到 scratch，在 private tab 執行後恢復 live tab。失敗／timeout 保留 scratch，讓仍在
+執行的原生 request 保有輸入與輸出。選定音檔另 pin，支持 REAPER 關閉後繼續製作。
+理由是把 GUI 接受結果、重新製作、音檔重播與原生交接接回單一作品流程；這些操作
+仍是可複製 Python／Lua，core 不增加 snapshot/session API。範例涵蓋 inline MIDI
+與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體
+需要作品明確處理。實作與使用界線見 [lifecycle example](../examples/reaper/README.md)。
+
 ## 外部資源：取得音檔與 VST 並保留驗證依據
 
 `resources` skill 負責找音檔與 VST 來源、核對價格與使用條件，分別驗證音訊解碼與外掛 host 行為，將來源、授權、檔案 hash 與驗證範圍交給作品。音檔與 VST 使用獨立 reference，清單與操作指引隨 plugin 一起提供；音檔沿用 `material add`，外掛 bundle 與必要資料以 `tool()` 記錄。Runtime 不加入網站下載器或供應商 API。理由是網站的下載流程與條件會改變，Agent 應查當前來源，作品則固定已採用的內容身分。
