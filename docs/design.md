@@ -40,7 +40,11 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 活的 DAW 狀態是外部輸入。作品固定需要的工程／素材、宣告工具並保存選定音訊；receipt 不自動保存整個 DAW 狀態。Lua 在主執行緒執行，timeout 不代表取消或 rollback，不自動 retry；原生 userdata 應轉成 GUID 或讀回資料。設定、資料轉換與限制見 [REAPER bridge](../skills/references/reaper.md)，完整可改寫範例見 [REAPER example](../examples/reaper/README.md)。
 
-尚未驗證其他 DAW、平台、任意 plugin／preset 或人與 Agent 同時操作；bridge 不自動啟動 DAW，也不處理雙向同步。是否值得加入其他共用機制，依實際作品需求判斷。
+Co-working 以原生 Lua 的短操作讀取現場、核對目標與局部修改，accepted GUI 狀態作為作品明確採用的外部輸入。可複製的 selected-MIDI example 讀取使用者選定的單一片段與 time selection，由 Agent 以普通 Python／JSON 提供音符；寫入前核對實際 project／take、範圍與狀態，並以一次原生 Undo 分組。這些操作邏輯留在範例，不提升為另一套 session model 或 core editing API。理由是 Agent 可直接沿用既有 ReaScript 語法，作品自己決定音樂變化與需保存的現場資料。
+
+範例只處理單 take、inline、零 offset、rate one 且沒有重複／共用 source 的 MIDI，保留區間外／跨界音符、CC／text 與 track FX。完整 offline render 仍占用主執行緒；Undo 不承諾 error rollback。參數與限制由 [REAPER bridge reference](../skills/references/reaper.md#co-work-in-the-live-project) 定義。
+
+尚未驗證其他 DAW、平台、任意 plugin／preset、真人協作手感或無爆音播放；bridge 不自動啟動 DAW，也不處理雙向同步。是否值得加入其他共用機制，依實際作品需求判斷。
 
 ## 外部資源：取得音檔與 VST 並保留驗證依據
 

@@ -1,8 +1,8 @@
 # REAPER bridge
 
 Use `tactus.bridges.reaper` to call REAPER's native ReaScript Lua from Python,
-or hand completed audio to a native project. REAPER runs separately; the bridge
-has no MCP dependency. Python remains the work's source, and ordinary Lua owns
+co-work in a live project, or hand completed audio to a native project. REAPER runs
+separately; the bridge has no MCP dependency. Python remains the work's source, and ordinary Lua owns
 DAW-specific decisions. The [ReaScript API](https://www.reaper.fm/sdk/reascript/reascripthelp.html)
 is the function reference; REAPER can generate documentation for its installed version.
 
@@ -74,6 +74,50 @@ copying verified material bytes into a DAW input directory. A receipt records wo
 source, lock, materials and declared tools; it does not snapshot every mutable DAW
 setting, external file or project action. To replay an accepted result independently
 of REAPER, pin its rendered audio. Regenerating instrument sound is a separate check.
+
+## Co-work in the live project
+
+Read the user's current selection and intended scope, then change only the accepted
+part. Keep calls short while the user plays or edits: synchronous Lua and offline
+rendering occupy REAPER's main thread. A playback cursor advancing is not evidence
+of glitch-free audio. Keep long rendering separate from live editing.
+
+The copyable `examples/reaper/cowork.py` and `selection.lua` recipe reads one selected
+MIDI item and the GUI time selection. It returns fully contained notes in absolute
+project quarter notes; the agent authors the variation in ordinary Python/JSON:
+
+```python
+from cowork import inspect_selection, replace_notes  # copied into this work
+
+snapshot = inspect_selection(resource_path=resource)
+notes = [dict(note) for note in snapshot["notes"]]
+# Compose the requested variation here, using snapshot["range_qn"] and these notes.
+result = replace_notes(snapshot, notes, resource_path=resource)
+```
+
+Use a nonempty time selection inside a single-take inline MIDI item, with source
+offset zero and playrate one. A nonrepeating first pass is supported even when
+REAPER's source-loop checkbox is enabled. Repeated, shared pooled and file-backed
+MIDI require their own recipe. The example recognizes inline pool identities from
+native item state; verify that representation when adapting to another REAPER version.
+
+The recipe binds the actual project/take in the running Lua host. One outstanding
+inspection is retained; a new inspection replaces it, host restart loses it, and an
+apply consumes it. Before writing it rechecks the selected item, time range, item
+state and musical coordinates. Unrelated track FX changes can remain. A stale
+response means inspect again and reconsider the variation against the new notes.
+
+Only fully contained notes are replaced. Crossing/outside notes and CC/text events
+remain; same-pitch overlaps with retained notes are rejected before writing. Proposed
+notes are checked before deletion, including MIDI tick rounding. One native Undo
+groups the edit. An execution error can still leave changes: inspect first, then
+use that Undo if appropriate; never automatically undo a later human action.
+
+After a result is accepted, save the required project/media as explicit materials
+or capture the chosen MIDI, FX settings or rendered take in the work. Reference those
+identities in source and commit them. Live state is an input to adopt, not automatic
+two-way synchronization with the original generator. Preserve accepted audio through
+the normal compose/run workflow; arbitrary GUI edits cannot be inverted into Python.
 
 ## Hand completed audio to REAPER
 
