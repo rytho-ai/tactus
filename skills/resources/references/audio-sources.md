@@ -14,6 +14,7 @@ failed or did not deliver original audio are separated below.
 
 For Splice-like browsing by BPM, key and instrument, see
 [searchable loop libraries](#searchable-loop-libraries-download-and-use-status).
+For API-based sound-effect discovery, see [Openverse](#openverse-audio-search-api).
 
 ## Creator libraries and sample packs
 
@@ -57,6 +58,39 @@ this small test file.
 | [Citizen DJ Edison collection](https://citizen-dj.labs.loc.gov/loc-edison/use/) | Collection offers samples for new music; preserve the selected recording metadata and collection use statement | “Till the boys come home” official 6.711 s WAV sample, 1,288,556 bytes; full decode and finite-sample check pass. Complete sample, not complete song |
 | [Mak Camera Sounds Pack](https://makvocc.itch.io/camera-sounds-pack) | Anonymous Download button; CC0, credit optional. Camera mechanisms, switches, UI and alerts | Live 31-file version: 886,918-byte ZIP; all CRCs and **31 MP3s** fully decoded. Older cached pages describe a 20-file version |
 | [SFXMint acoustic drum kit kick 01](https://sfxmint.com/sounds/acoustic-drum-kit-kick-01) | Official [WAV download](https://sfxmint.com/dl/acoustic-drum-kit-kick-01.wav); [CC0](https://sfxmint.com/license), no account. **AI-generated** existing sound, not a recorded acoustic drum; paid generation is separate | 220,578-byte WAV fully decoded, finite samples, 44.1 kHz stereo, 1.25 s |
+
+## Openverse audio search API
+
+[Openverse](https://api.openverse.org/v1/) aggregates audio from other hosts. Use it
+to discover sound effects; download and verify the selected original from its source.
+This entry was checked **2026-10-16** and is outside the 23-source totals above.
+
+- **Search:** anonymous `GET https://api.openverse.org/v1/audio/?q=door&license=cc0`
+  works without an account or payment. Replace `q` with the needed sound; add
+  `source=wikimedia_audio` to narrow to Wikimedia. `category=sound_effect` is supported,
+  but relevant effects can have `category=null`; retry without that filter if results
+  are sparse. See the [API schema](https://api.openverse.org/v1/schema/) for parameters.
+- **Select and acquire:** follow `foreign_landing_url` to check the creator and current
+  license, then identify the offered original download. Inspect `url` and `alt_files`:
+  `url` can be a compressed preview. In the tested Freesound result, it was an MP3
+  preview; the original download returned HTTP 401. Original Freesound downloads need
+  [site login](https://freesound.org/help/faq/#how-do-i-download-a-sound) or
+  [Freesound OAuth2](https://freesound.org/docs/api/resources_apiv2.html#download-sound-oauth2-required).
+  Openverse authentication does not grant access to another host.
+- **Verified original:** [Door knocker audio — Mx. Granger](https://commons.wikimedia.org/wiki/File:Door_knocker_audio.ogg),
+  source page CC0 1.0; [original OGG](https://upload.wikimedia.org/wikipedia/commons/7/7c/Door_knocker_audio.ogg)
+  downloaded anonymously, 30,423 bytes, 44.1 kHz mono, 65,000 frames / 1.474 s.
+  SoundFile full read produced finite samples; strict full FFmpeg decoding exited zero
+  with no errors. SHA-256:
+  `3362b0bd105382bd8f5e0d268b8e7318233abd966c43449241bfee1f35b47c35`.
+  This verifies one original file, not every result or its musical suitability.
+- **API operation:** read response rate-limit headers and respect HTTP 429. Anonymous
+  responses in this check advertised 20/min and 200/day; recheck rather than hardcode
+  these as guaranteed quotas. [Authentication and throttling](https://docs.openverse.org/api/reference/authentication_and_throttling.html)
+  describes higher-limit access. The [terms](https://docs.openverse.org/terms_of_service.html)
+  require source-license compliance and, for an API-powered application, visible
+  Openverse attribution without implying endorsement. Openverse metadata is a lead;
+  preserve the selected source's license and attribution with the acquired file.
 
 ## Searchable loop libraries: download and use status
 
