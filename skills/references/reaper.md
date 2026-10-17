@@ -25,6 +25,105 @@ state; `accepted.py` renders the pinned project or audio. Copy these recipes int
 the work, or author ordinary Lua directly. A plugin-cache copy contains this
 reference; executable examples come from the matching runtime source distribution.
 
+## Connect an existing conversation through MCP
+
+The optional stdio server exposes `reaper_status` and `reaper_execute`; it runs no
+model and starts no agent conversation. Native Lua uses the same bridge as Python.
+The live RPP remains the user's project; accepted state/audio becomes a pinned input
+only when the work explicitly adopts it. MCP tool replies are not render receipts.
+
+Install the extra in the environment that will start the server. From a checkout:
+
+```bash
+uv sync --extra mcp
+uv run --extra mcp python -c 'from tactus.bridges.reaper import script; print(script())'
+```
+
+In REAPER, use Options → Show REAPER resource path to find its resource directory.
+Load the printed Lua path with Actions → ReaScript → Load and run that Action once.
+REAPER and the MCP server must share the local filesystem. The script has full
+native ReaScript/file access, just as through the ordinary Python bridge.
+
+Configure the agent host to launch the server; use actual absolute paths:
+
+```json
+{
+  "mcpServers": {
+    "tactus": {
+      "command": "/absolute/path/to/checkout/.venv/bin/python",
+      "args": ["-m", "tactus.mcp", "--resource-path", "/absolute/REAPER/resources"]
+    }
+  }
+}
+```
+
+On Windows use the environment's `Scripts/python.exe`. This executable belongs to
+the installation with the extra, independently of any song's lock. Alternatively,
+use an absolute `uv` executable with args `run --project /absolute/checkout --locked
+--extra mcp python -m tactus.mcp --resource-path /absolute/REAPER/resources`.
+
+For a global installation, from the checkout run
+`uv tool install --python 3.12 --editable '.[mcp]'` and use the absolute path of
+`tactus-mcp` as command, with args `--resource-path /absolute/REAPER/resources`.
+`tactus mcp --resource-path ...` is also available, but the normal Tactus launcher
+selects the current work's environment; that work must have the MCP extra too.
+
+For Codex CLI, add the same executable and arguments:
+
+```bash
+codex mcp add tactus -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp --resource-path /absolute/REAPER/resources
+```
+
+For Claude Code, from the intended project:
+
+```bash
+claude mcp add --transport stdio tactus -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp --resource-path /absolute/REAPER/resources
+```
+
+Quote each path containing spaces when using a shell. These commands write host
+configuration; they do not start a replacement agent. Host configuration formats
+vary: the JSON above is the common `mcpServers` form, while Codex uses TOML behind
+its CLI. See [Codex MCP](https://developers.openai.com/codex/mcp/) and
+[Claude Code MCP](https://code.claude.com/docs/en/mcp) for configuration/status UI.
+
+Configure MCP once before the conversation. The server can start before REAPER or
+the bridge: `reaper_status` reports `unavailable` with setup paths/reason. Later run
+the bridge, and call status again from the same conversation/connection; `ready`
+includes the active project, selected tracks/items, time selection and tempo/meter
+at the edit cursor. No MCP reload is needed when only the DAW connection changes.
+If adding the MCP configuration during an existing chat, use that host's supported
+reload/reconnect mechanism; arbitrary hosts/sessions do not share one hot-load
+contract. This is tool access from the original chat, not mirroring chat into REAPER.
+
+Ask the agent to call `reaper_status`, then inspect the intended native scope before
+an edit. For example, `reaper_execute` accepts:
+
+```json
+{
+  "code": "return {version=reaper.GetAppVersion(), tracks=reaper.CountTracks(0)}",
+  "args": null,
+  "timeout": 30,
+  "undo": null
+}
+```
+
+It returns `{"result": ...}` in structured content and JSON text. `args` is finite
+JSON data, preserved without interpreting JSON-looking strings; native values use
+the ordinary bridge encoding. Exceptions are MCP tool errors (`isError`), including
+native error text and timeout/late-reply paths. Status distinguishes `unavailable`
+from `completion_unknown`. Empty native Lua tables become `{}`, including empty
+selection lists. Project instance is runtime identity, not a persistent GUID.
+
+Calls in each server are serialized. Once a native request starts, the server keeps
+its worker until bridge completion/timeout even if the MCP caller has already received
+a cancellation acknowledgement. Cancellation does not cancel Lua or roll back edits.
+Other servers/human edits are not locked. Use
+short operations, actual scope checks and explicit Undo; follow the recovery section
+after errors/timeouts. Set the host's tool timeout above the requested native timeout
+when needed. Stdout is protocol-only; diagnostics use stderr. Disconnecting MCP
+leaves REAPER and its bridge Action running. Stop the Action separately to disconnect
+the native side. This entry adds no HTTP listener, account or automatic DAW launch.
+
 ## Start the connection
 
 REAPER and Tactus must share the local filesystem. In the work's locked environment:

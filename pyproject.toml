@@ -22,9 +22,13 @@ serve = [
     "fastapi>=0.143.0",
     "uvicorn>=0.54.0",
 ]
+mcp = [
+    "mcp>=1.26,<2",
+]
 
 [project.scripts]
 tactus = "tactus.launcher:main"
+tactus-mcp = "tactus.mcp:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,6 +55,7 @@ exclude = [
 [dependency-groups]
 dev = [
     "fastapi>=0.143.0",
+    "mcp>=1.26,<2",
     "pytest>=8.3",
     "ruff>=0.6",
     "uvicorn>=0.54.0",

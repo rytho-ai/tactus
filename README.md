@@ -67,6 +67,12 @@ librosa is optional via `uv add "tactus[librosa]"`, and `tactus serve` needs
 sample libraries are installed separately. See [package notes](skills/references/packages.md)
 for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record dependency constraints and pins.
 
+To use REAPER from an existing coding-agent conversation, install the optional
+`tactus[mcp]` extra and configure the host to start `tactus-mcp --resource-path DIR`.
+It exposes live status and native Lua execution over stdio, using the same REAPER
+bridge as Python. No separate chat app or agent session is needed. See
+[connection and host setup](skills/references/reaper.md#connect-an-existing-conversation-through-mcp).
+
 ### Agent skills
 
 The `tactus` plugin provides **compose** (write and revise works),
@@ -234,7 +240,7 @@ is a film workflow outside Tactus.
 - [Interactive works](skills/interactive/SKILL.md): maps, performances as input, rendering on request, checked joins and delivery.
 - [Pictures that follow the music](skills/visual/SKILL.md): videos, playing pages and live visuals timed from a run.
 - [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
-- [REAPER bridge](skills/references/reaper.md): read live state, borrow native instruments/effects, co-work, capture accepted projects for pinned rebuild/replay, and hand off native state or saved stems; no MCP dependency. See the [lifecycle example](examples/reaper/README.md).
+- [REAPER bridge](skills/references/reaper.md): read live state, borrow native instruments/effects, co-work, capture accepted projects for pinned rebuild/replay, and hand off native state or saved stems. Python use has no MCP dependency; an optional MCP entry serves existing agent conversations. See the [lifecycle example](examples/reaper/README.md).
 - [Physical synthesis](skills/references/instruments.md): `synth.piano` (grand/felt, pedals), with no external sound assets.
 - [Devices](skills/references/devices.md) (sampler, pads, step sequencer), [synthesis](skills/references/synth.md), [DSP](skills/references/dsp.md), [analysis](docs/analysis.md) and [custom analysis/export](skills/references/project-commands.md).
 - [Visual style, tokens and brand assets](design/README.md). The listening and review interface is a separate package, `audition-ui`.
