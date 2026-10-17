@@ -56,6 +56,28 @@ Accepted native state 透過 work-local project capture／rebuild 範例回到�
 與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體
 需要作品明確處理。實作與使用界線見 [lifecycle example](../examples/reaper/README.md)。
 
+### 既有 Agent 對話：可選 MCP 入口
+
+`tactus[mcp]` 以官方 Python SDK 提供 stdio server；`tactus-mcp --resource-path DIR`
+固定連到一個 REAPER resource directory，提供 `reaper_status` 與 `reaper_execute`
+兩個工具。MCP 只提供 host 的工具入口，原生執行仍由同一個 bridge 負責；普通
+Python 用法沒有 MCP dependency。理由是使用者可在原本的 coding-agent 對話中取得
+REAPER 上下文與操作能力，音樂邏輯仍由 Agent 撰寫普通 Python／Lua，不需要另一個
+聊天 app、Agent runtime 或逐項 REAPER editing wrapper。
+
+Standalone entry 使用自身安裝環境，與歌曲的 lock 分開；`tactus mcp` 便利指令則沿用
+既有 launcher 的 work 環境選擇。Server 可在 REAPER／bridge 尚未啟動時連線，回報
+setup 與 unavailable；稍後啟動 bridge 即可在同一條 MCP 連線讀取現場。工具保留
+原始 JSON args、具名 Undo 與 timeout／late-reply 錯誤，stdout 專供協議。單個 server
+序列化工具呼叫；原生操作開始後，MCP cancellation 等待 bridge 完成或 timeout 才釋放
+worker；caller 可能較早收到取消確認，不代表取消 Lua 或 rollback。其他 clients／GUI
+編輯不被鎖定。
+
+Host 設定與 skills 可獨立安裝；不自動修改使用者設定、啟動／結束 REAPER、複製對話
+或綁定模型。先配置工具、之後按需啟動 bridge，是保留原對話的基本路徑。新增 MCP
+server 的 mid-session reload 依各 host 支援，不承諾所有 coding agents 能動態載入。
+連線方式與界線見 [MCP setup](../skills/references/reaper.md#connect-an-existing-conversation-through-mcp)。
+
 ## 外部資源：取得音檔與 VST 並保留驗證依據
 
 `resources` skill 負責找音檔與 VST 來源、核對價格與使用條件，分別驗證音訊解碼與外掛 host 行為，將來源、授權、檔案 hash 與驗證範圍交給作品。音檔與 VST 使用獨立 reference，清單與操作指引隨 plugin 一起提供；音檔沿用 `material add`，外掛 bundle 與必要資料以 `tool()` 記錄。Runtime 不加入網站下載器或供應商 API。理由是網站的下載流程與條件會改變，Agent 應查當前來源，作品則固定已採用的內容身分。
