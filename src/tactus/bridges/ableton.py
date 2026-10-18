@@ -98,7 +98,7 @@ def execute(code: str, *, bridge_path: str | Path, args=None,
             "in Live's MIDI preferences."
         ) from exc
     try:
-        for name in ("__init__.py", "bridge.py", "state.py", "selection.py"):
+        for name in ("__init__.py", "bridge.py", "state.py", "selection.py", "devices.py"):
             tool(str(root.parent / name))
     except (ToolError, OSError) as exc:
         raise BridgeError(f"Cannot read installed Ableton Remote Script sources: {exc}") from exc

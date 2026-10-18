@@ -7,6 +7,7 @@ Project and selected-note rows retain the original work-recipe serialization.
 
 import sys
 
+from .devices import DeviceAccess
 from .selection import Selection
 
 NOTE_FIELDS = ('note_id', 'pitch', 'start_time', 'duration', 'velocity', 'mute',
@@ -80,6 +81,7 @@ class LiveState:
         self._device_target = None
         self._closed = False
         self.selection = Selection(self)
+        self.devices = DeviceAccess(self)
 
     def _tracks(self):
         return list(self.song.tracks) + list(self.song.return_tracks) + [self.song.master_track]
@@ -279,6 +281,7 @@ class LiveState:
     def close(self):
         self._closed = True
         self.selection.close()
+        self.devices.close()
         for subscription in self._subscriptions.values():
             self._detach(subscription)
         self._subscriptions.clear()

@@ -2,7 +2,8 @@
 
 Tactus sends ordinary Python to Live's native API through `execute`; `read` supplies
 shared fresh snapshots for conversational inspection and work lifecycle checks.
-music, target checks, browser traversal, Max patches and VST choices stay in the work.
+Musical choices, Max patches and VST choices stay in the work; shared helpers own
+repeated target checks, metadata queries and load/configure completion.
 The optional MCP entry exposes exactly `ableton_status` and `ableton_execute`.
 No additional agent, musical model, API whitelist or plugin-specific tools are required.
 
@@ -15,7 +16,7 @@ uv tool install --python 3.12 --editable '.[mcp]'
 uv run python -c 'from tactus.bridges.ableton import script; print(script())'
 ```
 
-Copy the printed **TactusBridge directory**, including all three `.py` files, into
+Copy the printed **TactusBridge directory**, including all its `.py` files, into
 `User Library/Remote Scripts/`. Do not run it in an external Python interpreter.
 The default macOS location is `~/Music/Ableton/User Library/Remote Scripts/TactusBridge`;
 Windows uses `Documents/Ableton/User Library/Remote Scripts/TactusBridge`.
@@ -230,9 +231,31 @@ Shared execution mechanics are available without copying example files:
   pass `undo` on the execute request when grouping edits. `state.track(id)` resolves an
   exact native track without changing selection. Musical note values remain explicit.
 - `ableton_support.devices.append(browser_path, bridge_path=..., track_id=...,
-  expected_chain=[device_ids])`: exact browser path and chain checks, one load, fresh
-  completion readback. This appends to a track; arbitrary rack/insertion/replacement
+  expected_chain=[device_ids], parameters=chosen_values)`: exact browser path and chain
+  checks, one load, then optional explicit native settings and fresh compact completion
+  readback. Omit `parameters` to retain the original `{id, name, class}` result; with
+  settings or `metadata=True`, the result includes `snapshot`. Use `uri` to distinguish
+  same-name final browser entries. Load and configure have separate Undo steps; no
+  group spans the settling ticks. This appends to a track; arbitrary rack/insertion/replacement
   remains native Python. Unknown completion or a changed chain is never retried.
+- `ableton_support.devices.inspect/configure/configure_many`: learn selected parameter
+  names/IDs, ranges and enum choices once, then batch caller-chosen native values and
+  use returned compact actual values as the next edit's snapshot. Every batch freshly
+  checks the reader epoch, device identity/layout, all observed values, enabled state
+  and ranges before any write. A stale snapshot rejects; native setter errors can
+  leave partial changes. There is no automatic retry or rollback. Use `metadata=False`
+  for value reads once descriptions are known. Native MCP code calls the same owner:
+  `state.devices.inspect(track_id, device_id, parameters=[...])` and
+  `state.devices.configure([{'snapshot': snapshot, 'values': chosen_values}])`, with
+  an explicit execute `undo` label. Values use each parameter's native scale.
+- `ableton_support.devices.browse`: reusable browser metadata by `root`, optional
+  child `path`, `search`, `recursive`, `include_presets` and `refresh`. Native MCP uses
+  `state.devices.browse(...)`. Loadable entries are not descended unless presets are
+  requested; narrow queries exceeding the traversal limit. Catalogs clear on native
+  browser full-refresh when available, explicit refresh or reader close/Set replacement.
+  Names/URIs are inventory, not proof of authorization or tested audio; loading always
+  resolves a fresh native item. Parameter descriptions are bounded per-reader caches;
+  target handles only validate identity, and musical values are never cached.
 - `ableton_support.transport.playing`: a context manager owning start/stop completion
   for an explicitly chosen Arrangement/Session performance. Supply `mode`, `start_beat`;
   Session also needs `track_id`, `clip_id`, `launch_quantization` (e.g. `q_no_q`).

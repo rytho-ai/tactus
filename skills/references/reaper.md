@@ -23,6 +23,8 @@ Shared Python modules under `tactus.bridges.reaper_support` own repeated mechani
 
 - `selection.inspect_selection` / `selection.replace_notes`: fresh native scope checks,
   authored replacement notes and one Undo group.
+- `devices.inspect` / `devices.configure` / `devices.configure_many`: reusable FX
+  descriptions, fresh chosen values and preflight-all parameter batches in one Undo.
 - `project.inspect` / `project.capture` / `project.render_project`: native copies,
   media collection/reopen checks and writable rebuilds from pinned materials.
 - `audio.render`: execute authored setup Lua in a private tab, render, validate and
@@ -32,6 +34,37 @@ The matching runtime source distribution/repository's `examples/reaper/README.md
 shows these APIs in ordinary Python works. Copy musical source such as instrument.lua
 when useful; selection/project/render machinery ships in the runtime. A plugin-cache
 copy contains this reference; examples come from the matching runtime source distribution.
+
+### Quick parameter edits
+
+Use the ordinary track FX chain (including Master), inspected track/FX GUIDs and
+zero-based parameter indices. Values are explicitly **normalized 0..1**, not Hz/dB.
+Use native Lua for other chains, containers, routing or unsupported plugin interfaces.
+
+```python
+from tactus.bridges.reaper_support import devices
+
+snapshot = devices.inspect(resource_path=resource, track_guid=track_guid,
+                           fx_guid=fx_guid, parameters=[0, 1])
+# Choose values after reading the actual parameter descriptions/display.
+snapshot = devices.configure(snapshot, {'0': chosen_value}, resource_path=resource)
+```
+
+The returned compact snapshot holds actual values and can guard the next edit. One
+`configure_many([{'snapshot': s, 'values': values}, ...])` checks the active project,
+exact GUIDs, current parameter names/count and all observed values before any write.
+Only observed indices may be changed; duplicates, nonfinite/out-of-range values and
+stale snapshots reject. Native setter failure can leave partial edits, with no retry
+or rollback. Use native Undo deliberately after inspection.
+
+Descriptions are bounded caches in the running Lua bridge, with fresh layout checks;
+musical values are never cached. `metadata=False` omits known descriptions and
+`refresh=True` rebuilds an inspection's schema, expiring older snapshots for that FX.
+`devices.stats` exposes cache build/hit counts. A host/cache restart expires snapshots.
+The edit returns its own readback: another full project query, render or capture is
+unnecessary for a small audition. Accepted state/audio still follows the lifecycle
+above; an edit reply is not a run receipt. See `examples/reaper/fx.py` in the source
+distribution for inspect/apply JSON commands.
 
 ## Connect an existing conversation through MCP
 

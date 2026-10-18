@@ -26,6 +26,12 @@ adopting GUI edits into pinned inputs, or handing off a saved run, read the
 For native Python in Ableton Live, selected devices/clips, Max for Live patches or
 Live-hosted VSTs, read the [Ableton bridge](../references/ableton.md).
 
+During a DAW conversation, use short scoped edits and their returned native readback
+to audition changes in the open host. Batch related chosen values in one request;
+do not add a full project read, recording, capture or render after every small edit.
+When adopting the result or delivering audio, preserve the accepted state/inputs and
+use the normal work/run/receipt flow below.
+
 ## Develop the work
 
 Every piece is a work: created with `tactus init`, rendered with `tactus run`, delivered from

@@ -131,9 +131,10 @@ def test_stale_heartbeat_fails_before_submission(peer):
     assert not list((queue.root / "requests").iterdir())
 
 
-def test_missing_installed_source_is_visible_before_submission(peer):
+@pytest.mark.parametrize('source', ['bridge.py', 'devices.py'])
+def test_missing_installed_source_is_visible_before_submission(peer, source):
     queue, _ = peer
-    (queue.root.parent / "bridge.py").unlink()
+    (queue.root.parent / source).unlink()
     with pytest.raises(ableton.BridgeError, match="installed Ableton Remote Script sources"):
         ableton.execute("result=1", bridge_path=queue.root.parent)
     assert not list((queue.root / "requests").iterdir())

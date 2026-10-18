@@ -76,12 +76,18 @@ chat app or agent session is needed. See [REAPER setup](skills/references/reaper
 and [Ableton setup and limits](skills/references/ableton.md). Ableton status supports
 shared scoped reads: a shallow track/selection overview by default, with notes/device
 detail on request and native change notifications. Shared Python APIs own guarded note
-edits, device loading, playback/recording completion and native project handoff/rebuild;
+edits, guarded parameter batches, device loading/settings, playback/recording completion
+and native project handoff/rebuild;
 authored code retains musical values, routing and timing.
 
-REAPER likewise shares selected-note guards, private offline rendering and native
+REAPER likewise shares selected-note guards, guarded FX batches, private offline rendering and native
 project capture/rebuild through Python APIs; musical Lua stays authored. See the
 [REAPER reference](skills/references/reaper.md).
+
+For a small interactive edit, use the mutation's fresh readback and audition in the
+open DAW. Parameter/browser descriptions can be reused; writes still check current
+native state. Recording, capture and Tactus rendering belong to adopting/delivering
+the chosen result, so they need not run after every small change.
 
 ### Agent skills
 

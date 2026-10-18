@@ -10,6 +10,7 @@ native Python; the optional MCP server still has only `ableton_status` and
 | Borrow Live/Max/VST sound | `song.py` with a generated Max host/tap; adapt native routing/MIDI for other devices |
 | Hand off saved Tactus audio | `project.export_project`, registered as a custom exporter |
 | Edit the selected MIDI notes | `ableton.inspect_selection/update_notes` |
+| Adjust exposed device parameters | shared `devices.inspect/configure_many`, or `fx.py` |
 | Adopt accepted native state/media | `project.capture`, then `tactus material add` |
 | Rebuild a pinned native set | `project.rebuild` or `accepted.py` |
 | Continue without Live | Pin the run and use `load_render`; `accepted.py` accepts `audio_ref` |
@@ -160,6 +161,38 @@ before editing. A changed selection/note rejects the edit. Inspect again after a
 apply/error/reconnect. Other notes/expressions/automation are not replaced. Successful
 selected-note edits and their grouped Undo have been verified; not every Live operation
 is undoable. No automatic rollback or Undo is performed.
+
+For quick device edits, use `fx.py` or the shared API directly:
+
+```python
+from tactus.bridges.ableton_support import devices
+
+snapshot = devices.inspect(bridge_path=connection, track_id=track_id,
+                           device_id=device_id, parameters=chosen_names)
+snapshot = devices.configure(snapshot, chosen_native_values, bridge_path=connection)
+```
+
+Each configure returns actual compact values for the next guarded edit; metadata is
+not repeated. `configure_many` preflights all devices before any write. Learn ranges
+and enum choices from inspection; values are native, not automatically normalized.
+`devices.browse(bridge_path=connection, recursive=True, search='echo')` searches cached
+browser descriptions. `devices.append(..., parameters=chosen_native_values)` loads
+once, waits and configures after readiness; load/configure remain separate Undo steps.
+The same owner is available to MCP native Python as `state.devices`; no new MCP tool
+is needed. Refresh stale metadata explicitly and reinspect after a rejected edit.
+
+The CLI accepts inspected IDs and authored JSON, without musical defaults:
+
+```bash
+uv run python fx.py --bridge-path /absolute/TactusBridge inspect --track-id TRACK_ID --device-id DEVICE_ID --out fx.json
+uv run python fx.py --bridge-path /absolute/TactusBridge apply fx.json values.json
+```
+
+Small note/parameter edits return readback without recording or rendering. Audition
+inside Live; preserve accepted inputs and run Tactus when delivering audio. The initial
+inspection is still needed; a warm next edit reuses its immediately prior snapshot.
+Native stale-target/value guards and Undo remain active; partial native errors have no
+automatic rollback. Do not reuse a snapshot after an intervening change.
 
 Stop transport and close additional windows, then adopt the accepted set:
 

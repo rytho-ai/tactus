@@ -9,6 +9,7 @@ for setup and exact behavior. No MCP or third-party REAPER extension is needed.
 | Read existing state | `project.py inspect`, or author the required native query |
 | Borrow instruments/effects | `song.py` + `instrument.lua` |
 | Co-work on selected MIDI | shared `selection` API, or `cowork.py` CLI |
+| Adjust exposed FX parameters | shared `devices.inspect/configure_many`, or `fx.py` CLI |
 | Adopt current GUI/MIDI/FX state | `project.py capture`, then `tactus material add` |
 | Rebuild accepted native state | `accepted.py` + shared `project.render_project` |
 | Continue with REAPER stopped | Pin the chosen WAV; use `accepted.py` with `audio_ref` |
@@ -67,6 +68,36 @@ playrate one and no repeated/shared source. See the
 stale-state behavior, Undo, source-pool checks and adopting GUI changes.
 One inspection is outstanding per host; inspect again after applying or reconnecting.
 Read/write selection commands do not render audio or create a run receipt.
+
+## Quick FX edits
+
+Read exact track/FX GUIDs through native Lua, then inspect only the parameters the
+edit needs. The shared API uses zero-based indices and explicit normalized 0..1 values:
+
+```python
+from tactus.bridges.reaper_support import devices
+
+snapshot = devices.inspect(resource_path=resource, track_guid=track_guid,
+                           fx_guid=fx_guid, parameters=chosen_indices)
+snapshot = devices.configure(snapshot, chosen_normalized_values, resource_path=resource)
+```
+
+Values map index strings to numbers, for example `{'0': .2}`; choose them after reading
+native names/display. `configure_many` preflights every snapshot before any write and
+returns fresh compact actual values in one Undo. Description caches contain no stored
+musical values. Every write checks current project, exact GUIDs, layout and observed
+values; a human edit invalidates the snapshot. Native errors can leave partial edits,
+with no retry/rollback. Use ordinary Lua for other chains, routing and musical choices.
+
+```bash
+uv run python fx.py --resource-path /your/REAPER/resources inspect --track-guid TRACK_GUID --fx-guid FX_GUID --out fx.json
+uv run python fx.py --resource-path /your/REAPER/resources apply fx.json values.json
+```
+
+The returned compact snapshot can guard the next edit; set `metadata=False` when
+reading known descriptions. An initial inspection is still required. Small edits
+do not automatically render/capture/save the project; audition in REAPER, then adopt
+accepted state/audio through the normal Tactus run/receipt flow for delivery.
 
 ## Adopt the live project and continue in Tactus
 

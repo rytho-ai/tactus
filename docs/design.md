@@ -48,6 +48,12 @@ Accepted native state 由 `reaper_support.project` 共用 inspect／capture／re
 
 這些共用模組只收編反覆相同的執行手續，原生 `execute` 仍可自由使用，不引入共通 DAW／Session 創作模型。捕捉支援 inline MIDI 與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體由作品明確處理。Undo 不承諾 error rollback，尚未驗證其他平台、任意 plugin／preset、真人協作手感或無爆音播放。介面與界線見 [REAPER bridge reference](../skills/references/reaper.md) 與 [lifecycle example](../examples/reaper/README.md)。
 
+快速修改以一次 request 完成相關參數的檢查、批次寫入與精簡讀回，不自動錄音、capture
+或 render。`reaper_support.devices` 使用明確的 track／FX GUID、零起算參數 index 與
+normalized 0..1 數值；原生 Lua 保留其他 chain、routing 與創作操作。描述快取只保存參數
+名稱與範圍，每次寫入仍核對當前工程、目標、layout 與所有觀察值；先檢查整批再動手，
+不承諾 setter 失敗後 rollback。這讓互動時少往返，接受／交付音訊才走既有保存與 receipt 流程。
+
 ### 既有 Agent 對話：可選 MCP 入口
 
 `tactus[mcp]` 以官方 Python SDK 提供 stdio server；`tactus-mcp --resource-path DIR`
@@ -114,7 +120,13 @@ Tactus 產生的 wrapper 使用檔案命令，不預設開啟 UDP listener 或�
 重複而沒有創作判斷的機械流程由 runtime 共用：`state.selection` 與普通 Python 的
 `ableton.inspect_selection/update_notes` 擁有一次性快照、完整音符驗證與過期拒絕；
 `state.track` 解析明確 ID 並回傳原生 track，不改選取。`devices.append` 依 caller 選定的
-browser path／track／預期 chain 載入一次，等待讀回確認，不自行選音色或 routing。
+browser path／track／預期 chain 載入一次，等待就緒後可在同一個完成請求套用 caller 明確
+選定的參數並讀回；載入與設定分開 Undo，不跨等待時間開著群組。`state.devices` 擁有
+描述與 browser catalog 的有界快取，關閉 reader／換 Set 時清除，browser 更新或明確
+refresh 時重查 catalog。普通 Python 的 `devices.inspect/configure_many/browse` 與原生
+MCP execute 使用同一份 owner。描述可以重用，所有觀察值、原生目標、參數 layout、範圍與
+enabled 狀態仍在每次寫入前直接核對；整批通過才寫，回傳精簡實際值供下一次修改核對。
+不快取音樂狀態、不自行選音色或 routing；小修改不連帶錄音或 render，交付才保存並產生 receipt。
 `transport.playing` 處理已停止 workspace 的播放／停止與確認；caller 明確選模式、起點、
 Session clip 與量化，演奏時間留在 context 內。`audio.record/capture` 處理 tap 命令確認、
 收尾、暫存檔、解碼與失敗證據；回傳原始錄音，不裁切、對齊、調音量或排除靜音。

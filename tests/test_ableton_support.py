@@ -213,25 +213,49 @@ def test_capture_owns_scratch_and_decode_but_preserves_raw_timing_and_silence(
 def test_device_append_submits_once_and_polls_fresh_chain(monkeypatch):
     mutations = []
     new = {'id': 'new', 'name': 'Chosen device', 'class': 'MxDeviceAudioEffect'}
-    rows = iter([{'devices': [{'id': 'old'}]}, {'devices': [{'id': 'old'}, new]}])
-    monkeypatch.setattr(devices.ableton, 'execute', lambda code, **kw: mutations.append(kw))
-    monkeypatch.setattr(devices.ableton, 'read', lambda **kw: next(rows))
+    rows = iter([{'pending': True}, {'pending': False, 'device': new}])
+    def execute(code, **kw):
+        if 'begin_append' in code:
+            mutations.append(kw)
+        else:
+            return next(rows)
+    monkeypatch.setattr(devices.ableton, 'execute', execute)
     result = devices.append(['user_library', 'Chosen device'], bridge_path='bridge',
                             track_id='track', expected_chain=['old'])
     assert result == new
     assert len(mutations) == 1
     assert mutations[0]['args'] == {'track': 'track', 'chain': ['old'],
-                                   'path': ['user_library', 'Chosen device']}
+                                   'path': ['user_library', 'Chosen device'], 'uri': None}
 
 
 def test_device_append_rejects_unexpected_native_replacement_without_reloading(monkeypatch):
     mutations = []
-    monkeypatch.setattr(devices.ableton, 'execute', lambda code, **kw: mutations.append(kw))
-    monkeypatch.setattr(devices.ableton, 'read', lambda **kw: {'devices': [{'id': 'replaced'}]})
+    def execute(code, **kw):
+        if 'begin_append' in code:
+            mutations.append(kw)
+        else:
+            raise devices.ableton.BridgeError('Device chain changed during load')
+    monkeypatch.setattr(devices.ableton, 'execute', execute)
     with pytest.raises(devices.ableton.BridgeError, match='chain changed'):
         devices.append(['instruments', 'Operator'], bridge_path='bridge',
                        track_id='track', expected_chain=['old'])
     assert len(mutations) == 1
+
+
+def test_device_append_timeout_does_not_repeat_load_or_configuration(monkeypatch):
+    calls = []
+    clock = iter([0., .01, .2, .3])
+    monkeypatch.setattr(devices.time, 'monotonic', lambda: next(clock))
+    monkeypatch.setattr(devices.time, 'sleep', lambda duration: None)
+    def execute(code, **kw):
+        calls.append((code, kw))
+        return {'pending': True}
+    monkeypatch.setattr(devices.ableton, 'execute', execute)
+    with pytest.raises(TimeoutError, match='completion unknown'):
+        devices.append(['audio_effects', 'Chosen device'], bridge_path='bridge',
+                       track_id='track', expected_chain=[], parameters={'Wet': .2}, timeout=.1)
+    assert len(calls) == 2 and 'begin_append' in calls[0][0]
+    assert 'finish_append' in calls[1][0] and calls[1][1]['args']['parameters'] == {'Wet': .2}
 
 
 def test_transport_context_confirms_start_and_stop_around_authored_duration(monkeypatch):
