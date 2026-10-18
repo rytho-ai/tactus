@@ -253,3 +253,15 @@ def test_version_control_directories_do_not_change_the_digest(tmp_path):
     after, entries = tree.digest_of_tree(root)
     assert after == before
     assert all(not path.startswith(".git") for path, _ in entries)
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='Windows filenames cannot contain carriage returns')
+def test_native_macos_project_icon_roundtrips_through_folder_material(tmp_path, scratch_pool):
+    source = tmp_path / 'native-project'
+    source.mkdir()
+    (source / 'Icon\r').write_bytes(b'')
+    (source / 'session.als').write_bytes(b'native set')
+    ref = tree.add(source)
+    resolved = tree.resolve(tree.digest_from_ref(ref))
+    assert (resolved / 'Icon\r').read_bytes() == b''
+    assert (resolved / 'session.als').read_bytes() == b'native set'

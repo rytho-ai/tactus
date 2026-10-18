@@ -1,17 +1,12 @@
-"""A copyable selected-MIDI recipe preserves live edits outside its explicit scope."""
+"""Shared selected-MIDI guards preserve live edits outside their explicit scope."""
 
-import importlib.util
 import os
-from pathlib import Path
 
 import pytest
 
 from tactus.bridges import reaper
+from tactus.bridges.reaper_support import selection as cowork
 
-EXAMPLE = Path(__file__).resolve().parents[1] / "examples/reaper/cowork.py"
-spec = importlib.util.spec_from_file_location("reaper_cowork_example", EXAMPLE)
-cowork = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(cowork)
 LIVE = os.environ.get("TACTUS_REAPER_RESOURCE_PATH")
 
 

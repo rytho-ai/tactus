@@ -7,9 +7,9 @@ source to continue with REAPER stopped. gain is an explicit Tactus revision.
 
 import numpy as np
 import soundfile as sf
-from project import render_project
 
 from tactus import material
+from tactus.bridges.reaper_support.project import render_project
 
 
 def render(*, project_ref=None, audio_ref=None, resource_path=None, reaper_bundle=None,

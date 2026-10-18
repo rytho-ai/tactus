@@ -1,6 +1,5 @@
 """Accepted native state becomes pinned material, rebuildable audio and a handoff."""
 
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -11,12 +10,9 @@ import soundfile as sf
 
 from tactus import material
 from tactus.bridges import reaper
+from tactus.bridges.reaper_support import project as recipe
 from tactus.inputs import tree
 
-EXAMPLE = Path(__file__).parents[1] / 'examples/reaper/project.py'
-spec = importlib.util.spec_from_file_location('reaper_project_example', EXAMPLE)
-recipe = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(recipe)
 LIVE = os.environ.get('TACTUS_REAPER_RESOURCE_PATH')
 BUNDLE = os.environ.get('TACTUS_REAPER_BUNDLE')
 
@@ -25,6 +21,20 @@ def test_capture_existing_destination_does_not_touch_daw(tmp_path, monkeypatch):
     monkeypatch.setattr(recipe, 'inspect', lambda **_: pytest.fail('Must not contact DAW'))
     with pytest.raises(FileExistsError):
         recipe.capture(resource_path='unused', out=tmp_path)
+
+
+def test_media_verification_resolves_root_alias_but_rejects_external_files(tmp_path):
+    root = tmp_path / 'bundle'
+    root.mkdir()
+    file = root / 'take.wav'
+    file.write_bytes(b'content')
+    alias = tmp_path / 'alias'
+    alias.symlink_to(root, target_is_directory=True)
+    recipe._verify_media({'media': [{'inline_midi': False, 'file': str(file)}]}, alias)
+    outside = tmp_path / 'outside.wav'
+    outside.write_bytes(b'external')
+    with pytest.raises(ValueError, match='outside bundle'):
+        recipe._verify_media({'media': [{'inline_midi': False, 'file': str(outside)}]}, alias)
 
 
 @pytest.mark.parametrize('source', [
@@ -64,11 +74,12 @@ def test_unknown_native_completion_retains_real_scratch_copy(tmp_path, monkeypat
 
     def native(resource_path, **args):
         seen.append(Path(args['project']))
-        if args['mode'] == 'render':
-            raise reaper.BridgeTimeout('Already executing, completion unknown')
         return {'media': {}}
 
     monkeypatch.setattr(recipe, '_native', native)
+    def unknown(*args, **kwargs):
+        raise reaper.BridgeTimeout('Already executing, completion unknown')
+    monkeypatch.setattr(recipe.audio, 'render', unknown)
     with pytest.raises(reaper.BridgeTimeout) as error:
         recipe.render_project('tree:sha256:' + 'a' * 64,
                               resource_path='peer', reaper_bundle='declared')
@@ -149,7 +160,7 @@ def test_live_capture_relocates_external_media_preserves_native_state_and_rebuil
     saved = (original / 'source.rpp').read_bytes()
     out = tmp_path / 'captured'
     captured = recipe.capture(resource_path=LIVE, out=out)
-    assert before == recipe.inspect(resource_path=LIVE)
+    assert recipe._content(before) == recipe._content(recipe.inspect(resource_path=LIVE))
     assert (original / 'source.rpp').read_bytes() == saved
     assert captured['files'] and captured['reaper']['tracks'][0]['name'] == 'Native MIDI'
     assert captured['reaper']['tracks'][0]['fx'][0]['enabled']
@@ -160,7 +171,7 @@ def test_live_capture_relocates_external_media_preserves_native_state_and_rebuil
     out.rename(moved)
     state = recipe._native(LIVE, mode='verify', project=str(moved / 'session.rpp'))
     recipe._verify_media(state, moved)
-    assert recipe.inspect(resource_path=LIVE) == before
+    assert recipe._content(recipe.inspect(resource_path=LIVE)) == recipe._content(before)
     monkeypatch.setenv('TACTUS_POOL', str(tmp_path / 'pool'))
     ref = tree.add(moved)
     pinned = material(ref)
@@ -171,7 +182,7 @@ def test_live_capture_relocates_external_media_preserves_native_state_and_rebuil
         assert a.shape == (4800, 2) and np.max(np.abs(a)) > .001
         np.testing.assert_array_equal(a, b)
         assert digest == tree.digest_of_tree(pinned)[0]
-        assert recipe.inspect(resource_path=LIVE) == before
+        assert recipe._content(recipe.inspect(resource_path=LIVE)) == recipe._content(before)
 
 
 def test_live_capture_rejects_intervening_edit_before_save(live_project, tmp_path, monkeypatch):
@@ -209,3 +220,21 @@ def test_captured_manifest_is_explicit_about_plugin_owned_dependencies(tmp_path,
     manifest = json.loads((out / 'capture.json').read_text())
     assert manifest['project'] == 'session.rpp' and manifest['files'] == {}
     assert 'plugin-owned' in manifest['external_dependencies']
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_capture_save_counter_is_not_mistaken_for_a_content_edit(tmp_path, monkeypatch, changed):
+    before = {'media': {}, 'change_count': 2, 'native_state': 'same native content'}
+    after = {**before, 'change_count': 3}
+    if changed:
+        after['native_state'] = 'changed notes, FX or routing'
+    states = iter([before, after])
+    monkeypatch.setattr(recipe, 'inspect', lambda **_: next(states))
+    monkeypatch.setattr(recipe, '_native', lambda *a, **k: {'media': {}})
+    if changed:
+        with pytest.raises(ValueError, match='Live project changed'):
+            recipe.capture(resource_path='peer', out=tmp_path / 'capture')
+        assert not (tmp_path / 'capture/capture.json').exists()
+    else:
+        recipe.capture(resource_path='peer', out=tmp_path / 'capture')
+        assert (tmp_path / 'capture/capture.json').exists()

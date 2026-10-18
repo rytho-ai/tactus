@@ -1,8 +1,8 @@
 """Call native ReaScript Lua from Python; export rendered audio as a REAPER project.
 
 Run script() inside REAPER once, then execute ordinary Lua with explicit args and
-resource_path. Only the file transport, data exchange and completion are shared;
-notes, routing, instruments and rendering instructions stay in work-authored Lua.
+resource_path. Transport, data exchange and completion live here; reaper_support owns shared
+selection/project/render mechanics. Notes, routing and instruments stay authored.
 Live project state is external input: pin projects/audio and declare native tools
 when provenance matters. Errors/timeouts never imply rollback or automatic retry.
 Reads: stdlib file queue/time/JSON; inputs.tool; SciPy WAV writer for handoff only.

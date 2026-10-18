@@ -104,10 +104,13 @@ def _main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Report the installed environment")
     mcp_command = commands.add_parser(
-        "mcp", help="Expose REAPER tools over stdio (needs tactus[mcp])"
+        "mcp", help="Expose native DAW tools over stdio (needs tactus[mcp])"
     )
-    mcp_command.add_argument("--resource-path", required=True, type=Path,
+    mcp_target = mcp_command.add_mutually_exclusive_group(required=True)
+    mcp_target.add_argument("--resource-path", type=Path,
                              help="REAPER resource directory with the bridge running")
+    mcp_target.add_argument("--ableton-path", type=Path,
+                             help="Installed User Library/Remote Scripts/TactusBridge directory")
     run_command = commands.add_parser("run", help="Execute a Python render() production")
     run_command.add_argument("source", type=Path, help="Python file defining render(*, ...)")
     run_command.add_argument("--out", required=True, type=Path, help="New run directory")
@@ -332,7 +335,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
         if args.command == "mcp":
             from .mcp import serve
 
-            return serve(resource_path=args.resource_path)
+            return serve(resource_path=args.resource_path, ableton_path=args.ableton_path)
         if args.command == "run":
             param_files = {}
             for binding in args.param_file:

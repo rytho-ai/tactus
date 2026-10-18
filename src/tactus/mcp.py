@@ -1,7 +1,7 @@
 """Optional stdio tools for an existing agent host; native execution stays in bridge.
 
 The standalone entry uses its installed environment, independently of a song's
-lock. Each server binds one explicit REAPER resource directory. The SDK is imported
+lock. Each server binds one explicit REAPER or Ableton connection. The SDK is imported
 only when creating a server; ordinary bridge/Python use needs no MCP dependency.
 """
 
@@ -12,7 +12,7 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
-from .bridges import reaper
+from .bridges import ableton, reaper
 
 _STATUS = """
 local p,path=reaper.EnumProjects(-1,'')
@@ -52,9 +52,35 @@ The live RPP remains external input; a tool response is not a Tactus render rece
 Native reference: https://www.reaper.fm/sdk/reascript/reascripthelp.html
 """
 
+_ABLETON_INSTRUCTIONS = """Use Ableton Live in this conversation; no agent session is started.
+Call ableton_status (including Live's embedded Python version), then author short
+native Python using Live, song, app, state, args and result.
+Status accepts scope=summary/track/notes/device/project and explicit runtime target IDs.
+Summary lists tracks without scanning MIDI/parameters; request detail only when needed.
+state.read uses the same fresh native reader. Observed change counters are incomplete
+hints, never edit guards; unsupported listeners are reported.
+Only finite JSON data crosses the bridge; convert native objects to explicit
+data. Runtime object identities are not persistent IDs or comprehensive stale guards.
+Inspect the actual target and relevant values immediately before edits; read back results.
+Use undo to request a native Undo group (Live owns its displayed name, not the label).
+Errors/cancellation/timeouts never imply rollback or cancellation of running Python.
+Never automatically retry a mutation or undo a later human edit. Inspect native state
+and the late response file first. Calls in this server serialize; other clients and GUI
+edits are not locked. Long Python blocks Live's main thread; use short operations.
+Max for Live and VST are native devices: load via native browser access, inspect exposed
+parameters and use ordinary source files for custom Max patches. Plugin-private GUI
+and unexposed parameters are not universally accessible. No API/musical whitelist.
+Setup does not launch/quit/save Live. Live state is external input; a tool response is
+not a Tactus render receipt. Use Tactus skills for creation/analysis/versioning.
+Object model reference (Max-facing, not a complete Python specification):
+https://docs.cycling74.com/legacy/max8/vignettes/live_api_overview
+Probe native Python methods/version differences; Python runtime IDs are not Max device IDs.
+"""
 
-def create_server(*, resource_path: str | Path):
-    """Create two tools bound to one resource directory, without contacting REAPER."""
+
+def create_server(*, resource_path: str | Path | None = None,
+                  ableton_path: str | Path | None = None):
+    """Create status/execute for one explicit DAW, without contacting or launching it."""
     try:
         import anyio
         from mcp import types
@@ -65,27 +91,49 @@ def create_server(*, resource_path: str | Path):
             'environment (from a checkout: uv sync --extra mcp).'
         ) from exc
 
-    resource = Path(resource_path).expanduser().resolve()
+    if (resource_path is None) == (ableton_path is None):
+        raise ValueError("Choose exactly one of resource_path or ableton_path")
+    is_ableton = ableton_path is not None
+    native = ableton if is_ableton else reaper
+    prefix = "ableton" if is_ableton else "reaper"
+    resource = Path(ableton_path if is_ableton else resource_path).expanduser().resolve()
     if not resource.is_dir():
-        raise ValueError(f"REAPER resource directory does not exist: {resource}")
-    server = Server("tactus", version=version("tactus"), instructions=_INSTRUCTIONS)
+        raise ValueError(f"{prefix} connection directory does not exist: {resource}")
+    connection = {"bridge_path" if is_ableton else "resource_path": resource}
+    setup = {"ableton_path" if is_ableton else "resource_path": str(resource),
+             "bridge_script": str(native.script())}
+    status_code = _STATUS
+    server = Server("tactus", version=version("tactus"),
+                    instructions=_ABLETON_INSTRUCTIONS if is_ableton else _INSTRUCTIONS)
     lock = anyio.Lock()
 
     @server.list_tools()
     async def list_tools():
         return [
             types.Tool(
-                name="reaper_status",
-                description="Read live project/selection. If unavailable, return setup paths "
+                name=f"{prefix}_status",
+                description=("Read fresh Live state: shallow summary by default, or track/notes/device/project "
+                "detail using scope and optional target IDs. Observed revisions are incomplete "
+                "notification hints, never edit guards. Runtime IDs "
+                "are not persistent; unsupported project path is null. Does not save/edit. "
+                "If unavailable, return setup paths and reason." if is_ableton else
+                "Read live project/selection. If unavailable, return setup paths "
                 "and reason. Empty native lists are {}. Project instance is runtime-only; "
-                "the change counter alone is not a stale-edit guard. Does not save/edit.",
-                inputSchema={"type": "object", "properties": {}, "additionalProperties": False},
+                "the change counter alone is not a stale-edit guard. Does not save/edit."),
+                inputSchema={"type": "object", "properties": ({
+                    "scope": {"type": "string", "enum": ["summary", "track", "notes", "device", "project"],
+                              "default": "summary"},
+                    "track_id": {"type": "string", "minLength": 1},
+                    "device_id": {"type": "string", "minLength": 1},
+                } if is_ableton else {}), "additionalProperties": False},
                 outputSchema={"type": "object"},
                 annotations=types.ToolAnnotations(readOnlyHint=True, openWorldHint=True),
             ),
             types.Tool(
-                name="reaper_execute",
-                description="Execute ordinary native ReaScript Lua with args; return "
+                name=f"{prefix}_execute",
+                description=("Execute native Python using Live, song, app, state, args; assign result. "
+                "Live owns the Undo description. " if is_ableton else
+                "Execute ordinary native ReaScript Lua with args; ") + "return "
                 "{result: native JSON value}. Use an undo label to group mutations. "
                 "Timeout is seconds. Errors/cancellation/timeouts never imply rollback; "
                 "inspect native state/late reply before retry. Calls in this server are "
@@ -110,31 +158,33 @@ def create_server(*, resource_path: str | Path):
 
     @server.call_tool()
     async def call_tool(name, arguments):
-        if name not in {"reaper_status", "reaper_execute"}:
+        if name not in {f"{prefix}_status", f"{prefix}_execute"}:
             raise ValueError(f"Unknown tool: {name}")
-        status = name == "reaper_status"
-        setup = {"resource_path": str(resource), "bridge_script": str(reaper.script())}
+        status = name == f"{prefix}_status"
         try:
             # The SDK validates the schema without reinterpreting JSON-looking
             # string args/labels. Keep the worker/lock until completion or native
-            # timeout even on MCP cancellation: running Lua cannot be cancelled.
+            # timeout even on MCP cancellation: running native code cannot be cancelled.
             async with lock:
                 try:
                     with anyio.CancelScope(shield=True):
-                        value = await anyio.to_thread.run_sync(partial(
-                            reaper.execute, _STATUS if status else arguments["code"],
-                            resource_path=resource,
-                            **({} if status else {k: v for k, v in arguments.items() if k != "code"}),
-                        ))
+                        operation = (partial(ableton.read, **connection, **arguments)
+                            if status and is_ableton else partial(
+                                native.execute, status_code if status else arguments["code"],
+                                **connection,
+                                **({} if status else {k: v for k, v in arguments.items()
+                                                     if k != "code"}),
+                            ))
+                        value = await anyio.to_thread.run_sync(operation)
                 finally:
                     # Deliver deferred cancellation before the SDK attempts a
                     # normal reply to a request it already acknowledged cancelled.
                     await anyio.lowlevel.checkpoint_if_cancelled()
             return {"status": "ready", **setup, "project": value} if status else {"result": value}
-        except (reaper.BridgeError, reaper.BridgeTimeout, ValueError, TypeError) as exc:
+        except (native.BridgeError, native.BridgeTimeout, ValueError, TypeError) as exc:
             if status:
                 return {
-                    "status": "completion_unknown" if isinstance(exc, reaper.BridgeTimeout)
+                    "status": "completion_unknown" if isinstance(exc, native.BridgeTimeout)
                     else "unavailable",
                     **setup, "error": {"type": type(exc).__name__, "message": str(exc)},
                 }
@@ -144,10 +194,11 @@ def create_server(*, resource_path: str | Path):
     return server
 
 
-def serve(*, resource_path: str | Path) -> int:
+def serve(*, resource_path: str | Path | None = None,
+          ableton_path: str | Path | None = None) -> int:
     """Run stdio only; startup diagnostics go to stderr, never protocol stdout."""
     try:
-        server = create_server(resource_path=resource_path)
+        server = create_server(resource_path=resource_path, ableton_path=ableton_path)
     except (ImportError, ValueError, OSError) as exc:
         print(f"tactus MCP: {exc}", file=sys.stderr)
         return 2
@@ -163,10 +214,13 @@ def serve(*, resource_path: str | Path) -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--resource-path", required=True, type=Path,
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--resource-path", type=Path,
                         help="REAPER's Options > Show REAPER resource path directory")
+    target.add_argument("--ableton-path", type=Path,
+                        help="Installed User Library/Remote Scripts/TactusBridge directory")
     options = parser.parse_args(argv)
-    return serve(resource_path=options.resource_path)
+    return serve(resource_path=options.resource_path, ableton_path=options.ableton_path)
 
 
 if __name__ == "__main__":

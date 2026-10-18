@@ -1,4 +1,4 @@
--- A work-local recipe: one selected inline MIDI take, authored notes, native Undo.
+-- Shared guarded edit: one selected inline MIDI take, authored notes, native Undo.
 local project,path=reaper.EnumProjects(-1,'')
 local function selected()
   assert((reaper.GetPlayStateEx(project)&4)==0,'Recording is active; defer this edit')
@@ -69,7 +69,7 @@ if args.mode=='read' then
   local track=reaper.GetMediaItemTrack(item)
   local _,name=reaper.GetTrackName(track)
   local a,b=reaper.TimeMap2_timeToQN(project,first),reaper.TimeMap2_timeToQN(project,last)
-  -- One outstanding inspection in this copyable example; a new read supersedes it.
+  -- One outstanding inspection in this bridge; a new read supersedes it.
   _G.tactus_selected_midi={token=args.token,project=project,item=item,take=take,chunk=chunk,
     first=first,last=last,first_qn=a,last_qn=b,indices=indices,retained=retained}
   return {token=args.token,project=path,track=name,track_guid=reaper.GetTrackGUID(track),

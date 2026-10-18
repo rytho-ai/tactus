@@ -4,14 +4,13 @@ Pass resource_path and reaper_bundle to generate a phrase. Use lead_ref to repla
 accepted audio independently of REAPER. The eight-second outputs share zero origin.
 """
 
-import tempfile
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
 from tactus import material, tool
-from tactus.bridges import reaper
+from tactus.bridges.reaper_support import audio
 
 RATE, FRAMES = 24000, 192000
 
@@ -28,17 +27,9 @@ def daw_lead(resource_path, reaper_bundle, transpose):
         )
         for i, pitch in enumerate([62, 65, 69, 67, 62, 65, 72, 69])
     ]
-    with tempfile.TemporaryDirectory(prefix="tactus-reaper-") as directory:
-        reaper.execute(
-            lua.read_text(),
-            resource_path=resource_path,
-            args={"notes": notes, "rate": RATE, "seconds": FRAMES / RATE, "out": directory},
-            timeout=60,
-        )
-        audio, rate = sf.read(Path(directory) / "lead.wav", always_2d=True)
-    if rate != RATE or audio.shape != (FRAMES, 2) or not np.isfinite(audio).all():
-        raise ValueError("REAPER returned unexpected audio")
-    return audio
+    return audio.render(lua.read_text(), resource_path=resource_path,
+                        reaper_bundle=reaper_bundle, args={'notes': notes, 'seconds': FRAMES / RATE},
+                        seconds=FRAMES / RATE, sample_rate=RATE, channels=2, timeout=60)
 
 
 def render(*, resource_path=None, reaper_bundle=None, lead_ref=None, transpose=0):

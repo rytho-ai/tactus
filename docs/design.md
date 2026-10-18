@@ -40,21 +40,13 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 活的 DAW 狀態是外部輸入。作品固定需要的工程／素材、宣告工具並保存選定音訊；receipt 不自動保存整個 DAW 狀態。Lua 在主執行緒執行，timeout 不代表取消或 rollback，不自動 retry；原生 userdata 應轉成 GUID 或讀回資料。設定、資料轉換與限制見 [REAPER bridge](../skills/references/reaper.md)，完整可改寫範例見 [REAPER example](../examples/reaper/README.md)。
 
-Co-working 以原生 Lua 的短操作讀取現場、核對目標與局部修改，accepted GUI 狀態作為作品明確採用的外部輸入。可複製的 selected-MIDI example 讀取使用者選定的單一片段與 time selection，由 Agent 以普通 Python／JSON 提供音符；寫入前核對實際 project／take、範圍與狀態，並以一次原生 Undo 分組。這些操作邏輯留在範例，不提升為另一套 session model 或 core editing API。理由是 Agent 可直接沿用既有 ReaScript 語法，作品自己決定音樂變化與需保存的現場資料。
+Co-working 由 `reaper_support.selection` 共用選取讀取、音符驗證、寫入前狀態核對與原生 Undo。Agent 以普通 Python／JSON 決定替換音符；介面不產生旋律、不決定音色或 routing。只處理單 take、inline、零 offset、rate one 且沒有重複／共用 source 的 MIDI，保留區間外／跨界音符、CC／text 與 track FX。範例的 cowork.py 僅保留 CLI，機制由套件單一實作維護，不要求各作品複製 Lua。
 
-範例只處理單 take、inline、零 offset、rate one 且沒有重複／共用 source 的 MIDI，保留區間外／跨界音符、CC／text 與 track FX。完整 offline render 仍占用主執行緒；Undo 不承諾 error rollback。參數與限制由 [REAPER bridge reference](../skills/references/reaper.md#co-work-in-the-live-project) 定義。
+`reaper_support.audio.render` 接受作品提供的 setup Lua、明確長度、sample rate 與 mono／stereo 格式，在 private tab 執行一次、離線 render、驗證並讀回原始音訊。作品決定全部樂器、音符、FX、routing、gain 與所需尾音；共用機制不正規化、不因靜音拒絕音訊。成功關閉 private tab 並恢復原 tab，失敗／timeout 保留 scratch；timeout 不代表取消，不能提前刪掉仍在使用的輸入。完整離線 render 占用主執行緒，與現場短操作分開。
 
-尚未驗證其他 DAW、平台、任意 plugin／preset、真人協作手感或無爆音播放；bridge 不自動啟動 DAW，也不處理雙向同步。是否值得加入其他共用機制，依實際作品需求判斷。
+Accepted native state 由 `reaper_support.project` 共用 inspect／capture／render_project：保存原生副本、複製並重綁一般 take 音檔、重開驗證相對素材，並確認原工程內容與操作情境未變。保存副本可增加 REAPER 的 change counter，保存後依實際 native content 比較，不把單獨的 counter 增加誤判為音樂變更；保存前仍核對 counter 與內容。採用 tree ref 由 source／Git 記錄，重新 render 使用 material 的真實 scratch 副本，絕不直接保存進 pool。選定音訊另 pin，支持 REAPER 關閉後繼續製作。
 
-Accepted native state 透過 work-local project capture／rebuild 範例回到既有 material／run
-流程：保存原生副本，複製並重綁一般 take 音檔，重開驗證相對素材，確認 live state
-未變後才完成 capture。採用 tree ref 由 source／Git 記錄；重新渲染先複製 material
-到 scratch，在 private tab 執行後恢復 live tab。失敗／timeout 保留 scratch，讓仍在
-執行的原生 request 保有輸入與輸出。選定音檔另 pin，支持 REAPER 關閉後繼續製作。
-理由是把 GUI 接受結果、重新製作、音檔重播與原生交接接回單一作品流程；這些操作
-仍是可複製 Python／Lua，core 不增加 snapshot/session API。範例涵蓋 inline MIDI
-與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體
-需要作品明確處理。實作與使用界線見 [lifecycle example](../examples/reaper/README.md)。
+這些共用模組只收編反覆相同的執行手續，原生 `execute` 仍可自由使用，不引入共通 DAW／Session 創作模型。捕捉支援 inline MIDI 與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體由作品明確處理。Undo 不承諾 error rollback，尚未驗證其他平台、任意 plugin／preset、真人協作手感或無爆音播放。介面與界線見 [REAPER bridge reference](../skills/references/reaper.md) 與 [lifecycle example](../examples/reaper/README.md)。
 
 ### 既有 Agent 對話：可選 MCP 入口
 
@@ -77,6 +69,76 @@ Host 設定與 skills 可獨立安裝；不自動修改使用者設定、啟動�
 或綁定模型。先配置工具、之後按需啟動 bridge，是保留原對話的基本路徑。新增 MCP
 server 的 mid-session reload 依各 host 支援，不承諾所有 coding agents 能動態載入。
 連線方式與界線見 [MCP setup](../skills/references/reaper.md#connect-an-existing-conversation-through-mcp)。
+
+## 外部 DAW：Ableton bridge
+
+`tactus.bridges.ableton.execute` 以相同的小介面執行原生 Python：傳入明確 `args`，
+在 Live 主執行緒取得 `Live`、`song`、`app`，以 `result` 交回有限 JSON。
+隨套件提供的 `TactusBridge` Remote Script 安裝到 User Library，以本機檔案佇列
+接收請求；caller 明確指定安裝目錄 `bridge_path`。不另建共用 DAW／Track／Session
+模型，不逐項包裝 Live API，也不以 API 文字黑名單限制創作。理由與 REAPER 相同：
+共用的是傳輸、完成與錯誤處理，音樂與目標檢查仍由作品原生程式表達。
+
+請求帶入 bridge instance 與到期時間，過期／舊實例請求不執行；timeout 撤回仍在
+佇列的請求，已執行者可產生晚到回覆。錯誤、取消、timeout 不代表 rollback 或
+取消原生 Python，也不自動 retry。`undo` 要求原生 Undo 分組，包含失敗時的收尾；
+Live 自己決定顯示的 Undo 名稱，caller 的 label 不改名原生 Undo。並非所有動作
+都可 Undo。物件 ID 只供當次 Live 使用，寫入前仍須核對實際目標與相關狀態。
+
+MCP 沿用同一個 optional entry；`--ableton-path DIR` 與 REAPER 的 `--resource-path DIR`
+擇一，每個 server 只提供該 DAW 的 `status`、`execute` 兩個工具。SDK、序列化與
+cancellation 的責任維持在 MCP 層，普通 Python 不依賴 MCP。Status 提供 Live／內嵌
+Python 版本、工程、選中 track／device 與 detail clip；不宣稱取得所有 GUI 選取範圍。
+
+`TactusBridge/state.py` 統一讀取原生狀態；普通 Python 的 `ableton.read`、MCP status、
+工程往返及選取 MIDI 的檢查都使用它。預設 summary 只列工程／音軌名稱與 ID、播放與
+選取資訊，不讀 MIDI vectors 或裝置參數值；track／notes／device scopes 按需要讀細節，
+project scope 保留原本完整工程比對的欄位。明確 runtime ID 失效時回報錯誤，不改選
+另一個目標。原生 `execute` 仍能直接使用 `Live`／`song`／`app` 及同一個 `state.read`。
+
+原生 listeners 提供 reader instance、累計 revision／分組次數與可監聽／不支援的屬性，
+供 agent 判斷是否需要重讀；每次 read 都直接讀現況，不維護另一份音樂狀態 cache。
+監聽跟隨選取與音軌結構，裝置參數則在請求 device scope 後追蹤最近讀取的裝置；既有
+主執行緒 poll 重接／移除舊目標，disconnect 全數移除。通知 callback 只記錄變動，不
+讀回或修改音樂。Live 11 沒有測到 selected-notes listener，明確標示 unsupported；
+選取與修改前的音符檢查仍直接讀取。revision 是不完整的通知提示，不能當作通用防過期
+憑證；具名快照與 one-use guard 的契約維持不變。
+
+Max／VST 是原生裝置，不增加專用 MCP 指令。VST 由 Live 承載，使用公開／Configure
+參數、MIDI 與路由；私人 UI／素材瀏覽器沒有通用 API。作品可以直接製作 Max patch／JS
+並載入 `.amxd`，或選用 `ableton_support` 的 Max host／WebUI builder、音訊 tap、畫面／
+console 擷取與相似音色查詢。這些是可選的檔案／程式機制，不替作品決定音樂模型；
+Tactus 產生的 wrapper 使用檔案命令，不預設開啟 UDP listener 或用演奏音符觸發錄音。
+採用的 MIT 原始碼與修改保留在 runtime 內，產物亦帶授權。
+
+重複而沒有創作判斷的機械流程由 runtime 共用：`state.selection` 與普通 Python 的
+`ableton.inspect_selection/update_notes` 擁有一次性快照、完整音符驗證與過期拒絕；
+`state.track` 解析明確 ID 並回傳原生 track，不改選取。`devices.append` 依 caller 選定的
+browser path／track／預期 chain 載入一次，等待讀回確認，不自行選音色或 routing。
+`transport.playing` 處理已停止 workspace 的播放／停止與確認；caller 明確選模式、起點、
+Session clip 與量化，演奏時間留在 context 內。`audio.record/capture` 處理 tap 命令確認、
+收尾、暫存檔、解碼與失敗證據；回傳原始錄音，不裁切、對齊、調音量或排除靜音。
+Max 命令與 tap 錄音宣告已知 AMXD／JS 工具來源。MCP 維持兩個入口；共用機制可以從普通
+Python 使用，原生 MCP execute 直接使用同一份 selection／target 實作。
+
+`ableton_support.project` 擁有保存、收集、驗證、交接與重建，macOS 檔案 adapter 隨套件
+提供；作品不用再複製機械流程檔案。[可改寫的 Ableton 範例](../examples/ableton/README.md)
+只保留音樂與使用方式：Live 回傳即時
+音訊給 Python；已保存的 run 以明確選取的 outputs／位置／tempo 交接原生工程；實際選取
+的 MIDI 以一次性狀態快照保護修改，採用後將原生 Set／媒體存成 material，再從副本重建。
+Max 裝置以明確宣告的完整 asset tree 一起收集；動態 graph／values、絕對路徑與 plugin
+私人素材仍由作品保存。已選音訊使用原始 render arrays 重播，與重新執行 Live 分開承諾。
+
+Live 的音樂操作使用原生 API；目前 macOS 檔案 adapter 處理 Python API 未提供的存／開檔，
+及 copied ALS 裡的 locator／媒體路徑。單一 active Set 的切換先留 recovery，原生程式只開
+可寫副本，不開／寫 pool。Export 的相對媒體可隨交付資料夾移動，最終位置再由使用者或
+agent 開啟。即時錄音的時間、trim／尾音與取樣率選擇由作品負責，不承諾離線、逐 sample
+相同的 native regeneration；master tap 範例明確錄在 master fader 前。
+
+版本與實測界線見 [coverage](../examples/ableton/coverage.md)。Live 11 的 browser insertion
+是新版 `insert_device` 的替代路徑；相似音色查詢須符合採用來源的已分析資料庫 schema。
+Max 8 的 WebUI 使用 `jweb`，不假裝提供新版 `jweb~`。未定案的是其他平台／語言的檔案
+adapter 與各種動態 Max／plugin 的可攜狀態處方；普通 Python／Max 原生操作始終保留。
 
 ## 外部資源：取得音檔與 VST 並保留驗證依據
 

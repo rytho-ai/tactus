@@ -23,6 +23,8 @@ installation scope, layouts, time units and state/reproducibility caveats.
 For reading a live REAPER project, borrowing its instruments/effects, co-working,
 adopting GUI edits into pinned inputs, or handing off a saved run, read the
 [REAPER bridge](../references/reaper.md).
+For native Python in Ableton Live, selected devices/clips, Max for Live patches or
+Live-hosted VSTs, read the [Ableton bridge](../references/ableton.md).
 
 ## Develop the work
 

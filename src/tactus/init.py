@@ -4,7 +4,8 @@ Before this module, a work borrowed Tactus's own environment (`uv run --project 
 it could not add a package of its own, its receipt's `dependency_lock` was always null, and
 its environment moved whenever the Tactus checkout moved. `init` fixes this by writing the
 work a `pyproject.toml` that depends on `tactus` through `[tool.uv.sources]`, pinned to a
-resolved Git source and local pytest/Ruff settings, plus a `.gitignore`, then running
+resolved Git source and local pytest/Ruff settings, plus a `.gitignore` and running
+Python minor-version pin (`.python-version`), then running
 `uv lock` so the work has its own
 `uv.lock`, and a Git repository rooted at the work even inside another checkout.
 Git availability and initialization failures are reported explicitly. `_tactus_source`
@@ -26,6 +27,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from importlib.metadata import metadata
 from pathlib import Path
 from typing import Any
@@ -211,6 +213,9 @@ def init(
         _pyproject_toml(_project_name(directory), requires_python, source), encoding="utf-8"
     )
     (directory / ".gitignore").write_text(_GITIGNORE, encoding="utf-8")
+    (directory / ".python-version").write_text(
+        f"{sys.version_info.major}.{sys.version_info.minor}\n", encoding="utf-8"
+    )
 
     try:
         subprocess.run([uv, "lock"], cwd=directory, capture_output=True, text=True, check=True)

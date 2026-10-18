@@ -1,4 +1,4 @@
--- Copyable native project capture/rebuild recipe. Musical edits stay in author code.
+-- Shared native project capture/rebuild. Musical edits stay in author code.
 local function inspect(project)
   local _, path = reaper.EnumProjects(-1, '')
   local a,b = reaper.GetSet_LoopTimeRange2(project,false,false,0,0,false)
@@ -116,21 +116,7 @@ elseif args.mode=='capture' then
   end)
 elseif args.mode=='verify' then
   return private_project(args.project,inspect)
-elseif args.mode=='render' then
-  return private_project(args.project,function(p)
-    for key,value in pairs({PROJECT_SRATE=args.rate,PROJECT_SRATE_USE=1,
-      RENDER_SRATE=args.rate,RENDER_CHANNELS=2,RENDER_BOUNDSFLAG=0,
-      RENDER_STARTPOS=0,RENDER_ENDPOS=args.seconds,RENDER_SETTINGS=0,
-      RENDER_TAILFLAG=0,RENDER_DITHER=0,RENDER_NORMALIZE=0}) do
-      reaper.GetSetProjectInfo(p,key,value,true)
-    end
-    reaper.GetSetProjectInfo_String(p,'RENDER_FORMAT','ZXZhdxgAAQ==',true)
-    reaper.GetSetProjectInfo_String(p,'RENDER_FILE',args.out,true)
-    reaper.GetSetProjectInfo_String(p,'RENDER_PATTERN','project',true)
-    reaper.Main_OnCommand(42230,0)
-    reaper.Main_SaveProjectEx(p,args.project,8)
-    return {version=reaper.GetAppVersion(),seconds=args.seconds,rate=args.rate}
-  end)
+
 else
   error('Unknown project recipe mode')
 end

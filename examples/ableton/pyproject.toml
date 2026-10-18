@@ -1,0 +1,11 @@
+[project]
+name = "tactus-ableton-example"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["tactus"]
+
+[tool.uv.sources]
+tactus = { path = "../..", editable = true }
+
+[tool.tactus.export]
+ableton = "tactus.bridges.ableton_support.project:export_project"

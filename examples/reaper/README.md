@@ -4,13 +4,13 @@ A Python work writes ordinary ReaScript Lua to use ReaSynth; a custom exporter
 hands the saved stems to a native project. See the [bridge reference](../../skills/references/reaper.md)
 for setup and exact behavior. No MCP or third-party REAPER extension is needed.
 
-| Intent | Work-local route |
+| Intent | Route |
 | --- | --- |
 | Read existing state | `project.py inspect`, or author the required native query |
 | Borrow instruments/effects | `song.py` + `instrument.lua` |
-| Co-work on selected MIDI | `cowork.py` + `selection.lua` |
+| Co-work on selected MIDI | shared `selection` API, or `cowork.py` CLI |
 | Adopt current GUI/MIDI/FX state | `project.py capture`, then `tactus material add` |
-| Rebuild accepted native state | `accepted.py` + `project.py` + `project.lua` |
+| Rebuild accepted native state | `accepted.py` + shared `project.render_project` |
 | Continue with REAPER stopped | Pin the chosen WAV; use `accepted.py` with `audio_ref` |
 | Hand off and return later | Deliver native capture or export printed outputs; capture subsequent DAW edits into a new ref |
 
@@ -25,9 +25,10 @@ tactus run song.py --out runs/b --params '{"resource_path":"/your/REAPER/resourc
 tactus export reaper runs/a --out exports/reaper --resource-path /your/REAPER/resources --tempo 120 --markers '[[0,"A"],[4,"B"]]'
 ```
 
-The Lua creates a new tab, uses native MIDI calls and renders 8 seconds including
-release. Each generated tab is left open and the previously selected tab is restored.
-The temporary instrument project/audio is disposable; keep the accepted run audio.
+The Lua authors MIDI and sound; shared `audio.render` creates a private tab and
+renders 8 seconds including release. It closes the successful private tab and restores
+the previous tab. On failure/timeout it retains scratch for inspection. Keep the
+accepted run audio.
 
 Open exports/reaper/song.rpp to continue editing without Tactus. Its three stems
 use relative paths; neither REAPER instruments nor Tactus are required to play them
@@ -40,7 +41,7 @@ replay and regenerated instrument output are separate promises.
 
 ## Co-work on the current MIDI selection
 
-Copy cowork.py and selection.lua into the work. Keep the bridge running, select one
+Use `tactus.bridges.reaper_support.selection` directly, or copy cowork.py for its CLI. Keep the bridge running, select one
 MIDI item and set a time selection inside it in REAPER (for example four bars).
 The example uses that selection, not track names, track indices or a fixed tempo.
 
@@ -69,7 +70,8 @@ Read/write selection commands do not render audio or create a run receipt.
 
 ## Adopt the live project and continue in Tactus
 
-Copy project.py, project.lua and accepted.py into the work. Stop transport, select
+Copy accepted.py for the musical entry and optionally project.py for its CLI. Shared
+project/render Lua ships in Tactus; it is not copied into each work. Stop transport, select
 the intended tab, inspect it and save its accepted state to a new directory:
 
 ```bash
@@ -80,7 +82,7 @@ tactus material add captures/chosen
 
 Set the returned tree ref as project_ref in source. Declare REAPER/plugin binaries
 with `tool()` and required plugin libraries/IRs as explicit materials. Commit the
-source, Lua, refs and lock, then render (or pass the choices as parameters):
+source, refs and lock, then render (or pass the choices as parameters):
 
 Keep `captures/` in the work's .gitignore; Git records the material ref, while the
 pool/native bundle retains the media. Retain or back up that pool when sharing a work.

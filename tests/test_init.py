@@ -72,6 +72,9 @@ def test_init_writes_pyproject_and_gitignore_and_locks(tmp_path, _fake_uv):
     assert 'dependencies = ["tactus"]' in pyproject
     assert 'requires-python = "' in pyproject
     assert result["python"] in pyproject
+    assert (work / ".python-version").read_text() == (
+        f"{sys.version_info.major}.{sys.version_info.minor}\n"
+    )
     assert "[tool.uv.sources]" in pyproject
     assert 'git = "https://example.com/tactus"' in pyproject
     assert 'rev = "abc123"' in pyproject

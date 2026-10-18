@@ -19,11 +19,19 @@ Start from new MIDI, an existing live project or an accepted render:
 6. Hand off native editable state or printed outputs. Later DAW edits become new
    accepted inputs, continuing the cycle.
 
+Shared Python modules under `tactus.bridges.reaper_support` own repeated mechanics:
+
+- `selection.inspect_selection` / `selection.replace_notes`: fresh native scope checks,
+  authored replacement notes and one Undo group.
+- `project.inspect` / `project.capture` / `project.render_project`: native copies,
+  media collection/reopen checks and writable rebuilds from pinned materials.
+- `audio.render`: execute authored setup Lua in a private tab, render, validate and
+  return frames-first audio; preserve failure evidence and restore the previous tab.
+
 The matching runtime source distribution/repository's `examples/reaper/README.md`
-walks through these routes. `project.py`/`project.lua` capture/rebuild accepted native
-state; `accepted.py` renders the pinned project or audio. Copy these recipes into
-the work, or author ordinary Lua directly. A plugin-cache copy contains this
-reference; executable examples come from the matching runtime source distribution.
+shows these APIs in ordinary Python works. Copy musical source such as instrument.lua
+when useful; selection/project/render machinery ships in the runtime. A plugin-cache
+copy contains this reference; examples come from the matching runtime source distribution.
 
 ## Connect an existing conversation through MCP
 
@@ -178,13 +186,28 @@ function or impose notes, tracks, routing or session data types on the work.
 
 ## Use REAPER to make audio
 
-Write the native MIDI/FX/render instructions in a work-local `.lua` file. Read it
-from Python and call execute with explicit project inputs, notes and output paths;
-read the resulting WAV with SoundFile and return it from `render` normally. Check
-its sample rate, channel count, frame count and finite values. The
-`examples/reaper/` example in the Tactus source distribution uses ReaSynth, revisions and
-pinned replay. When using a cached plugin copy, open the installed runtime example
-from its source distribution/repo; its instrument Lua can also be written directly.
+Use `audio.render` when you want a private native project for an instrument or FX
+performance. The authored Lua creates the tracks, MIDI, plugins and routing; the
+shared module owns the temporary tab, offline render settings, completion, WAV checks
+and scratch cleanup. It renders exactly zero through the explicit duration, with no
+extra tail, normalization or silence rejection. Include any desired release in duration.
+
+```python
+from tactus.bridges.reaper_support import audio
+
+samples = audio.render(setup_lua, resource_path=resource,
+                       reaper_bundle="/path/to/REAPER", args={"notes": notes},
+                       seconds=8, sample_rate=24000, channels=2)
+```
+
+`setup_lua` sees ordinary `args` and `reaper.*` in a new empty project. It may open a
+writable project copy, but must remain in that owned tab. Native setup executes once;
+this is unrestricted Lua, not a sandbox. The native WAV uses PCM24, matching the existing recipe. Success closes the saved
+temporary tab and returns decoded audio shaped `(frames, channels)`; mono has one column. Errors/timeouts
+retain scratch and can leave the private tab open, while restoring the prior selected
+tab when native execution returns. A timeout cannot cancel active rendering: inspect
+its late reply before cleanup. Rendering occupies REAPER's main thread. The generic
+`execute` path remains available for other native workflows.
 
 Declare Lua files and REAPER/plugin binaries with `tool()`, and pin input projects,
 samples and selected audio with `material()`. Preserve `.rpp`/media filenames when
@@ -200,12 +223,12 @@ part. Keep calls short while the user plays or edits: synchronous Lua and offlin
 rendering occupy REAPER's main thread. A playback cursor advancing is not evidence
 of glitch-free audio. Keep long rendering separate from live editing.
 
-The copyable `examples/reaper/cowork.py` and `selection.lua` recipe reads one selected
+The shared `selection` module reads one selected
 MIDI item and the GUI time selection. It returns fully contained notes in absolute
 project quarter notes; the agent authors the variation in ordinary Python/JSON:
 
 ```python
-from cowork import inspect_selection, replace_notes  # copied into this work
+from tactus.bridges.reaper_support.selection import inspect_selection, replace_notes
 
 snapshot = inspect_selection(resource_path=resource)
 notes = [dict(note) for note in snapshot["notes"]]
@@ -216,7 +239,7 @@ result = replace_notes(snapshot, notes, resource_path=resource)
 Use a nonempty time selection inside a single-take inline MIDI item, with source
 offset zero and playrate one. A nonrepeating first pass is supported even when
 REAPER's source-loop checkbox is enabled. Repeated, shared pooled and file-backed
-MIDI require their own recipe. The example recognizes inline pool identities from
+MIDI require their own recipe. The implementation recognizes inline pool identities from
 native item state; verify that representation when adapting to another REAPER version.
 
 The recipe binds the actual project/take in the running Lua host. One outstanding
@@ -239,19 +262,21 @@ the normal compose/run workflow; arbitrary GUI edits cannot be inverted into Pyt
 
 ### Capture and rebuild accepted state
 
-The example's `project.py capture --out NEW_DIRECTORY` saves a stopped live project
+`project.capture(resource_path=resource, out=NEW_DIRECTORY)` saves a stopped live project
 copy, collects/rebinds ordinary file-backed takes, verifies native reopening, checks
 the live state is unchanged, then writes capture.json. Pin that directory with
 `tactus material add`; use the tree ref as project_ref in accepted.py and commit
-source/Lua/lock/refs before rendering. Native MIDI/FX/routing/automation remain in
+source/lock/refs before rendering. Native MIDI/FX/routing/automation remain in
 the RPP. Inline MIDI and ordinary file takes are handled; wrapped sources,
 subprojects/video or missing media require a work-authored recipe. Declare plugin
 binaries and plugin-owned libraries/IRs separately; take-media collection cannot
-discover every opaque plugin dependency.
+discover every opaque plugin dependency. Saving a native copy may advance the live
+change counter; after saving, capture compares actual native content and context rather
+than treating that counter increment as a musical edit. Pre-save counter checks remain.
 
 Rebuild from a real scratch copy, render the explicitly chosen range in a private
 tab and restore the live tab. Material trees can use hardlinks: saving directly
-inside material(ref) can corrupt the pool. The recipe retains scratch on failure
+inside material(ref) can corrupt the pool. The shared implementation retains scratch on failure
 or timeout, since native execution can continue. Pin the chosen audio afterward;
 accepted.py's audio_ref route needs no REAPER. Native capture and printed-stem
 export support editable-state and preserved-sound handoffs respectively.
