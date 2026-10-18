@@ -92,6 +92,8 @@ the chosen result, so they need not run after every small change.
 ### Agent skills
 
 The `tactus` plugin provides **compose** (write and revise works),
+**[daw](skills/daw/SKILL.md)** (REAPER/Live reads and edits, using native instruments/effects,
+and handing off accepted work),
 **[resources](skills/resources/SKILL.md)** (acquire audio and reviewed VSTs with provenance and verification), **dsp** (design sounds and build
 effects), **measure** (use or write analyses), **version** (track work revisions
 with Git), **interactive** (give a work an interface: time map, decisions as input, checked

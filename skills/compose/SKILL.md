@@ -1,6 +1,6 @@
 ---
 name: compose
-description: Make music with Tactus — a song, beat, track, loop, remix or sample flip — as a Python work that is written, run, auditioned and revised. Use whenever audio is to be produced, including inside the Tactus repository itself and by an agent that already knows the library. Covers arranging clips, sampling instruments, chopping loops onto pads, step sequencing, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates and preserving chosen performances. Connect to dsp for sound design and processing, and measure for using or writing analyses.
+description: Make music with Tactus — a song, beat, track, loop, remix or sample flip — as a Python work that is written, run, auditioned and revised. Use for developing works and producing deliverable audio, including inside the Tactus repository itself and by an agent that already knows the library. Covers arranging clips, sampling instruments, chopping loops onto pads, step sequencing, synthesis, MIDI, routing, automation, combining analysis with effects, pinning inputs, comparing candidates and preserving chosen performances. For direct REAPER or Ableton Live inspection and editing, use daw. Connect to dsp for sound design and processing, and measure for using or writing analyses.
 ---
 
 # Compose with Tactus
@@ -20,17 +20,11 @@ import or copy.
 When choosing a package or connecting its audio/MIDI to the work, read
 [Packages and integration notes](../references/packages.md) for available tools,
 installation scope, layouts, time units and state/reproducibility caveats.
-For reading a live REAPER project, borrowing its instruments/effects, co-working,
-adopting GUI edits into pinned inputs, or handing off a saved run, read the
-[REAPER bridge](../references/reaper.md).
-For native Python in Ableton Live, selected devices/clips, Max for Live patches or
-Live-hosted VSTs, read the [Ableton bridge](../references/ableton.md).
-
-During a DAW conversation, use short scoped edits and their returned native readback
-to audition changes in the open host. Batch related chosen values in one request;
-do not add a full project read, recording, capture or render after every small edit.
-When adopting the result or delivering audio, preserve the accepted state/inputs and
-use the normal work/run/receipt flow below.
+For REAPER or Ableton Live inspection/edits, borrowing instruments/effects, Max for
+Live or hosted VSTs, adopting GUI changes or handing off a saved run, use
+[daw](../daw/SKILL.md). It selects the host-specific reference and the appropriate
+package, handoff or co-working path. Short DAW edits use native readback and audition;
+adopting the result or delivering audio follows the work/run/receipt flow below.
 
 ## Develop the work
 

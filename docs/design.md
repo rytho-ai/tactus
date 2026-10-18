@@ -32,9 +32,23 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 **尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
+## DAW skill：依目的讀取原生操作指引
+
+共用的 [daw skill](../skills/daw/SKILL.md) 承接 REAPER／Ableton Live 的直接查看與修改，
+依當前 host 與目的讀取既有 bridge reference。涵蓋 DAW 作為音源／效果套件、Tactus 成果
+交接與真人同步操作三種用途；它們可組合，不是強制階段。小修改以原生讀回與現場試聽
+延續對話，採用狀態或交付音訊才接回 compose／version 的保存與 receipt 流程。
+
+這個入口共用工作方法，沒有新增跨 DAW 操作模型、runtime API 或 MCP 工具。原生 Lua／
+Python、Max patch 與 VST 的音樂選擇仍由作品決定；各 host 的選取能力、參數單位與
+工程生命週期差異保留在原有 reference。理由是讓直接 DAW 請求容易找到正確指引，
+同時避免把完整製作流程套在每次短操作上。
+
 ## 外部 DAW：REAPER bridge
 
 `tactus.bridges.reaper` 以 `execute` 把作品提供的普通 Lua 與資料送到 REAPER 原生 ReaScript，回傳有限 JSON 資料。REAPER 內執行隨套件提供的 Lua script，Python 以本機檔案佇列連接；不依賴 MCP。理由是 Agent 能直接撰寫既有 `reaper.*` 語法，橋接只共用傳輸、完成與錯誤處理，不逐一包裝原生函式，也不引入 DAW／Track／Session 創作模型。其他 DAW 有需要時另做自己的 bridge；尚無共用 DAW interface。
+
+每輪原生回呼先清除 REAPER 的檔案列舉快取，再掃描請求目錄，讓新命令在該輪即可被發現。更新 bridge source 後需停止並重跑 Action，現有工程不需重開。
 
 `export_project` 符合既有 custom exporter 契約，從保存的音訊建立新的原生工程 tab，保留相對素材、明確秒數位置與長度。作品選擇分軌、markers 與可選 tempo；time map 不自動解讀。原有 tab 不被覆蓋；新工程保存後恢復先前選取的 tab。生成樂器與交接工程是獨立路徑。任意 Python 不承諾可逆轉為 MIDI、automation 或完整 DAW 工程。
 

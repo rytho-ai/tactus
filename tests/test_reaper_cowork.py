@@ -64,6 +64,7 @@ reaper.SelectAllMediaItems(p,false)
 reaper.SetMediaItemSelected(item,true)
 reaper.GetSet_LoopTimeRange2(p,true,false,10,20,false)
 reaper.Main_SaveProjectEx(p,args.path,8)
+reaper.Undo_OnStateChangeEx2(p,'Tactus cowork fixture baseline',-1,-1)
 _G.tactus_cowork_test={project=p,track=track,item=item,take=take,other=other}
 return {path=args.path}
 """
@@ -122,7 +123,10 @@ def test_live_selected_four_bar_variation_keeps_fx_cc_other_items_and_undo(sessi
     snapshot = inspect()
     assert snapshot["range_qn"] == [16, 32] and len(snapshot["notes"]) == 5
     # An unrelated sound-design change after inspection remains authoritative.
-    native("reaper.TrackFX_SetParamNormalized(_G.tactus_cowork_test.track,0,0,.02);return true")
+    reaper.execute(
+        "reaper.TrackFX_SetParamNormalized(_G.tactus_cowork_test.track,0,0,.02);return true",
+        resource_path=LIVE, undo="Tactus fixture: unrelated FX edit",
+    )
     before = read()
     notes = [{**note, "pitch": note["pitch"] + 2} for note in snapshot["notes"]]
     notes.append({"start_qn": 24, "end_qn": 24.5, "pitch": 77, "velocity": 64})

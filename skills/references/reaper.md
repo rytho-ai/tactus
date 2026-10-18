@@ -85,6 +85,10 @@ Load the printed Lua path with Actions → ReaScript → Load and run that Actio
 REAPER and the MCP server must share the local filesystem. The script has full
 native ReaScript/file access, just as through the ordinary Python bridge.
 
+Each native poll rereads the request directory, bypassing REAPER's cached listing
+so newly submitted commands can be seen on that poll. After updating Tactus, stop
+and rerun the bridge Action to load its new source; the project need not be reopened.
+
 Configure the agent host to launch the server; use actual absolute paths:
 
 ```json

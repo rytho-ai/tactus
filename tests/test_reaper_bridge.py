@@ -3,6 +3,7 @@
 import json
 import os
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -177,6 +178,57 @@ def test_bad_export_inputs_fail_before_writing_or_calling(tmp_path, monkeypatch,
 
 
 LIVE = os.environ.get("TACTUS_REAPER_RESOURCE_PATH")
+
+
+@pytest.mark.skipif(not LIVE, reason="Opt in with isolated TACTUS_REAPER_RESOURCE_PATH")
+def test_live_new_request_is_visible_in_first_poll_after_cached_directory_read():
+    """Warm the native directory cache, then create a request immediately before poll.
+
+    This checks visibility in the same poll, without asserting a wall-clock latency.
+    The one-shot defer wrapper restores itself before invoking the actual bridge.
+    """
+    identity = uuid.uuid4().hex
+    reaper.execute('''
+local probe={complete=false,seen=false}
+_G.tactus_queue_refresh_test=probe
+local original=reaper.defer
+reaper.defer=function(callback)
+ reaper.defer=original
+ return original(function()
+  local root=reaper.GetResourcePath()..'/tactus-bridge'
+  local request=root..'/requests/'..args.id..'.lua'
+  local response=root..'/responses/'..args.id..'.json'
+  local called=false
+  local ok,message=xpcall(function()
+   reaper.EnumerateFiles(root..'/requests',-1)
+   reaper.EnumerateFiles(root..'/requests',0)
+   local file=assert(io.open(request,'wb'))
+   file:write('return {protocol=1,expires='..(os.time()+10)..
+    ',run=function() _G.tactus_queue_refresh_test.seen=true;return true end}')
+   file:close()
+   called=true;callback()
+  end,debug.traceback)
+  if not called then callback() end -- Keep the bridge alive even if fixture I/O fails.
+  probe.error=not ok and message or nil
+  probe.first_poll_saw_request=probe.seen
+  probe.complete=true
+  os.remove(request);os.remove(response)
+ end)
+end
+return true
+''', resource_path=LIVE, args={'id': identity})
+    try:
+        for _ in range(5):
+            state = reaper.execute('''
+local p=_G.tactus_queue_refresh_test
+return {complete=p.complete,seen=p.first_poll_saw_request,error=p.error}
+''', resource_path=LIVE)
+            if state['complete']:
+                break
+        assert state['complete'] and not state.get('error'), state
+        assert state['seen'], 'A newly created request must be visible in the next poll'
+    finally:
+        reaper.execute('_G.tactus_queue_refresh_test=nil;return true', resource_path=LIVE)
 
 
 @pytest.mark.skipif(not LIVE, reason="Opt in with isolated TACTUS_REAPER_RESOURCE_PATH")

@@ -1,6 +1,6 @@
 -- Tactus REAPER bridge. Run this script in REAPER (Actions -> ReaScript -> Load).
 -- Native Lua requests execute on the main thread with full ReaScript access.
--- Protocol v1: claimed .lua requests, finite JSON replies, heartbeat. No auto retry.
+-- Protocol v1: fresh directory scans, claimed requests, finite JSON replies. No auto retry.
 if _G.tactus_bridge_running then return end
 _G.tactus_bridge_running = true
 reaper.atexit(function() _G.tactus_bridge_running = nil end)
@@ -99,6 +99,8 @@ end
 
 local last_beat = -math.huge
 local function poll()
+  -- REAPER caches directory listings; new requests must be visible on this tick.
+  reaper.EnumerateFiles(requests, -1)
   local pending, i = {}, 0
   while true do
     local name = reaper.EnumerateFiles(requests, i)
