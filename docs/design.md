@@ -68,6 +68,13 @@ normalized 0..1 數值；原生 Lua 保留其他 chain、routing 與創作操作
 名稱與範圍，每次寫入仍核對當前工程、目標、layout 與所有觀察值；先檢查整批再動手，
 不承諾 setter 失敗後 rollback。這讓互動時少往返，接受／交付音訊才走既有保存與 receipt 流程。
 
+音色載入先使用外掛實際開放給 REAPER 的 preset／標準格式；host 清單不等於外掛的
+私有音色庫。Massive Program List 等初始化與私有格式轉換留在可選的外掛操作指引，
+目前不新增廠牌專用 loader 或保存／重載 API。共用 bridge 維持原生執行、目標核對、
+讀回與完成／錯誤處理；跨外掛反覆出現相同需求後，才抽出有共同契約的固定手續。
+音色搜尋與選擇由作品／Agent 決定；操作順序與驗證界線見
+[preset guidance](../skills/references/reaper.md#plugin-presets-and-private-libraries)。
+
 ### 既有 Agent 對話：可選 MCP 入口
 
 `tactus[mcp]` 以官方 Python SDK 提供 stdio server；`tactus-mcp --resource-path DIR`

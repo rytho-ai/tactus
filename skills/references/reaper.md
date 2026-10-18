@@ -66,6 +66,32 @@ unnecessary for a small audition. Accepted state/audio still follows the lifecyc
 above; an edit reply is not a run receipt. See `examples/reaper/fx.py` in the source
 distribution for inspect/apply JSON commands.
 
+### Plugin presets and private libraries
+
+REAPER's host preset list and a plugin's private sound browser are separate. An
+empty or disabled host list does not establish that the plugin has no sounds or
+that the bridge failed. Inspect the actual installed plugin/version, then use its
+exposed host presets or supported preset-file format through native Lua.
+
+When a chosen sound is not exposed, check the plugin's documented setup or load it
+through its own UI. For example, Massive documents adding chosen sounds to its
+Program List and enabling that list before host/MIDI program selection; this setup
+has **not been verified locally**. See the [NI program-change guide](https://support.native-instruments.com/support/solutions/articles/69000880029-native-instruments-how-to-switch-plug-in-presets-via-midi-program-change).
+Do not silently rebuild a user's program list or populate the entire library.
+
+After loading, read back the target FX identity and relevant actual values; a setter
+returning true or displaying a filename alone is insufficient. Existing native
+state access can reuse a chosen sound, but matching public parameters does not prove
+all private state or audio is identical. Do not replace a whole track chunk merely
+to change one FX: it can overwrite MIDI and routing. Preserve accepted state/audio
+through the lifecycle above.
+
+The bridge has no vendor-specific preset loader. Keep private-format conversion
+and plugin setup in optional, plugin-specific recipes; only extract shared mechanics
+after repeated needs across plugins establish a common contract. Sound search and
+choice remain authored. Renaming or wrapping a proprietary file does not establish
+compatibility with a host-supported format.
+
 ## Connect an existing conversation through MCP
 
 The optional stdio server exposes `reaper_status` and `reaper_execute`; it runs no
