@@ -47,7 +47,7 @@ packages = ["src/tactus"]
 only-include = [
     "src", "tests", "examples", "skills", "design",
     ".claude-plugin", ".codex-plugin", ".agents/plugins",
-    "docs/analysis.md", "docs/design.md", "docs/development.md", "docs/project-commands.md",
+    "docs/analysis.md", "docs/daw-bridge.md", "docs/design.md", "docs/development.md", "docs/project-commands.md",
     "docs/positioning.md", "README.md", "AGENTS.md", "CLAUDE.md",
     "pyproject.toml", "uv.lock", ".python-version",
 ]
