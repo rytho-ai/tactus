@@ -121,26 +121,30 @@ read directly whenever requested. Notifications never replace exact pre-edit che
 
 ## Existing conversation through MCP
 
-Start the installed command with one explicit connection:
+Start one Tactus MCP server for both Live and REAPER:
 
 ```bash
-tactus-mcp --ableton-path "/absolute/User Library/Remote Scripts/TactusBridge"
+tactus-mcp
 ```
 
 For a checkout environment, `uv sync --extra mcp` then
-`uv run python -m tactus.mcp --ableton-path DIR` is equivalent.
-`tactus mcp --ableton-path DIR` also works through the work's selected environment.
-REAPER's existing `--resource-path DIR` invocation is unchanged; each server chooses
-one DAW and exposes two tools for it.
+`uv run python -m tactus.mcp` is equivalent.
+`tactus mcp` also works through the work's selected environment. The command
+finds both installed bridge directories; use
+`--live-path /absolute/User Library/Remote Scripts/TactusBridge` for a custom Live
+location. It exposes two tools per DAW, and either DAW can be unavailable while the
+other remains usable. `tactus-mcp live` and `tactus-mcp reaper` remain available
+for single-DAW connections. The older `--ableton-path DIR` and REAPER
+`--resource-path DIR` launch forms also work.
 
 Example host configuration (use absolute executable/path values):
 
 ```json
 {
   "mcpServers": {
-    "tactus-ableton": {
+    "tactus": {
       "command": "/absolute/path/to/tactus-mcp",
-      "args": ["--ableton-path", "/absolute/User Library/Remote Scripts/TactusBridge"]
+      "args": []
     }
   }
 }
@@ -185,8 +189,8 @@ Live 11 probe, grouped track gain/pan restored together, while a tempo/meter pro
 left the changed meter after Undo. Check the specific operation; do not claim
 transactional rollback.
 
-MCP calls serialize within one server. Cancellation waits for the native worker to
-finish or time out before releasing that server's worker; it cannot stop running
+MCP calls serialize per DAW. Cancellation waits for the native worker to
+finish or time out before releasing that DAW's worker; it cannot stop running
 Python. Other clients and human edits are not locked. Inspect the exact target and
 relevant notes/parameters immediately before writing, and read back afterwards.
 Track indexes, names, runtime IDs and the status snapshot alone are insufficient

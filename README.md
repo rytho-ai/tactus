@@ -67,12 +67,13 @@ librosa is optional via `uv add "tactus[librosa]"`, and `tactus serve` needs
 sample libraries are installed separately. See [package notes](skills/references/packages.md)
 for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record dependency constraints and pins.
 
-To use REAPER or Ableton Live from an existing coding-agent conversation, install
-the optional `tactus[mcp]` extra. Start `tactus-mcp --resource-path DIR` for REAPER,
-or `tactus-mcp --ableton-path DIR` for an installed Ableton Remote Script. Each exposes
-only live status and native execution (Lua/Python), using the same bridge as ordinary
-Python. Max for Live and VST operations use Live's native device access. No separate
-chat app or agent session is needed. See [REAPER setup](skills/references/reaper.md#connect-an-existing-conversation-through-mcp)
+To use REAPER and Ableton Live from an existing coding-agent conversation, install
+the optional `tactus[mcp]` extra and configure one `tactus` MCP connection running
+`tactus-mcp`. It finds both installed bridge locations and exposes two native tools
+per DAW; an unavailable DAW does not block the other. Use `--reaper-path` or
+`--live-path` for custom locations. Max for Live and VST operations use Live's native
+device access. No separate chat app or agent session is needed. See
+[REAPER setup](skills/references/reaper.md#connect-an-existing-conversation-through-mcp)
 and [Ableton setup and limits](skills/references/ableton.md). Ableton status supports
 shared scoped reads: a shallow track/selection overview by default, with notes/device
 detail on request and native change notifications. Shared Python APIs own guarded note

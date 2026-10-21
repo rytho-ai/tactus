@@ -106,11 +106,9 @@ def _main(argv: Sequence[str] | None = None) -> int:
     mcp_command = commands.add_parser(
         "mcp", help="Expose native DAW tools over stdio (needs tactus[mcp])"
     )
-    mcp_target = mcp_command.add_mutually_exclusive_group(required=True)
-    mcp_target.add_argument("--resource-path", type=Path,
-                             help="REAPER resource directory with the bridge running")
-    mcp_target.add_argument("--ableton-path", type=Path,
-                             help="Installed User Library/Remote Scripts/TactusBridge directory")
+    from ._mcp_args import add_connection_arguments
+
+    add_connection_arguments(mcp_command)
     run_command = commands.add_parser("run", help="Execute a Python render() production")
     run_command.add_argument("source", type=Path, help="Python file defining render(*, ...)")
     run_command.add_argument("--out", required=True, type=Path, help="New run directory")
@@ -333,9 +331,18 @@ def _main(argv: Sequence[str] | None = None) -> int:
     try:
         args = parser.parse_args(arguments)
         if args.command == "mcp":
+            from ._mcp_args import connection_kwargs
             from .mcp import serve
 
-            return serve(resource_path=args.resource_path, ableton_path=args.ableton_path)
+            try:
+                connection = connection_kwargs(daw=args.daw, path=args.path,
+                                               resource_path=args.resource_path,
+                                               ableton_path=args.ableton_path,
+                                               reaper_path=args.reaper_path,
+                                               live_path=args.live_path)
+            except ValueError as exc:
+                mcp_command.error(str(exc))
+            return serve(**connection)
         if args.command == "run":
             param_files = {}
             for binding in args.param_file:

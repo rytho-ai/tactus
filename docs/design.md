@@ -77,9 +77,11 @@ normalized 0..1 數值；原生 Lua 保留其他 chain、routing 與創作操作
 
 ### 既有 Agent 對話：可選 MCP 入口
 
-`tactus[mcp]` 以官方 Python SDK 提供 stdio server；`tactus-mcp --resource-path DIR`
-固定連到一個 REAPER resource directory，提供 `reaper_status` 與 `reaper_execute`
-兩個工具。MCP 只提供 host 的工具入口，原生執行仍由同一個 bridge 負責；普通
+`tactus[mcp]` 以官方 Python SDK 提供一個 stdio server；`tactus-mcp` 不帶參數時
+同時找 REAPER 與 Live 的常見安裝目錄，提供 `reaper_status`／`reaper_execute` 和
+`ableton_status`／`ableton_execute` 四個工具。兩個 DAW 各有自己的呼叫佇列，一邊
+未啟動或忙碌不阻塞另一邊。非標準安裝分別用 `--reaper-path DIR`、`--live-path DIR`
+指定。MCP 只提供 host 的工具入口，原生執行仍由同一個 bridge 負責；普通
 Python 用法沒有 MCP dependency。理由是使用者可在原本的 coding-agent 對話中取得
 REAPER 上下文與操作能力，音樂邏輯仍由 Agent 撰寫普通 Python／Lua，不需要另一個
 聊天 app、Agent runtime 或逐項 REAPER editing wrapper。
@@ -88,7 +90,7 @@ Standalone entry 使用自身安裝環境，與歌曲的 lock 分開；`tactus m
 既有 launcher 的 work 環境選擇。Server 可在 REAPER／bridge 尚未啟動時連線，回報
 setup 與 unavailable；稍後啟動 bridge 即可在同一條 MCP 連線讀取現場。工具保留
 原始 JSON args、具名 Undo 與 timeout／late-reply 錯誤，stdout 專供協議。單個 server
-序列化工具呼叫；原生操作開始後，MCP cancellation 等待 bridge 完成或 timeout 才釋放
+各 DAW 分別序列化工具呼叫；原生操作開始後，MCP cancellation 等待 bridge 完成或 timeout 才釋放
 worker；caller 可能較早收到取消確認，不代表取消 Lua 或 rollback。其他 clients／GUI
 編輯不被鎖定。
 
@@ -112,9 +114,10 @@ server 的 mid-session reload 依各 host 支援，不承諾所有 coding agents
 Live 自己決定顯示的 Undo 名稱，caller 的 label 不改名原生 Undo。並非所有動作
 都可 Undo。物件 ID 只供當次 Live 使用，寫入前仍須核對實際目標與相關狀態。
 
-MCP 沿用同一個 optional entry；`--ableton-path DIR` 與 REAPER 的 `--resource-path DIR`
-擇一，每個 server 只提供該 DAW 的 `status`、`execute` 兩個工具。SDK、序列化與
-cancellation 的責任維持在 MCP 層，普通 Python 不依賴 MCP。Status 提供 Live／內嵌
+MCP 沿用同一個 optional entry；預設兩種 DAW 都可用，`tactus-mcp live`／
+`tactus-mcp reaper` 保留只載入單一 DAW 的用法，舊的 `--ableton-path`／
+`--resource-path` 啟動參數也保留相容。SDK、序列化與 cancellation 的責任維持在
+MCP 層，普通 Python 不依賴 MCP。Status 提供 Live／內嵌
 Python 版本、工程、選中 track／device 與 detail clip；不宣稱取得所有 GUI 選取範圍。
 
 `TactusBridge/state.py` 統一讀取原生狀態；普通 Python 的 `ableton.read`、MCP status、
@@ -151,7 +154,7 @@ enabled 狀態仍在每次寫入前直接核對；整批通過才寫，回傳精
 `transport.playing` 處理已停止 workspace 的播放／停止與確認；caller 明確選模式、起點、
 Session clip 與量化，演奏時間留在 context 內。`audio.record/capture` 處理 tap 命令確認、
 收尾、暫存檔、解碼與失敗證據；回傳原始錄音，不裁切、對齊、調音量或排除靜音。
-Max 命令與 tap 錄音宣告已知 AMXD／JS 工具來源。MCP 維持兩個入口；共用機制可以從普通
+Max 命令與 tap 錄音宣告已知 AMXD／JS 工具來源。MCP 維持一個入口、每個 DAW 兩個工具；共用機制可以從普通
 Python 使用，原生 MCP execute 直接使用同一份 selection／target 實作。
 
 `ableton_support.project` 擁有保存、收集、驗證、交接與重建，macOS 檔案 adapter 隨套件

@@ -29,7 +29,7 @@ LIVE = os.environ.get("TACTUS_REAPER_RESOURCE_PATH")
 async def client(resource, *, command=None, arguments=None):
     params = StdioServerParameters(
         command=command or sys.executable,
-        args=arguments or ["-m", "tactus.mcp", "--resource-path", str(resource)],
+        args=arguments or ["-m", "tactus.mcp", "reaper", "--path", str(resource)],
     )
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         init = await session.initialize()
@@ -235,7 +235,7 @@ main(['mcp','--help'])
     result = subprocess.run([sys.executable, "-c", code], cwd=tmp_path,
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
-    assert "--resource-path" in result.stdout
+    assert "omit to expose both" in result.stdout
 
 
 @pytest.mark.skipif(not LIVE, reason="Use isolated TACTUS_REAPER_RESOURCE_PATH")

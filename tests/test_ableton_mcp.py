@@ -15,13 +15,13 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from mcp.types import CancelledNotification, CancelledNotificationParams, ClientNotification
 
 from tactus import mcp as entry
-from tactus.bridges import ableton
+from tactus.bridges import ableton, reaper
 
 
 def test_real_stdio_discovery_and_offline_status(tmp_path):
     async def trial():
         params = StdioServerParameters(command=sys.executable, args=[
-            "-m", "tactus.mcp", "--ableton-path", str(tmp_path),
+            "-m", "tactus.mcp", "live", "--path", str(tmp_path),
         ])
         async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
             await session.initialize()
@@ -103,11 +103,47 @@ def test_cancellation_keeps_running_python_serialized(tmp_path, monkeypatch):
     assert finished == ["first", "second"]
 
 
-def test_exactly_one_daw_connection(tmp_path):
-    with pytest.raises(ValueError, match="exactly one"):
+def test_one_or_both_daw_connections(tmp_path):
+    with pytest.raises(ValueError, match="at least one"):
         entry.create_server()
-    with pytest.raises(ValueError, match="exactly one"):
-        entry.create_server(resource_path=tmp_path, ableton_path=tmp_path)
+    server = entry.create_server(resource_path=tmp_path, ableton_path=tmp_path)
+
+    async def trial():
+        async with create_connected_server_and_client_session(server) as session:
+            names = {tool.name for tool in (await session.list_tools()).tools}
+            assert names == {"reaper_status", "reaper_execute",
+                             "ableton_status", "ableton_execute"}
+            for name in ("reaper_status", "ableton_status"):
+                status = (await session.call_tool(name)).structuredContent
+                assert status["status"] == "unavailable"
+    anyio.run(trial)
+
+
+def test_busy_reaper_does_not_block_live(tmp_path, monkeypatch):
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow_reaper(code, **kwargs):
+        started.set()
+        assert release.wait(2)
+        return "reaper done"
+
+    monkeypatch.setattr(reaper, "execute", slow_reaper)
+    monkeypatch.setattr(ableton, "execute", lambda code, **kwargs: "live done")
+    server = entry.create_server(resource_path=tmp_path, ableton_path=tmp_path)
+
+    async def trial():
+        async with create_connected_server_and_client_session(server) as session:
+            pending = asyncio.create_task(session.call_tool("reaper_execute", {"code": "wait"}))
+            try:
+                assert await anyio.to_thread.run_sync(started.wait, 1)
+                live = await asyncio.wait_for(
+                    session.call_tool("ableton_execute", {"code": "result=1"}), timeout=1)
+                assert live.structuredContent == {"result": "live done"}
+            finally:
+                release.set()
+            assert (await pending).structuredContent == {"result": "reaper done"}
+    anyio.run(trial)
 
 
 @pytest.mark.skipif(not os.environ.get("TACTUS_ABLETON_PATH"), reason="Use isolated Live Set")
