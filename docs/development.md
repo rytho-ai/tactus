@@ -85,10 +85,29 @@ for tested mechanisms. This repository is the active Tactus product, formerly `t
 
 ## Installation choices
 
-The README's editable install follows this checkout, including source edits. For a portable
-work with a pinned Git installation, follow
+The README installs from a release tag without `--editable`. In a development checkout,
+`uv run` uses the current source; `uv tool install --python 3.12 --editable .` deliberately
+follows later edits. Keep development and release checkouts separate so the global CLI
+does not silently move with unfinished work. For a portable work with a pinned Git
+installation, follow
 [Install and select a work](../skills/references/project-commands.md#install-and-select-a-work).
 Use `uv tool install --force` when intentionally replacing an existing CLI installation.
+
+## Release channel
+
+The public `main` branch and its tags are the release source. Ongoing work may live in a
+separate private development repository, but it is still the same `tactus` Python
+package and plugin. A public release pull request starts from public `main` and contains
+only the reviewed feature, its tests and its usage contract. Never merge a whole
+development branch merely to publish one capability. Sync public `main` back into the
+development repository after a release.
+
+The required `verify` check covers installation, lint, focused runtime/plugin tests,
+CLI startup and package build. It is a minimum promotion gate; include relevant full
+tests and actual DAW or plugin-host verification in a feature's pull request when its
+claims require them. A green check alone does not establish musical or native-host
+quality. Tag the reviewed public commit with the package version only after the pull
+request and required checks pass.
 
 ## Building distributions
 
