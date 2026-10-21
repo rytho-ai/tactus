@@ -53,7 +53,7 @@ def main() -> int:
         project = selected_project(explicit)
         if explicit is not None and project is None:
             raise ValueError(f"no Tactus work found at {explicit}")
-        if project is not None and args[:1] != ["init"]:
+        if project is not None and args[:1] not in (["init"], ["connect"]):
             owner = environment_root(project.root)
             if not (owner / "uv.lock").is_file():
                 if owner == project.root:

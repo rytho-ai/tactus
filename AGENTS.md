@@ -34,6 +34,8 @@ the same flow.
 
 The single Tactus plugin uses root `.claude-plugin/` and `.codex-plugin/` manifests.
 Its shared skills, references and examples live under `skills/`; both marketplaces target `.`.
+Name the agent connection **Tactus MCP** (config ID `tactus-mcp`) and the DAW-facing
+scripts `TactusMCP.lua` (REAPER) and `TactusMCP` (Live) in setup and documentation.
 
 Use `uv` for Python environments, dependencies, and command execution: `uv sync` to prepare
 the environment, `uv add` to manage dependencies, and `uv run python ...` for scripts and

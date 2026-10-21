@@ -40,6 +40,7 @@ def test_marketplaces_resolve_the_same_versioned_plugin():
             assert manifest["interface"]["shortDescription"] == description
     assert {p.parent.name for p in SKILLS.glob("*/SKILL.md")} == {
         "compose",
+        "daw",
         "dsp",
         "interactive",
         "measure",

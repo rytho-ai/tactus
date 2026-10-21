@@ -94,7 +94,8 @@ def manifest_bytes(entries: list[tuple[str, str]]) -> bytes:
 def parse_manifest(data: bytes) -> list[tuple[str, str]]:
     """Parse manifest bytes back into `(relative path, file sha256)` pairs."""
     entries = []
-    for line in data.decode("utf-8").splitlines():
+    # Canonical records end in LF. CR is valid in filenames, including macOS Icon\r.
+    for line in data.decode("utf-8").split("\n"):
         if not line:
             continue
         relative, _, digest = line.partition("\t")

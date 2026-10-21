@@ -254,6 +254,9 @@ them for creative decisions in `render`.
 
 ## Export a completed render
 
+To hand a saved run to a native REAPER project, register the
+[REAPER bridge exporter](reaper.md#hand-completed-audio-to-reaper).
+
 ```bash
 tactus export wav runs/a --out delivery/pcm
 tactus export wav runs/a --subtype DOUBLE --out delivery/original

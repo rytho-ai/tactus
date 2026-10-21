@@ -122,8 +122,8 @@ Install once with
 `tactus init DIR --tactus-path TACTUS_CHECKOUT` during local development, or pin a published
 revision with `--tactus URL@REV`. Inside the work, plain `tactus ...` uses its locked environment.
 `tactus --project DIR ...` selects it explicitly; file arguments keep their cwd meaning. `uv add PACKAGE` adds a package to the work
-only; the work's Python is pinned to what `init` copied from the running Tactus, not chosen by
-the work.
+only; `.python-version` pins the running Tactus's Python minor version. `requires-python`
+retains the installed package's compatibility constraint; the work can revise its pin explicitly.
 
 When entering an existing work from another directory or running Python scratch scripts,
 read [Selecting a work's environment](project-commands.md#selecting-a-works-environment).

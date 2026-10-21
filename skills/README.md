@@ -4,11 +4,12 @@
 
 Arrange, render, analyze, and refine.
 
-Seven composable skills for making music with the separately installed Tactus Python runtime:
+Eight composable skills for making music with the separately installed Tactus Python runtime:
 
 | Skill | Responsibility |
 |---|---|
 | [compose](compose/SKILL.md) | Develop and maintain a work as functional, modular code, choosing among synthesis, recorded material and devices; render, listen and revise. |
+| [daw](daw/SKILL.md) | Use REAPER or Ableton Live as a music package, hand off accepted work, or co-work through scoped native reads and edits, including Max for Live and hosted VSTs. |
 | [resources](resources/SKILL.md) | Acquire audio files and reviewed VST instruments/effects; verify access, rights and file or host behavior, preserving provenance. |
 | [dsp](dsp/SKILL.md) | Use or build sound sources, processors and controls, validate their behavior and accelerate measured bottlenecks. |
 | [measure](measure/SKILL.md) | Use or write analyses, check joins and loop wraps, evaluate their limits and supply observations for creative choices. |
@@ -19,8 +20,10 @@ Seven composable skills for making music with the separately installed Tactus Py
 Compose uses version when starting and adopting revisions, and links to DSP and
 measurement when an idea needs them; interactive builds on compose when other code reads or
 changes the work, and visual joins pictures to its time. Resources supplies external audio
-and plugin choices when compose needs material or tools. All seven are independently
-usable. Builtin functions, Pedalboard and local Python are ordinary options. The skills
+and plugin choices when compose needs material or tools. Daw selects REAPER or Live
+guidance for direct host operations and joins compose when adopting or delivering audio.
+All eight are independently usable. Builtin functions, Pedalboard and local Python
+are ordinary options. The skills
 provide working methods and adaptable examples; musical form and aesthetics remain yours.
 
 ## Install from a checkout
@@ -63,6 +66,7 @@ The shared content has one owner:
 ```text
 skills/
   compose/SKILL.md
+  daw/SKILL.md
   resources/SKILL.md
   dsp/SKILL.md
   measure/SKILL.md

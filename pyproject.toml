@@ -22,9 +22,19 @@ serve = [
     "fastapi>=0.143.0",
     "uvicorn>=0.54.0",
 ]
+mcp = [
+    "mcp>=1.26,<2",
+]
+ableton-visual = [
+    "pillow>=10",
+    "pyobjc-framework-quartz>=12.2.2 ; sys_platform == 'darwin'",
+    "pyobjc-framework-screencapturekit>=12.2.2 ; sys_platform == 'darwin'",
+    "windows-capture>=2 ; sys_platform == 'win32'",
+]
 
 [project.scripts]
 tactus = "tactus.launcher:main"
+tactus-mcp = "tactus.mcp:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,6 +61,7 @@ exclude = [
 [dependency-groups]
 dev = [
     "fastapi>=0.143.0",
+    "mcp>=1.26,<2",
     "pytest>=8.3",
     "ruff>=0.6",
     "uvicorn>=0.54.0",
@@ -58,7 +69,11 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [".claude/worktrees"]
+extend-exclude = [
+    ".claude/worktrees",
+    "src/tactus/bridges/ableton_support/_vendor",
+    "tests/ableton_reference",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
