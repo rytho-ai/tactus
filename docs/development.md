@@ -85,8 +85,9 @@ for tested mechanisms. This repository is the active Tactus product, formerly `t
 
 ## Installation choices
 
-The README installs from a release tag without `--editable`. In a development checkout,
-`uv run` uses the current source; `uv tool install --python 3.12 --editable .` deliberately
+The README installs from public `main` without `--editable` until a release tag is
+available. In a development checkout, `uv run` uses the current source;
+`uv tool install --python 3.12 --editable .` deliberately
 follows later edits. Keep development and release checkouts separate so the global CLI
 does not silently move with unfinished work. For a portable work with a pinned Git
 installation, follow

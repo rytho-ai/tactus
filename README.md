@@ -67,36 +67,19 @@ librosa is optional via `uv add "tactus[librosa]"`, and `tactus serve` needs
 sample libraries are installed separately. See [package notes](skills/references/packages.md)
 for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record dependency constraints and pins.
 
-To use REAPER and Ableton Live from an existing coding-agent conversation, install
-the optional `tactus[mcp]` extra, then run `tactus connect --host codex` (or
-`tactus connect` to install the DAW bridges without changing an agent host).
-From a source checkout, use `uv run tactus connect --host codex` after
-`uv sync --extra mcp`. `tactus connect --check --host codex` reports setup state
-without writing anything.
-The bundled installer copies both native scripts; no GitHub script download is needed.
-In REAPER, load/run the printed Action once. In Live, restart and select the printed
-Control Surface. The single **Tactus MCP** connection (`tactus-mcp`) finds both bridge
-locations, exposes two native tools per DAW, and lists connected processes/projects
-with `tactus_connections`; an
-unavailable DAW does not block the other. Use `--reaper-path` or
-`--live-path` for custom locations. Max for Live and VST operations use Live's native
-device access. No separate chat app or agent session is needed. See
-[REAPER setup](skills/references/reaper.md#connect-an-existing-conversation-through-mcp)
-and [Ableton setup and limits](skills/references/ableton.md). Ableton status supports
-shared scoped reads: a shallow track/selection overview by default, with notes/device
-detail on request and native change notifications. Shared Python APIs own guarded note
-edits, guarded parameter batches, device loading/settings, playback/recording completion
-and native project handoff/rebuild;
-authored code retains musical values, routing and timing.
+### DAW bridges
 
-REAPER likewise shares selected-note guards, guarded FX batches, private offline rendering and native
-project capture/rebuild through Python APIs; musical Lua stays authored. See the
-[REAPER reference](skills/references/reaper.md).
+Tactus can inspect and edit an open REAPER project or Ableton Live Set through each
+DAW's native API. Start with the [DAW bridge setup guide](docs/daw-bridge.md): it covers
+installation, activation inside each DAW, MCP registration, connection checks,
+custom paths and updates. The bundled installer supplies both scripts; one optional
+`tactus-mcp` connection can serve both DAWs in an existing agent conversation.
 
-For a small interactive edit, use the mutation's fresh readback and audition in the
-open DAW. Parameter/browser descriptions can be reused; writes still check current
-native state. Recording, capture and Tactus rendering belong to adopting/delivering
-the chosen result, so they need not run after every small change.
+The [REAPER reference](skills/references/reaper.md) and
+[Ableton reference](skills/references/ableton.md) cover native editing, instruments,
+effects, project handoff and accepted work. Musical choices remain in the agent's
+Python or native code. Small interactive edits can be read back and auditioned in the
+open DAW before accepting or delivering a result.
 
 ### Agent skills
 
@@ -267,6 +250,7 @@ is a film workflow outside Tactus.
 - [Interactive works](skills/interactive/SKILL.md): maps, performances as input, rendering on request, checked joins and delivery.
 - [Pictures that follow the music](skills/visual/SKILL.md): videos, playing pages and live visuals timed from a run.
 - [Reuse saved renders](skills/references/runtime.md#reuse-saved-render-outputs): load selected original arrays with one pinned ref.
+- [DAW bridge setup](docs/daw-bridge.md): install, activate and check the REAPER/Live connection in an existing agent conversation.
 - [REAPER bridge](skills/references/reaper.md): read live state, borrow native instruments/effects, co-work, capture accepted projects for pinned rebuild/replay, and hand off native state or saved stems. Python use has no MCP dependency; an optional MCP entry serves existing agent conversations. See the [lifecycle example](examples/reaper/README.md).
 - [Ableton bridge](skills/references/ableton.md): native Python and optional two-tool MCP access; real-time Max audio, saved native handoff, guarded MIDI co-work, and pinned project/media rebuild/replay. See [Ableton workflows and coverage](examples/ableton/README.md).
 - [Physical synthesis](skills/references/instruments.md): `synth.piano` (grand/felt, pedals), with no external sound assets.
