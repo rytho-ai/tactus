@@ -106,8 +106,12 @@ bridge adapter。Adapter 只交付發現連線、讀取工程摘要與執行原�
 音軌、clip、效果或創作選擇轉成強制共用模型；Live 一個程序只讀當前 Set，不為此
 建立多 Set 管理層。沒有第三套 DAW 的實測前，不預先建立通用 adapter framework。
 
-Host 設定與 skills 可獨立安裝；不自動修改使用者設定、啟動／結束 REAPER、複製對話
-或綁定模型。先配置工具、之後按需啟動 bridge，是保留原對話的基本路徑。新增 MCP
+Host 設定與 skills 可獨立安裝。使用者明確執行 `tactus connect` 時，安裝套件內附的
+REAPER／Live 腳本；`--host codex` 才註冊名為 `tactus-mcp` 的 Codex MCP 入口，
+`--check` 只讀取狀態。更新既有腳本前保留備份；不修改 REAPER startup script、
+Live Control Surface 槽位、當前工程、模型設定，也不啟動／結束 DAW 或複製對話。
+REAPER 的 Action 載入／執行與 Live 的 Control Surface 選取仍需在 DAW 內完成。
+先配置工具、之後按需啟動 bridge，是保留原對話的基本路徑。新增 MCP
 server 的 mid-session reload 依各 host 支援，不承諾所有 coding agents 能動態載入。
 連線方式與界線見 [MCP setup](../skills/references/reaper.md#connect-an-existing-conversation-through-mcp)。
 
@@ -115,7 +119,7 @@ server 的 mid-session reload 依各 host 支援，不承諾所有 coding agents
 
 `tactus.bridges.ableton.execute` 以相同的小介面執行原生 Python：傳入明確 `args`，
 在 Live 主執行緒取得 `Live`、`song`、`app`，以 `result` 交回有限 JSON。
-隨套件提供的 `TactusBridge` Remote Script 安裝到 User Library，以本機檔案佇列
+隨套件提供的 Remote Script 以 `TactusMCP` 名稱安裝到 User Library，以本機檔案佇列
 接收請求；caller 明確指定安裝目錄 `bridge_path`。不另建共用 DAW／Track／Session
 模型，不逐項包裝 Live API，也不以 API 文字黑名單限制創作。理由與 REAPER 相同：
 共用的是傳輸、完成與錯誤處理，音樂與目標檢查仍由作品原生程式表達。

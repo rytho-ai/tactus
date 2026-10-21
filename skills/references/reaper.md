@@ -104,11 +104,19 @@ Install the extra in the environment that will start the server. From a checkout
 
 ```bash
 uv sync --extra mcp
-uv run --extra mcp python -c 'from tactus.bridges.reaper import script; print(script())'
+uv run tactus connect --host codex
 ```
 
-In REAPER, use Options → Show REAPER resource path to find its resource directory.
-Load the printed Lua path with Actions → ReaScript → Load and run that Action once.
+This copies the bundled REAPER script into the REAPER resource directory and registers
+the `tactus-mcp` Codex connection. No separate GitHub download is needed. Use
+`--reaper-path DIR` for a custom REAPER resource directory; `--check` only reports
+state. The command prints the installed `TactusMCP.lua` path. In REAPER, open Actions,
+choose **ReaScript: Load**, select that path, then run the new Action. If an older
+`tactus-mcp.lua` or `Tactus MCP.lua` Action was registered, stop and remove it after
+loading the new one, then delete the old script file. Updating
+Tactus requires rerunning `tactus connect`, then stopping and rerunning the Action.
+The installer does not change existing startup scripts or the current project.
+
 REAPER and the MCP server must share the local filesystem. The script has full
 native ReaScript/file access, just as through the ordinary Python bridge.
 
@@ -116,14 +124,15 @@ Each native poll rereads the request directory, bypassing REAPER's cached listin
 so newly submitted commands can be seen on that poll. After updating Tactus, stop
 and rerun the bridge Action to load its new source; the project need not be reopened.
 
-Configure one `tactus` MCP connection for both REAPER and Live. Use an absolute
+Configure one `tactus-mcp` MCP connection for both REAPER and Live. The
+`tactus connect --host codex` command handles Codex. For other hosts, use an absolute
 executable path. The no-argument command finds both usual bridge locations;
 append `--reaper-path /absolute/REAPER/resources` for a custom REAPER location:
 
 ```json
 {
   "mcpServers": {
-    "tactus": {
+    "tactus-mcp": {
       "command": "/absolute/path/to/checkout/.venv/bin/python",
       "args": ["-m", "tactus.mcp"]
     }
@@ -145,13 +154,13 @@ selects the current work's environment; that work must have the MCP extra too.
 For Codex CLI, add the same executable and arguments:
 
 ```bash
-codex mcp add tactus -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp
+codex mcp add tactus-mcp -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp
 ```
 
 For Claude Code, from the intended project:
 
 ```bash
-claude mcp add --transport stdio tactus -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp
+claude mcp add --transport stdio tactus-mcp -- /absolute/path/to/checkout/.venv/bin/python -m tactus.mcp
 ```
 
 Quote each path containing spaces when using a shell. These commands write host

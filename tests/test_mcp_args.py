@@ -18,7 +18,7 @@ def resolve(daw=None, path=None, resource_path=None, ableton_path=None,
 
 def test_short_names_discover_installed_directories(tmp_path, monkeypatch):
     reaper = tmp_path / "REAPER"
-    live = tmp_path / "TactusBridge"
+    live = tmp_path / "TactusMCP"
     reaper.mkdir()
     live.mkdir()
     monkeypatch.setattr(_mcp_args, "_candidates", lambda daw: [
@@ -51,6 +51,23 @@ def test_missing_or_mixed_target_explains_override(tmp_path, monkeypatch):
         resolve(path=missing)
     with pytest.raises(ValueError, match="do not combine"):
         resolve("reaper", resource_path=Path("legacy"))
+
+
+def test_live_prefers_running_previous_script_until_new_script_is_active(tmp_path, monkeypatch):
+    library = tmp_path / "User Library"
+    new = library / "Remote Scripts" / "TactusMCP"
+    old = library / "Remote Scripts" / "TactusBridge"
+    new.mkdir(parents=True)
+    old.mkdir()
+    monkeypatch.setattr(_mcp_args, "user_library_candidates", lambda: [library])
+    from tactus.bridges import _instances
+
+    monkeypatch.setattr(_instances, "available", lambda path: [{"running": True}]
+                        if path.parent == old else [])
+    assert resolve("live") == {"ableton_path": old}
+    monkeypatch.setattr(_instances, "available", lambda path: [{"running": True}]
+                        if path.parent == new else [])
+    assert resolve("live") == {"ableton_path": new}
 
 
 def test_main_cli_accepts_short_target_before_server_start(tmp_path, capsys):

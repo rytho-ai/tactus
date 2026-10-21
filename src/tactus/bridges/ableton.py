@@ -80,7 +80,7 @@ def execute(code: str, *, bridge_path: str | Path, args=None,
             connection_id: str | None = None, project_id: str | None = None):
     """Run Python on Live's main thread; return the finite JSON value of `result`.
 
-    `bridge_path` is the installed TactusBridge directory. Code receives native
+    `bridge_path` is the installed Remote Script directory. Code receives native
     Live/song/app/state, explicit args, and result=None. Prints go to Python stderr.
     `undo` requests a native Undo group; Live owns the displayed Undo description.
     Errors/timeouts never imply rollback/cancellation and are never retried.
@@ -102,7 +102,7 @@ def execute(code: str, *, bridge_path: str | Path, args=None,
     except ValueError as exc:
         raise BridgeError(
             f"Ableton bridge unavailable at {base}: {exc}. "
-            f"Copy {script()} into User Library/Remote Scripts and select TactusBridge "
+            f"Run tactus connect to install {script()} and select TactusMCP "
             "in Live's MIDI preferences."
         ) from exc
     if root == base and (connection_id is not None or project_id is not None):

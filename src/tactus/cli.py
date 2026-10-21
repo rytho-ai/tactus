@@ -103,6 +103,15 @@ def _main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version}")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Report the installed environment")
+    connect_command = commands.add_parser("connect", help="Install and check DAW connections")
+    connect_command.add_argument("--host", choices=("codex",),
+                                 help="Configure this agent host's Tactus MCP entry")
+    connect_command.add_argument("--reaper-path", type=Path,
+                                 help="Override the REAPER resource directory")
+    connect_command.add_argument("--live-library", type=Path,
+                                 help="Override Live's User Library directory")
+    connect_command.add_argument("--check", action="store_true",
+                                 help="Report setup state without changing files or settings")
     mcp_command = commands.add_parser(
         "mcp", help="Expose native DAW tools over stdio (needs tactus[mcp])"
     )
@@ -330,6 +339,31 @@ def _main(argv: Sequence[str] | None = None) -> int:
             sub.set_defaults(callable_command=command, param_names=names)
     try:
         args = parser.parse_args(arguments)
+        if args.command == "connect":
+            from .connect import connect
+
+            report = connect(host=args.host, reaper_path=args.reaper_path,
+                             live_library=args.live_library, check=args.check)
+            if sys.stdout.isatty():
+                print("Tactus MCP setup" + (" (check only)" if args.check else ""))
+                for label in ("reaper", "live", "host"):
+                    if item := report.get(label):
+                        print(f"{label.upper()}: {item['state']}")
+                        if path := item.get("path"):
+                            print(f"  {path}")
+                        if reason := item.get("reason"):
+                            print(f"  {reason}")
+                        if backup := item.get("backup"):
+                            print(f"  Previous files backed up to {backup}")
+                        if previous := item.get("previous_name"):
+                            print(f"  Previous script preserved at {previous}")
+                        for previous in item.get("previous_names", []):
+                            print(f"  Previous script preserved at {previous}")
+                        if step := item.get("next_step"):
+                            print(f"  Next: {step}")
+            else:
+                print(json.dumps(report, sort_keys=True))
+            return 0
         if args.command == "mcp":
             from ._mcp_args import connection_kwargs
             from .mcp import serve

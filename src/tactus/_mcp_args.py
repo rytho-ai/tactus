@@ -7,6 +7,9 @@ from pathlib import Path
 
 from .bridges.ableton_support._vendor.ableton_paths import user_library_candidates
 
+LIVE_SCRIPT_NAME = "TactusMCP"
+LEGACY_LIVE_SCRIPT_NAME = "TactusBridge"
+
 
 def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
     """Default to both DAWs while retaining targeted and legacy launch forms."""
@@ -17,7 +20,7 @@ def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--reaper-path", type=Path,
                         help="Override REAPER's resource directory in dual-DAW mode")
     parser.add_argument("--live-path", type=Path,
-                        help="Override Live's installed TactusBridge directory in dual-DAW mode")
+                        help="Override Live's installed TactusMCP directory in dual-DAW mode")
     legacy = parser.add_mutually_exclusive_group()
     legacy.add_argument("--resource-path", type=Path, help=argparse.SUPPRESS)
     legacy.add_argument("--ableton-path", type=Path, help=argparse.SUPPRESS)
@@ -25,7 +28,9 @@ def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _candidates(daw: str) -> list[Path]:
     if daw == "live":
-        return [p / "Remote Scripts" / "TactusBridge" for p in user_library_candidates()]
+        libraries = user_library_candidates()
+        return ([p / "Remote Scripts" / LIVE_SCRIPT_NAME for p in libraries]
+                + [p / "Remote Scripts" / LEGACY_LIVE_SCRIPT_NAME for p in libraries])
     home = Path.home()
     system = platform.system()
     if system == "Darwin":
@@ -38,6 +43,15 @@ def _candidates(daw: str) -> list[Path]:
 
 def _detected_path(daw: str, *, required: bool) -> Path:
     candidates = _candidates(daw)
+    if daw == "live":
+        # During migration, keep a running legacy bridge reachable until Live selects
+        # the newly installed Control Surface and the MCP client is restarted.
+        from .bridges._instances import available
+
+        active = next((path for path in candidates if path.is_dir()
+                       and available(path / "tactus-bridge")), None)
+        if active is not None:
+            return active
     path = next((candidate for candidate in candidates if candidate.is_dir()), None)
     if path is not None:
         return path
@@ -47,7 +61,7 @@ def _detected_path(daw: str, *, required: bool) -> Path:
     if daw == "reaper":
         advice = "In REAPER choose Options > Show REAPER resource path"
     else:
-        advice = "Install TactusBridge in Live's User Library/Remote Scripts"
+        advice = "Run tactus connect to install the Live Remote Script"
     raise ValueError(f"Cannot find {daw} connection directory. Checked: {checked}. "
                      f"{advice}. Use --path DIR if needed.")
 

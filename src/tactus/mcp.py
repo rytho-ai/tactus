@@ -131,7 +131,7 @@ def create_server(*, resource_path: str | Path | None = None,
         }
     instructions = "\n".join(_ABLETON_INSTRUCTIONS if prefix == "ableton" else _INSTRUCTIONS
                              for prefix in targets)
-    server = Server("tactus", version=version("tactus"), instructions=instructions)
+    server = Server("tactus-mcp", version=version("tactus"), instructions=instructions)
 
     @server.list_tools()
     async def list_tools():

@@ -33,7 +33,7 @@ async def client(resource, *, command=None, arguments=None):
     )
     async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
         init = await session.initialize()
-        assert init.serverInfo.name == "tactus"
+        assert init.serverInfo.name == "tactus-mcp"
         yield session
 
 

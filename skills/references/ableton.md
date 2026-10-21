@@ -14,26 +14,31 @@ Install Tactus with the optional extra if using MCP. From the checkout:
 
 ```bash
 uv tool install --python 3.12 --editable '.[mcp]'
-uv run python -c 'from tactus.bridges.ableton import script; print(script())'
+uv run tactus connect
 ```
 
-Copy the printed **TactusBridge directory**, including all its `.py` files, into
-`User Library/Remote Scripts/`. Do not run it in an external Python interpreter.
-The default macOS location is `~/Music/Ableton/User Library/Remote Scripts/TactusBridge`;
-Windows uses `Documents/Ableton/User Library/Remote Scripts/TactusBridge`.
+`tactus connect` installs the bundled **TactusMCP directory** into
+`User Library/Remote Scripts/`. No separate download or manual copy is needed.
+Use `--live-library DIR` when Live's User Library is elsewhere; use `--check` to
+inspect without changing files.
+The default macOS location is `~/Music/Ableton/User Library/Remote Scripts/TactusMCP`;
+Windows uses `Documents/Ableton/User Library/Remote Scripts/TactusMCP`.
 Use the actual User Library location if customized.
 
-Restart Live, then select **TactusBridge** in an unused Control Surface slot under
+Restart Live, then select **TactusMCP** in an unused Control Surface slot under
 Preferences → Link/Tempo/MIDI (Settings → MIDI in newer versions). Input and Output
-can remain None; this bridge does not need MIDI ports. Keep any existing controller
-scripts. See [Ableton's installation instructions](https://help.ableton.com/hc/en-us/articles/209072009-Installing-third-party-remote-scripts).
+can remain None; this bridge does not need MIDI ports. If upgrading from
+`TactusBridge`, replace that slot with `TactusMCP`. Keep other controller scripts.
+The previous `TactusBridge` folder remains available during migration; remove it
+after the new script is verified. See [Ableton's installation instructions](https://help.ableton.com/hc/en-us/articles/209072009-Installing-third-party-remote-scripts).
 
 `bridge_path` below is that **installed script directory**, not its `tactus-bridge`
 subdirectory or the packaged source. Live and the caller must share the filesystem
 and have write access there. The script creates its local queue when activated.
 Treat this as full trusted Python/native/file access, just like a work's own code.
-Setup does not save, launch or quit Live, or edit agent-host configuration.
-After updating Tactus, update the installed script copy and restart Live.
+Setup does not save, launch or quit Live, or change its Control Surface selection.
+It edits agent-host configuration only with `--host codex`. After updating Tactus,
+rerun `tactus connect` and restart Live. Differing installed files are backed up.
 
 ## Ordinary Python
 
@@ -42,7 +47,7 @@ from tactus.bridges import ableton
 
 selected = ableton.execute(
     "result = {'name': song.view.selected_track.name, 'tempo': song.tempo}",
-    bridge_path="/absolute/User Library/Remote Scripts/TactusBridge",
+    bridge_path="/absolute/User Library/Remote Scripts/TactusMCP",
 )
 ```
 
@@ -132,7 +137,7 @@ For a checkout environment, `uv sync --extra mcp` then
 `uv run python -m tactus.mcp` is equivalent.
 `tactus mcp` also works through the work's selected environment. The command
 finds both installed bridge directories; use
-`--live-path /absolute/User Library/Remote Scripts/TactusBridge` for a custom Live
+`--live-path /absolute/User Library/Remote Scripts/TactusMCP` for a custom Live
 location. It exposes two native tools per DAW plus `tactus_connections`; either DAW
 can be unavailable while the
 other remains usable. `tactus-mcp live` and `tactus-mcp reaper` remain available
@@ -144,7 +149,7 @@ Example host configuration (use absolute executable/path values):
 ```json
 {
   "mcpServers": {
-    "tactus": {
+    "tactus-mcp": {
       "command": "/absolute/path/to/tactus-mcp",
       "args": []
     }

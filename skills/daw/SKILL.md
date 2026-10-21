@@ -23,7 +23,7 @@ Read the relevant reference before calling its bridge:
   deliver through **Hand completed audio to REAPER** or **Capture and rebuild accepted state**.
   For private sound libraries, read [Plugin presets and private libraries](../references/reaper.md#plugin-presets-and-private-libraries).
 - **Ableton Live:** [Ableton bridge](../references/ableton.md). Host Python sends native
-  Python to Live's embedded interpreter; `bridge_path` is the installed TactusBridge
+  Python to Live's embedded interpreter; `bridge_path` is the installed `TactusMCP`
   directory. Read **Install once** if unavailable. Use **Shared reads and observed changes**,
   **Max for Live and VST**, and **Audio, handoff and accepted native work** as needed.
   Embedded Python and Max API availability depend on the actual installed versions.
