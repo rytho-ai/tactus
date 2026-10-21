@@ -69,8 +69,9 @@ for integration details; [pyproject.toml](pyproject.toml) and `uv.lock` record d
 
 To use REAPER and Ableton Live from an existing coding-agent conversation, install
 the optional `tactus[mcp]` extra and configure one `tactus` MCP connection running
-`tactus-mcp`. It finds both installed bridge locations and exposes two native tools
-per DAW; an unavailable DAW does not block the other. Use `--reaper-path` or
+`tactus-mcp`. It finds both installed bridge locations, exposes two native tools
+per DAW, and lists connected processes/projects with `tactus_connections`; an
+unavailable DAW does not block the other. Use `--reaper-path` or
 `--live-path` for custom locations. Max for Live and VST operations use Live's native
 device access. No separate chat app or agent session is needed. See
 [REAPER setup](skills/references/reaper.md#connect-an-existing-conversation-through-mcp)

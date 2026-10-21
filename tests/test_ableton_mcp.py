@@ -26,7 +26,7 @@ def test_real_stdio_discovery_and_offline_status(tmp_path):
         async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
             await session.initialize()
             tools = {t.name: t for t in (await session.list_tools()).tools}
-            assert set(tools) == {"ableton_status", "ableton_execute"}
+            assert set(tools) == {"tactus_connections", "ableton_status", "ableton_execute"}
             assert tools["ableton_status"].annotations.readOnlyHint
             assert not tools["ableton_execute"].annotations.idempotentHint
             status = await session.call_tool("ableton_status")
@@ -111,7 +111,7 @@ def test_one_or_both_daw_connections(tmp_path):
     async def trial():
         async with create_connected_server_and_client_session(server) as session:
             names = {tool.name for tool in (await session.list_tools()).tools}
-            assert names == {"reaper_status", "reaper_execute",
+            assert names == {"tactus_connections", "reaper_status", "reaper_execute",
                              "ableton_status", "ableton_execute"}
             for name in ("reaper_status", "ableton_status"):
                 status = (await session.call_tool(name)).structuredContent
@@ -146,6 +146,54 @@ def test_busy_reaper_does_not_block_live(tmp_path, monkeypatch):
     anyio.run(trial)
 
 
+def test_discover_and_route_explicit_process_and_project(tmp_path, monkeypatch):
+    calls = []
+
+    def reaper_connections(**_):
+        return [{"connection_id": "r1", "isolated": True}]
+
+    def live_connections(**_):
+        return [{"connection_id": "l1", "isolated": True}]
+
+    def reaper_native(code, **kw):
+        calls.append(("reaper", kw))
+        if "EnumProjects" in code:
+            return {"projects": [{"project_id": "rp1", "active": True}],
+                    "project_instance": "rp1"}
+        return "reaper edit"
+
+    def live_read(**kw):
+        calls.append(("live read", kw))
+        return {"project_instance": "lp1", "project_path": "/set.als"}
+
+    def live_native(code, **kw):
+        calls.append(("live edit", kw))
+        return "live edit"
+
+    monkeypatch.setattr(reaper, "connections", reaper_connections)
+    monkeypatch.setattr(ableton, "connections", live_connections)
+    monkeypatch.setattr(reaper, "execute", reaper_native)
+    monkeypatch.setattr(ableton, "read", live_read)
+    monkeypatch.setattr(ableton, "execute", live_native)
+    server = entry.create_server(resource_path=tmp_path, ableton_path=tmp_path)
+
+    async def trial():
+        async with create_connected_server_and_client_session(server) as session:
+            result = (await session.call_tool("tactus_connections")).structuredContent
+            assert {(row["daw"], row["connection_id"]) for row in result["connections"]} == {
+                ("reaper", "r1"), ("ableton", "l1"),
+            }
+            await session.call_tool("reaper_execute", {"code": "return 1",
+                                                       "connection_id": "r1", "project_id": "rp1"})
+            await session.call_tool("ableton_execute", {"code": "result=1",
+                                                        "connection_id": "l1", "project_id": "lp1"})
+    anyio.run(trial)
+    assert ("reaper", {"resource_path": tmp_path, "connection_id": "r1",
+                       "project_id": "rp1"}) in calls
+    assert ("live edit", {"bridge_path": tmp_path, "connection_id": "l1",
+                          "project_id": "lp1"}) in calls
+
+
 @pytest.mark.skipif(not os.environ.get("TACTUS_ABLETON_PATH"), reason="Use isolated Live Set")
 def test_live_stdio_native_status_args_errors_and_recovery():
     async def trial():
@@ -155,7 +203,7 @@ def test_live_stdio_native_status_args_errors_and_recovery():
         async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
             await session.initialize()
             assert {t.name for t in (await session.list_tools()).tools} == {
-                "ableton_status", "ableton_execute",
+                "tactus_connections", "ableton_status", "ableton_execute",
             }
             status = await session.call_tool("ableton_status")
             assert status.structuredContent["status"] == "ready"

@@ -15,10 +15,11 @@ from pathlib import Path
 
 from .._contracts import json_copy, strict_json, write_json
 from ..inputs import ToolError, tool
+from ._instances import available, select
 from .TactusBridge.bridge import PROTOCOL
 from .TactusBridge.selection import validate_notes
 
-__all__ = ["BridgeError", "BridgeTimeout", "execute", "inspect_selection", "read", "script",
+__all__ = ["BridgeError", "BridgeTimeout", "connections", "execute", "inspect_selection", "read", "script",
            "update_notes"]
 
 
@@ -36,7 +37,8 @@ def script() -> Path:
 
 
 def read(*, bridge_path: str | Path, scope: str = 'summary', track_id: str | None = None,
-         device_id: str | None = None, timeout: float = 30):
+         device_id: str | None = None, timeout: float = 30,
+         connection_id: str | None = None, project_id: str | None = None):
     """Read fresh summary/track/notes/device/project state using the native owner.
 
     IDs are runtime-only; omitted targets use Live's current selection. Project and
@@ -45,7 +47,7 @@ def read(*, bridge_path: str | Path, scope: str = 'summary', track_id: str | Non
     """
     return execute('result = state.read(**args)', bridge_path=bridge_path,
                    args={'scope': scope, 'track_id': track_id, 'device_id': device_id},
-                   timeout=timeout)
+                   timeout=timeout, connection_id=connection_id, project_id=project_id)
 
 
 def inspect_selection(*, bridge_path: str | Path):
@@ -65,8 +67,17 @@ def update_notes(snapshot, notes, *, bridge_path: str | Path):
                    undo='Edit selected MIDI notes')
 
 
+def connections(*, bridge_path: str | Path) -> list[dict]:
+    """List fresh Live processes using this installed Remote Script."""
+    base = Path(bridge_path).expanduser().resolve() / "tactus-bridge"
+    return [{"connection_id": row["connection_id"], "bridge_path": str(base.parent),
+             "isolated": row["root"] != base}
+            for row in available(base, protocol=PROTOCOL)]
+
+
 def execute(code: str, *, bridge_path: str | Path, args=None,
-            timeout: float = 30, undo: str | None = None):
+            timeout: float = 30, undo: str | None = None,
+            connection_id: str | None = None, project_id: str | None = None):
     """Run Python on Live's main thread; return the finite JSON value of `result`.
 
     `bridge_path` is the installed TactusBridge directory. Code receives native
@@ -80,26 +91,25 @@ def execute(code: str, *, bridge_path: str | Path, args=None,
         raise ValueError("timeout must be a finite positive number of seconds")
     if undo is not None and (not isinstance(undo, str) or not undo):
         raise ValueError("undo must be a nonempty label or None")
+    if project_id is not None and (not isinstance(project_id, str) or not project_id):
+        raise ValueError("project_id must be a nonempty runtime project ID")
     bindings = json_copy(args)
-    root = Path(bridge_path).expanduser().resolve() / "tactus-bridge"
+    base = Path(bridge_path).expanduser().resolve() / "tactus-bridge"
     try:
-        heartbeat = strict_json((root / "heartbeat.json").read_text(encoding="utf-8"))
-        if heartbeat["protocol"] != PROTOCOL:
-            raise ValueError("incompatible protocol")
-        instance = heartbeat["instance"]
-        if not isinstance(instance, str) or not instance:
-            raise ValueError("missing instance")
-        if not -2 <= time.time() - heartbeat["time"] <= 10:
-            raise ValueError("stale heartbeat (Live may be busy)")
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+        endpoint = select(base, connection_id)
+        root = endpoint["root"]
+        instance = endpoint["heartbeat"].get("instance", "legacy")
+    except ValueError as exc:
         raise BridgeError(
-            f"Ableton bridge unavailable at {root}: {exc}. "
+            f"Ableton bridge unavailable at {base}: {exc}. "
             f"Copy {script()} into User Library/Remote Scripts and select TactusBridge "
             "in Live's MIDI preferences."
         ) from exc
+    if root == base and (connection_id is not None or project_id is not None):
+        raise BridgeError("Legacy Live bridge cannot guard explicit targets; update the Remote Script")
     try:
         for name in ("__init__.py", "bridge.py", "state.py", "selection.py", "devices.py"):
-            tool(str(root.parent / name))
+            tool(str(Path(bridge_path).expanduser().resolve() / name))
     except (ToolError, OSError) as exc:
         raise BridgeError(f"Cannot read installed Ableton Remote Script sources: {exc}") from exc
     request_id = uuid.uuid4().hex
@@ -108,7 +118,8 @@ def execute(code: str, *, bridge_path: str | Path, args=None,
     try:
         write_json(request, {
             "protocol": PROTOCOL, "id": request_id, "instance": instance,
-            "expires": time.time() + timeout, "code": code, "args": bindings, "undo": undo,
+            "project_id": project_id, "expires": time.time() + timeout,
+            "code": code, "args": bindings, "undo": undo,
         }, compact=True)
     except OSError as exc:
         raise BridgeError(f"Cannot submit Ableton request {request_id}: {exc}") from exc

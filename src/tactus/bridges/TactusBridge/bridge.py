@@ -43,8 +43,8 @@ class RequestQueue:
     """One main-thread poll claims one request; replies survive client timeouts."""
 
     def __init__(self, directory):
-        self.root = Path(directory) / "tactus-bridge"
         self.instance = uuid.uuid4().hex
+        self.root = Path(directory) / "tactus-bridge" / "instances" / self.instance
         for name in ("requests", "running", "responses"):
             (self.root / name).mkdir(parents=True, exist_ok=True)
         self.heartbeat()
@@ -99,6 +99,8 @@ class RequestQueue:
                     env['state'] = reader
                 env.update(args=value["args"], result=None)
                 song = env["song"]
+                if value.get("project_id") is not None and identity(song) != value["project_id"]:
+                    raise ValueError("Live Set changed; inspect targets before retrying")
                 with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
                     grouped = value["undo"] is not None
                     if grouped:

@@ -74,7 +74,7 @@ def test_stdio_discovery_and_offline_status(tmp_path):
     async def trial():
         async with client(tmp_path) as session:
             tools = {t.name: t for t in (await session.list_tools()).tools}
-            assert set(tools) == {"reaper_status", "reaper_execute"}
+            assert set(tools) == {"tactus_connections", "reaper_status", "reaper_execute"}
             assert tools["reaper_status"].annotations.readOnlyHint
             assert not tools["reaper_execute"].annotations.readOnlyHint
             assert tools["reaper_execute"].annotations.destructiveHint
@@ -121,7 +121,7 @@ def test_stdio_native_errors_remain_errors_and_server_survives(peer, payload, ex
             result = await session.call_tool("reaper_execute", {"code": "return true"})
             await task
             assert result.isError and expected in content(result)
-            assert len((await session.list_tools()).tools) == 2
+            assert len((await session.list_tools()).tools) == 3
     asyncio.run(trial())
 
 

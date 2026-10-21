@@ -4,7 +4,8 @@ Tactus sends ordinary Python to Live's native API through `execute`; `read` supp
 shared fresh snapshots for conversational inspection and work lifecycle checks.
 Musical choices, Max patches and VST choices stay in the work; shared helpers own
 repeated target checks, metadata queries and load/configure completion.
-The optional MCP entry exposes exactly `ableton_status` and `ableton_execute`.
+The optional MCP entry exposes `ableton_status`, `ableton_execute`, and shared
+`tactus_connections` discovery.
 No additional agent, musical model, API whitelist or plugin-specific tools are required.
 
 ## Install once
@@ -132,7 +133,8 @@ For a checkout environment, `uv sync --extra mcp` then
 `tactus mcp` also works through the work's selected environment. The command
 finds both installed bridge directories; use
 `--live-path /absolute/User Library/Remote Scripts/TactusBridge` for a custom Live
-location. It exposes two tools per DAW, and either DAW can be unavailable while the
+location. It exposes two native tools per DAW plus `tactus_connections`; either DAW
+can be unavailable while the
 other remains usable. `tactus-mcp live` and `tactus-mcp reaper` remain available
 for single-DAW connections. The older `--ableton-path DIR` and REAPER
 `--resource-path DIR` launch forms also work.
@@ -161,6 +163,15 @@ reads one inspected device. The outer response remains `{"status":"ready", ...,
 track names/IDs and observed change metadata.
 Runtime IDs do not survive restarting/reopening Live and are not edit guards.
 Status does not claim access to every GUI selection or an Arrangement time range.
+
+One Live process has one active Set. `tactus_connections` lists each connected Live
+process and that Set's runtime `project_id`. Pass its `connection_id` and `project_id`
+to status/execute for guarded work: switching the Set or restarting Live makes the
+old target fail before authored code runs. Multiple Live processes using the same
+installed Remote Script now have separate queues. With more than one, an omitted
+connection ID fails rather than choosing a process. After updating the installed
+Remote Script, reload it in Live to activate this behavior. A legacy fixed queue
+still serves omitted-target calls but cannot guard explicit targets.
 
 `ableton_execute` accepts the same `code`, `args`, `timeout`, `undo` fields and returns
 `{"result": ...}`. Native failures are tool errors. Native browser, parameter and

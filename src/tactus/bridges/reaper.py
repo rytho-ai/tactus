@@ -20,8 +20,9 @@ import uuid
 from pathlib import Path
 
 from ..inputs import tool
+from ._instances import available, select
 
-__all__ = ["BridgeError", "BridgeTimeout", "execute", "export_project", "script"]
+__all__ = ["BridgeError", "BridgeTimeout", "connections", "execute", "export_project", "script"]
 
 
 class BridgeError(RuntimeError):
@@ -35,6 +36,14 @@ class BridgeTimeout(TimeoutError):
 def script() -> Path:
     """Path to the packaged Lua script; load/run it in REAPER's Actions window."""
     return Path(__file__).with_suffix(".lua")
+
+
+def connections(*, resource_path: str | Path) -> list[dict]:
+    """List fresh REAPER processes sharing this resource directory."""
+    base = Path(resource_path).expanduser().resolve() / "tactus-bridge"
+    return [{"connection_id": row["connection_id"], "resource_path": str(base.parent),
+             "version": row["heartbeat"].get("version"), "isolated": row["root"] != base}
+            for row in available(base)]
 
 
 def _literal(value) -> str:
@@ -82,6 +91,8 @@ def execute(
     args=None,
     timeout: float = 30.0,
     undo: str | None = None,
+    connection_id: str | None = None,
+    project_id: str | None = None,
 ):
     """Execute Lua synchronously on REAPER's main thread, returning its first result.
 
@@ -103,27 +114,26 @@ def execute(
         raise ValueError("timeout must be finite and positive")
     if undo is not None and (not isinstance(undo, str) or not undo):
         raise ValueError("undo must be a nonempty label or None")
+    if project_id is not None and (not isinstance(project_id, str) or not project_id):
+        raise ValueError("project_id must be a nonempty runtime project ID")
     bindings = _literal(args)
-    root = Path(resource_path).expanduser().resolve() / "tactus-bridge"
+    base = Path(resource_path).expanduser().resolve() / "tactus-bridge"
     try:
-        heartbeat = json.loads((root / "heartbeat.json").read_text(encoding="utf-8"))
-        if not isinstance(heartbeat, dict):
-            raise TypeError("Invalid heartbeat")
-        if heartbeat.get("protocol") != 1:
-            raise BridgeError("Incompatible REAPER bridge; run the packaged script again")
-        age = time.time() - heartbeat["time"]
-        if not 0 <= age <= 10:
-            raise BridgeError("REAPER bridge heartbeat is stale; run the script in REAPER")
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+        endpoint = select(base, connection_id)
+        root = endpoint["root"]
+    except ValueError as exc:
         raise BridgeError(
-            f"REAPER bridge is unavailable at {root}; run {script()} in REAPER"
+            f"REAPER bridge at {base}: {exc}; run {script()} in REAPER"
         ) from exc
+    if root == base and (connection_id is not None or project_id is not None):
+        raise BridgeError("Legacy REAPER bridge cannot guard explicit targets; reload the packaged script")
     tool(str(script()))
     request_id = uuid.uuid4().hex
     request = root / "requests" / f"{request_id}.lua"
     response = root / "responses" / f"{request_id}.json"
     source = (
-        f"return {{protocol=1, expires={math.ceil(time.time() + timeout)}, "
+        f"return {{protocol=1, instance={_literal(endpoint['connection_id'])}, "
+        f"project_id={_literal(project_id)}, expires={math.ceil(time.time() + timeout)}, "
         f"undo={_literal(undo)}, run=function()\nlocal args={bindings}\n{code}\nend}}\n"
     )
     temporary = request.with_suffix(".tmp")

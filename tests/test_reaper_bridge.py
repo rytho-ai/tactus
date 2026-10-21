@@ -70,6 +70,36 @@ def test_timeout_withdraws_queue_without_retry(ipc):
     assert not list((ipc / "requests").iterdir())
 
 
+def test_multiple_reaper_queues_require_explicit_connection(ipc):
+    (ipc / "heartbeat.json").unlink()
+    roots = []
+    for name in ("a" * 32, "b" * 32):
+        root = ipc / "instances" / name
+        (root / "requests").mkdir(parents=True)
+        (root / "responses").mkdir()
+        (root / "heartbeat.json").write_text(json.dumps({
+            "protocol": 1, "instance": name, "time": time.time(),
+        }))
+        roots.append(root)
+    assert {row["connection_id"] for row in reaper.connections(resource_path=ipc.parent)} == {
+        "a" * 32, "b" * 32,
+    }
+    with pytest.raises(reaper.BridgeError, match="Multiple bridge connections"):
+        reaper.execute("return true", resource_path=ipc.parent)
+    with ThreadPoolExecutor() as peer:
+        future = peer.submit(respond, roots[1], json.dumps({"ok": True, "result": 2}))
+        assert reaper.execute("return 2", resource_path=ipc.parent,
+                              connection_id="b" * 32, project_id="project-b") == 2
+        future.result()
+    assert not list((roots[0] / "requests").iterdir())
+
+
+def test_legacy_reaper_queue_rejects_unenforceable_project_guard(ipc):
+    with pytest.raises(reaper.BridgeError, match="Legacy REAPER bridge"):
+        reaper.execute("return true", resource_path=ipc.parent, project_id="old-tab")
+    assert not list((ipc / "requests").iterdir())
+
+
 def test_stale_missing_and_incompatible_bridge_fail_before_submission(ipc):
     for content in ['{"protocol":1,"time":0}', '{"protocol":2}', "[]", "not JSON"]:
         (ipc / "heartbeat.json").write_text(content)

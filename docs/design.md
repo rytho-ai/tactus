@@ -46,7 +46,7 @@ Python、Max patch 與 VST 的音樂選擇仍由作品決定；各 host 的選�
 
 ## 外部 DAW：REAPER bridge
 
-`tactus.bridges.reaper` 以 `execute` 把作品提供的普通 Lua 與資料送到 REAPER 原生 ReaScript，回傳有限 JSON 資料。REAPER 內執行隨套件提供的 Lua script，Python 以本機檔案佇列連接；不依賴 MCP。理由是 Agent 能直接撰寫既有 `reaper.*` 語法，橋接只共用傳輸、完成與錯誤處理，不逐一包裝原生函式，也不引入 DAW／Track／Session 創作模型。其他 DAW 有需要時另做自己的 bridge；尚無共用 DAW interface。
+`tactus.bridges.reaper` 以 `execute` 把作品提供的普通 Lua 與資料送到 REAPER 原生 ReaScript，回傳有限 JSON 資料。REAPER 內執行隨套件提供的 Lua script，Python 以本機檔案佇列連接；不依賴 MCP。理由是 Agent 能直接撰寫既有 `reaper.*` 語法，橋接只共用傳輸、完成與錯誤處理，不逐一包裝原生函式，也不引入 DAW／Track／Session 創作模型。其他 DAW 有需要時另做自己的 bridge；目前沒有共用的音樂操作介面。
 
 每輪原生回呼先清除 REAPER 的檔案列舉快取，再掃描請求目錄，讓新命令在該輪即可被發現。更新 bridge source 後需停止並重跑 Action，現有工程不需重開。
 
@@ -79,8 +79,13 @@ normalized 0..1 數值；原生 Lua 保留其他 chain、routing 與創作操作
 
 `tactus[mcp]` 以官方 Python SDK 提供一個 stdio server；`tactus-mcp` 不帶參數時
 同時找 REAPER 與 Live 的常見安裝目錄，提供 `reaper_status`／`reaper_execute` 和
-`ableton_status`／`ableton_execute` 四個工具。兩個 DAW 各有自己的呼叫佇列，一邊
-未啟動或忙碌不阻塞另一邊。非標準安裝分別用 `--reaper-path DIR`、`--live-path DIR`
+`ableton_status`／`ableton_execute` 四個原生工具，以及唯讀的 `tactus_connections`
+目標清單。每個運行中的 bridge 有獨立佇列與短命 `connection_id`；REAPER 可列出
+同一程序的工程分頁，Live 回報該程序的作用中 Set。`project_id` 是當次執行期間的
+工程身分，不是檔案路徑或持久同步鍵。明確目標在原生程式開始前核對；REAPER 目標
+分頁必須仍是作用中分頁，Live Set 不得已切換，否則拒絕執行。舊版固定佇列仍可
+供未指定目標的單一橋接使用，但不接受明確目標，必須重載 bridge 才能安全使用新能力。
+每個程序各有自己的呼叫佇列；一個程序未啟動或忙碌不阻塞其他程序。非標準安裝分別用 `--reaper-path DIR`、`--live-path DIR`
 指定。MCP 只提供 host 的工具入口，原生執行仍由同一個 bridge 負責；普通
 Python 用法沒有 MCP dependency。理由是使用者可在原本的 coding-agent 對話中取得
 REAPER 上下文與操作能力，音樂邏輯仍由 Agent 撰寫普通 Python／Lua，不需要另一個
@@ -90,9 +95,16 @@ Standalone entry 使用自身安裝環境，與歌曲的 lock 分開；`tactus m
 既有 launcher 的 work 環境選擇。Server 可在 REAPER／bridge 尚未啟動時連線，回報
 setup 與 unavailable；稍後啟動 bridge 即可在同一條 MCP 連線讀取現場。工具保留
 原始 JSON args、具名 Undo 與 timeout／late-reply 錯誤，stdout 專供協議。單個 server
-各 DAW 分別序列化工具呼叫；原生操作開始後，MCP cancellation 等待 bridge 完成或 timeout 才釋放
+各連線分別序列化工具呼叫；原生操作開始後，MCP cancellation 等待 bridge 完成或 timeout 才釋放
 worker；caller 可能較早收到取消確認，不代表取消 Lua 或 rollback。其他 clients／GUI
 編輯不被鎖定。
+
+多 DAW 的共用範圍只涵蓋程序身分、佇列探索、明確目標與完成／錯誤語意；目前
+`bridges._instances` 共用佇列探索與選取，MCP 路由仍明確列出 REAPER／Live。第三套
+DAW 有實際橋接需求時，先用其原生 API 驗證這些邊界，再把重複的路由抽成可註冊的
+bridge adapter。Adapter 只交付發現連線、讀取工程摘要與執行原生程式的入口，不把
+音軌、clip、效果或創作選擇轉成強制共用模型；Live 一個程序只讀當前 Set，不為此
+建立多 Set 管理層。沒有第三套 DAW 的實測前，不預先建立通用 adapter framework。
 
 Host 設定與 skills 可獨立安裝；不自動修改使用者設定、啟動／結束 REAPER、複製對話
 或綁定模型。先配置工具、之後按需啟動 bridge，是保留原對話的基本路徑。新增 MCP

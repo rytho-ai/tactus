@@ -5,10 +5,12 @@ if _G.tactus_bridge_running then return end
 _G.tactus_bridge_running = true
 reaper.atexit(function() _G.tactus_bridge_running = nil end)
 
-local root = reaper.GetResourcePath() .. '/tactus-bridge'
+local instance = reaper.genGuid():gsub('[^%da-fA-F]', ''):lower()
+local root = reaper.GetResourcePath() .. '/tactus-bridge/instances/' .. instance
 local requests, responses = root .. '/requests', root .. '/responses'
 reaper.RecursiveCreateDirectory(requests, 0)
 reaper.RecursiveCreateDirectory(responses, 0)
+reaper.atexit(function() os.remove(root .. '/heartbeat.json') end)
 
 local function quote(s)
   return '"' .. s:gsub('[%z\1-\31\\"]', function(c)
@@ -77,7 +79,13 @@ local function handle(name)
     assert(chunk, err)
     local request = chunk()
     assert(request.protocol == 1, 'Unsupported Tactus request protocol')
+    assert(request.instance == instance, 'REAPER bridge instance changed')
     assert(os.time() <= request.expires, 'Request expired before execution')
+    if request.project_id then
+      local active = reaper.EnumProjects(-1, '')
+      assert(tostring(active) == request.project_id,
+        'REAPER active project changed; inspect targets before retrying')
+    end
     label = request.undo
     if label then
       project = reaper.EnumProjects(-1, '')
@@ -114,7 +122,7 @@ local function poll()
     if not ok then reaper.ShowConsoleMsg('Tactus bridge: ' .. tostring(err) .. '\n') end
   end
   if reaper.time_precise() - last_beat >= 1 then
-    write(root .. '/heartbeat.json', json({protocol = 1, time = os.time(),
+    write(root .. '/heartbeat.json', json({protocol = 1, instance = instance, time = os.time(),
       version = reaper.GetAppVersion(), resource_path = reaper.GetResourcePath()}))
     last_beat = reaper.time_precise()
   end

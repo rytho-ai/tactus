@@ -94,7 +94,8 @@ compatibility with a host-supported format.
 
 ## Connect an existing conversation through MCP
 
-The optional stdio server exposes `reaper_status` and `reaper_execute`; it runs no
+The optional stdio server exposes `reaper_status`, `reaper_execute`, and shared
+`tactus_connections` discovery; it runs no
 model and starts no agent conversation. Native Lua uses the same bridge as Python.
 The live RPP remains the user's project; accepted state/audio becomes a pinned input
 only when the work explicitly adopts it. MCP tool replies are not render receipts.
@@ -167,6 +168,16 @@ at the edit cursor. No MCP reload is needed when only the DAW connection changes
 If adding the MCP configuration during an existing chat, use that host's supported
 reload/reconnect mechanism; arbitrary hosts/sessions do not share one hot-load
 contract. This is tool access from the original chat, not mirroring chat into REAPER.
+
+For multiple REAPER processes or project tabs, call `tactus_connections` first.
+It lists runtime `connection_id` values and each process's open `project_id` values.
+Pass both IDs to `reaper_status` and `reaper_execute` for guarded work. The target
+tab must still be active when native code starts; switch tabs deliberately and read
+status again before editing. A host restart invalidates these IDs. If several
+processes are ready, an omitted `connection_id` fails instead of choosing one.
+Each process uses an isolated queue after the packaged Action is reloaded.
+An older fixed-queue bridge still accepts omitted targets for compatibility, but
+cannot guard explicit targets.
 
 Ask the agent to call `reaper_status`, then inspect the intended native scope before
 an edit. For example, `reaper_execute` accepts:

@@ -27,7 +27,7 @@ def peer(tmp_path):
 def exchange(peer, code, **kwargs):
     queue, song = peer
     with ThreadPoolExecutor() as worker:
-        future = worker.submit(ableton.execute, code, bridge_path=queue.root.parent, **kwargs)
+        future = worker.submit(ableton.execute, code, bridge_path=queue.root.parents[2], **kwargs)
         deadline = time.monotonic() + 3
         while not list((queue.root / "requests").glob("*.json")):
             assert time.monotonic() < deadline
@@ -70,14 +70,14 @@ def test_unserializable_results_and_system_exit_remain_native_errors(peer, code)
 ])
 def test_invalid_args_do_not_submit(peer, kwargs):
     with pytest.raises(ValueError):
-        ableton.execute("result=args", bridge_path=peer[0].root.parent, **kwargs)
+        ableton.execute("result=args", bridge_path=peer[0].root.parents[2], **kwargs)
     assert not list((peer[0].root / "requests").iterdir())
 
 
 def test_timeout_withdraws_unstarted_request_without_retry(peer):
     queue, song = peer
     with pytest.raises(ableton.BridgeTimeout, match="late reply"):
-        ableton.execute("song.changed=True", bridge_path=queue.root.parent, timeout=.02)
+        ableton.execute("song.changed=True", bridge_path=queue.root.parents[2], timeout=.02)
     queue.poll(lambda: {"song": song})
     assert not hasattr(song, "changed")
     assert not list((queue.root / "requests").iterdir())
@@ -91,7 +91,7 @@ def test_started_timeout_keeps_late_reply_and_runs_once(peer):
     with ThreadPoolExecutor(max_workers=2) as worker:
         future = worker.submit(ableton.execute,
                                "song.calls+=1\nsong.started.set()\nsong.release.wait(2)\nresult=42",
-                               bridge_path=queue.root.parent, timeout=.1)
+                               bridge_path=queue.root.parents[2], timeout=.1)
         deadline = time.monotonic() + 2
         while not list((queue.root / "requests").glob("*.json")):
             assert time.monotonic() < deadline
@@ -121,22 +121,70 @@ def test_old_instance_or_expired_request_cannot_edit(peer, mutation):
     assert not json.loads((queue.root / "responses/fixture.json").read_text())["ok"]
 
 
+def test_two_live_process_queues_route_and_guard_projects(peer):
+    first, song = peer
+    second = RequestQueue(first.root.parents[2])
+    song._live_ptr = "set-a"
+    other = SimpleNamespace(_live_ptr="set-b", begin_undo_step=lambda: None,
+                            end_undo_step=lambda: None)
+    bridge_path = first.root.parents[2]
+    assert {row["connection_id"] for row in ableton.connections(bridge_path=bridge_path)} == {
+        first.instance, second.instance,
+    }
+    with pytest.raises(ableton.BridgeError, match="Multiple bridge connections"):
+        ableton.execute("result=1", bridge_path=bridge_path)
+    with ThreadPoolExecutor() as worker:
+        future = worker.submit(ableton.execute, "song.changed=True\nresult=1",
+                               bridge_path=bridge_path, connection_id=second.instance,
+                               project_id="set-b")
+        deadline = time.monotonic() + 2
+        while not list((second.root / "requests").glob("*.json")):
+            assert time.monotonic() < deadline
+            time.sleep(.002)
+        assert not list((first.root / "requests").iterdir())
+        second.poll(lambda: {"song": other})
+        assert future.result() == 1
+    assert other.changed and not hasattr(song, "changed")
+    with pytest.raises(ableton.BridgeError, match="Live Set changed"), ThreadPoolExecutor() as worker:
+        future = worker.submit(ableton.execute, "song.changed=True",
+                               bridge_path=bridge_path, connection_id=first.instance,
+                               project_id="set-b")
+        deadline = time.monotonic() + 2
+        while not list((first.root / "requests").glob("*.json")):
+            assert time.monotonic() < deadline
+            time.sleep(.002)
+        first.poll(lambda: {"song": song})
+        future.result()
+    assert not hasattr(song, "changed")
+
+
 def test_stale_heartbeat_fails_before_submission(peer):
     queue, _ = peer
     (queue.root / "heartbeat.json").write_text(json.dumps({
         "protocol": 1, "instance": queue.instance, "time": 0,
     }))
     with pytest.raises(ableton.BridgeError, match="stale heartbeat"):
-        ableton.execute("result=1", bridge_path=queue.root.parent)
+        ableton.execute("result=1", bridge_path=queue.root.parents[2])
     assert not list((queue.root / "requests").iterdir())
+
+
+def test_legacy_live_queue_rejects_unenforceable_project_guard(tmp_path):
+    root = tmp_path / "tactus-bridge"
+    root.mkdir()
+    (root / "heartbeat.json").write_text(json.dumps({
+        "protocol": 1, "instance": "old-live", "time": time.time(),
+    }))
+    with pytest.raises(ableton.BridgeError, match="Legacy Live bridge"):
+        ableton.execute("result=1", bridge_path=tmp_path, project_id="old-set")
+    assert not (root / "requests").exists()
 
 
 @pytest.mark.parametrize('source', ['bridge.py', 'devices.py'])
 def test_missing_installed_source_is_visible_before_submission(peer, source):
     queue, _ = peer
-    (queue.root.parent / source).unlink()
+    (queue.root.parents[2] / source).unlink()
     with pytest.raises(ableton.BridgeError, match="installed Ableton Remote Script sources"):
-        ableton.execute("result=1", bridge_path=queue.root.parent)
+        ableton.execute("result=1", bridge_path=queue.root.parents[2])
     assert not list((queue.root / "requests").iterdir())
 
 
