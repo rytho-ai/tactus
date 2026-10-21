@@ -103,11 +103,13 @@ development branch merely to publish one capability. Sync public `main` back int
 development repository after a release.
 
 The required `verify` check covers installation, lint, focused runtime/plugin tests,
-CLI startup and package build. It is a minimum promotion gate; include relevant full
-tests and actual DAW or plugin-host verification in a feature's pull request when its
-claims require them. A green check alone does not establish musical or native-host
-quality. Tag the reviewed public commit with the package version only after the pull
-request and required checks pass.
+CLI startup and package build. It is a minimum promotion gate. The current CLI analysis
+suite has a recorded baseline import failure on macOS and Linux, so `verify`
+does not claim that suite is green. Include relevant full tests and actual DAW or
+plugin-host verification in a feature's pull request when its claims require them.
+A green check alone does not establish musical or native-host quality. Tag the
+reviewed public commit with the package version only after the pull request and
+required checks pass.
 
 ## Building distributions
 
