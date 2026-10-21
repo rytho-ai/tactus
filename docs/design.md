@@ -60,7 +60,7 @@ Co-working 由 `reaper_support.selection` 共用選取讀取、音符驗證、�
 
 Accepted native state 由 `reaper_support.project` 共用 inspect／capture／render_project：保存原生副本、複製並重綁一般 take 音檔、重開驗證相對素材，並確認原工程內容與操作情境未變。保存副本可增加 REAPER 的 change counter，保存後依實際 native content 比較，不把單獨的 counter 增加誤判為音樂變更；保存前仍核對 counter 與內容。採用 tree ref 由 source／Git 記錄，重新 render 使用 material 的真實 scratch 副本，絕不直接保存進 pool。選定音訊另 pin，支持 REAPER 關閉後繼續製作。
 
-這些共用模組只收編反覆相同的執行手續，原生 `execute` 仍可自由使用，不引入共通 DAW／Session 創作模型。捕捉支援 inline MIDI 與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體由作品明確處理。Undo 不承諾 error rollback，尚未驗證其他平台、任意 plugin／preset、真人協作手感或無爆音播放。介面與界線見 [REAPER bridge reference](../skills/references/reaper.md) 與 [lifecycle example](../examples/reaper/README.md)。
+這些共用模組只收編反覆相同的執行手續，原生 `execute` 仍可自由使用，不引入共通 DAW／Session 創作模型。捕捉支援 inline MIDI 與一般 file-backed takes；section/reverse、subproject/video、plugin 私有素材與外部硬體由作品明確處理。Undo 不承諾 error rollback，尚未驗證其他平台、任意 plugin／preset 或無爆音播放。介面與界線見 [REAPER bridge reference](../skills/references/reaper.md) 與 [lifecycle example](../examples/reaper/README.md)。
 
 快速修改以一次 request 完成相關參數的檢查、批次寫入與精簡讀回，不自動錄音、capture
 或 render。`reaper_support.devices` 使用明確的 track／FX GUID、零起算參數 index 與
