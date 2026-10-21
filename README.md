@@ -31,15 +31,16 @@ Tactus requires Python **3.12 or newer**; uv can install it. Git-sourced native 
 C and C++20 compilers, such as GCC or Clang.
 
 ```bash
-git clone https://github.com/rytho-ai/tactus.git
+git clone --branch main --depth 1 https://github.com/rytho-ai/tactus.git
 cd tactus
-uv tool install --python 3.12 --editable .
+uv tool install --python 3.12 .
 tactus doctor
 ```
 
-The editable install follows this checkout;
-see [fixed-revision installation](skills/references/project-commands.md#install-and-select-a-work)
-for a portable setup.
+The checkout supplies both the CLI and the agent skills below. Pin a release tag when one is available.
+`uv tool install .` builds a tool environment from that source rather than following
+later checkout edits. For a work with a pinned Git dependency, see
+[fixed-revision installation](skills/references/project-commands.md#install-and-select-a-work).
 
 Use `--python 3.13` to install on Python 3.13, including when sharing a work's
 environment with packages that require it. The checkout defaults to 3.12;
