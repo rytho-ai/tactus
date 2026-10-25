@@ -21,7 +21,7 @@ Use `tactus connect` without `--host codex` when you only want the DAW scripts o
 
 | DAW | Activate inside the DAW | After updating Tactus |
 |---|---|---|
-| REAPER | Open **Actions**, choose **ReaScript: Load**, select the printed `TactusMCP.lua` path, then run that Action. Keep the Action running while Tactus works with REAPER; run it again after restarting REAPER. | Rerun `tactus connect`, then stop and rerun the Action. |
+| REAPER | Open **Actions**, choose **ReaScript: Load**, select the printed `TactusMCP.lua` path, then run that Action. Keep the Action running while Tactus works with REAPER; run it again after restarting REAPER. On macOS, while REAPER is closed, `open -a REAPER "<printed path>"` launches REAPER and runs the script in one step. | Rerun `tactus connect`, then stop and rerun the Action. |
 | Ableton Live | Restart Live. In **Settings → MIDI** (or **Preferences → Link/Tempo/MIDI**), choose **TactusMCP** in an unused Control Surface slot. Input and Output can stay **None**. | Rerun `tactus connect`, then restart Live. |
 
 `tactus connect` does not launch either DAW or change a project or Control Surface selection. It backs up installed bridge files before replacing different versions. If you previously used `TactusBridge` in Live or an older Tactus Action in REAPER, follow the [Live migration notes](../skills/references/ableton.md#install-once) or [REAPER migration notes](../skills/references/reaper.md#connect-an-existing-conversation-through-mcp) after the new bridge is active.

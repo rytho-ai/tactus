@@ -80,7 +80,8 @@ normalized 0..1 數值；原生 Lua 保留其他 chain、routing 與創作操作
 `tactus[mcp]` 以官方 Python SDK 提供一個 stdio server；`tactus-mcp` 不帶參數時
 同時找 REAPER 與 Live 的常見安裝目錄，提供 `reaper_status`／`reaper_execute` 和
 `ableton_status`／`ableton_execute` 四個原生工具，以及唯讀的 `tactus_connections`
-目標清單。每個運行中的 bridge 有獨立佇列與短命 `connection_id`；REAPER 可列出
+目標清單。每個運行中的 bridge 有獨立佇列與短命 `connection_id`；REAPER bridge
+離開時移除 heartbeat 與空佇列，仍有未讀回覆的佇列保留，不丟失晚到結果；REAPER 可列出
 同一程序的工程分頁，Live 回報該程序的作用中 Set。`project_id` 是當次執行期間的
 工程身分，不是檔案路徑或持久同步鍵。明確目標在原生程式開始前核對；REAPER 目標
 分頁必須仍是作用中分頁，Live Set 不得已切換，否則拒絕執行。舊版固定佇列仍可

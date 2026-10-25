@@ -51,7 +51,8 @@ selected = ableton.execute(
 )
 ```
 
-`execute(code, *, bridge_path, args=None, timeout=30, undo=None)` is synchronous.
+`execute(code, *, bridge_path, args=None, timeout=30, undo=None, connection_id=None,
+project_id=None)` is synchronous.
 Code executes on Live's main thread with `Live`, `song`, `app`, `state`, `args` and
 `result=None`. Assign `result` to return finite JSON data; native objects, handles,
 parameters and vectors must be converted to explicit data. Native list/tuple results
@@ -87,7 +88,7 @@ device = ableton.read(bridge_path=connection, scope="device")
 ```
 
 `connection` is the installed Remote Script directory. `read` uses the same execute
-transport, with optional `timeout=30`. It reads native state without selecting objects,
+transport, with optional `timeout=30`, `connection_id` and `project_id`. It reads native state without selecting objects,
 saving files or editing the music. Explicit runtime IDs must still exist in their
 target track; a missing target raises an error instead of selecting a substitute.
 
@@ -205,8 +206,8 @@ Live 11 probe, grouped track gain/pan restored together, while a tempo/meter pro
 left the changed meter after Undo. Check the specific operation; do not claim
 transactional rollback.
 
-MCP calls serialize per DAW. Cancellation waits for the native worker to
-finish or time out before releasing that DAW's worker; it cannot stop running
+MCP calls serialize per connection. Cancellation waits for the native worker to
+finish or time out before releasing that connection's worker; it cannot stop running
 Python. Other clients and human edits are not locked. Inspect the exact target and
 relevant notes/parameters immediately before writing, and read back afterwards.
 Track indexes, names, runtime IDs and the status snapshot alone are insufficient

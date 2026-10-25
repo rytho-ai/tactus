@@ -58,7 +58,7 @@ The example checks the track ID and exact device names before using it.
 
 ```python
 # In the work's Python, compose the explicit JSON parameters from these objects.
-params = {'bridge_path': '/absolute/User Library/Remote Scripts/TactusBridge',
+params = {'bridge_path': '/absolute/User Library/Remote Scripts/TactusMCP',
           'live_binary': '/Applications/Ableton Live 11 Suite.app/Contents/MacOS/Live',
           'track_id': inspected_runtime_track_id, 'host': host, 'tap': tap,
           'frequency': 220}
@@ -116,7 +116,7 @@ work's request, not automatic permission to discard unrelated state.
 
 ```bash
 tactus export ableton runs/a --out exports/live \
-  --bridge-path '/absolute/User Library/Remote Scripts/TactusBridge' \
+  --bridge-path '/absolute/User Library/Remote Scripts/TactusMCP' \
   --tempo 120 --replace-active-set --names '["lead","bass"]' \
   --positions '{"bass":1.5}' --markers '[[0,"A"],[1.5,"Entry"]]'
 ```
@@ -184,8 +184,8 @@ is needed. Refresh stale metadata explicitly and reinspect after a rejected edit
 The CLI accepts inspected IDs and authored JSON, without musical defaults:
 
 ```bash
-uv run python fx.py --bridge-path /absolute/TactusBridge inspect --track-id TRACK_ID --device-id DEVICE_ID --out fx.json
-uv run python fx.py --bridge-path /absolute/TactusBridge apply fx.json values.json
+uv run python fx.py --bridge-path /absolute/TactusMCP inspect --track-id TRACK_ID --device-id DEVICE_ID --out fx.json
+uv run python fx.py --bridge-path /absolute/TactusMCP apply fx.json values.json
 ```
 
 Small note/parameter edits return readback without recording or rendering. Audition
@@ -229,7 +229,7 @@ tactus material add captures/chosen
 # Commit the returned ref and source/lock before rendering.
 tactus run accepted.py --out runs/chosen \
   --param-file tap=/absolute/MyTap/device.json \
-  --params '{"project_ref":"tree:sha256:...","bridge_path":"/absolute/TactusBridge","live_binary":"/absolute/Live","tap_browser_path":["Presets","Audio Effects","Max Audio Effect","MyTap","Tactus Audio Tap"],"seconds":8,"replace_active_set":true}'
+  --params '{"project_ref":"tree:sha256:...","bridge_path":"/absolute/TactusMCP","live_binary":"/absolute/Live","tap_browser_path":["Presets","Audio Effects","Max Audio Effect","MyTap","Tactus Audio Tap"],"seconds":8,"replace_active_set":true}'
 ```
 
 Native mode needs `project_ref`, `bridge_path`, `live_binary`, `tap`, its exact
