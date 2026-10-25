@@ -111,7 +111,9 @@ This copies the bundled REAPER script into the REAPER resource directory and reg
 the `tactus-mcp` Codex connection. No separate GitHub download is needed. Use
 `--reaper-path DIR` for a custom REAPER resource directory; `--check` only reports
 state. The command prints the installed `TactusMCP.lua` path. In REAPER, open Actions,
-choose **ReaScript: Load**, select that path, then run the new Action. If an older
+choose **ReaScript: Load**, select that path, then run the new Action. On macOS, while
+REAPER is closed, `open -a REAPER "<installed path>"` launches REAPER and runs the script
+in one step. If an older
 `tactus-mcp.lua` or `Tactus MCP.lua` Action was registered, stop and remove it after
 loading the new one, then delete the old script file. Updating
 Tactus requires rerunning `tactus connect`, then stopping and rerunning the Action.
@@ -226,8 +228,10 @@ uv run python -c 'from tactus.bridges.reaper import script; print(script())'
 ```
 
 In REAPER's Actions list, load that Lua file with ReaScript → Load, then run it.
-Keep it running while using the bridge. This creates `tactus-bridge/` under REAPER's
-resource directory. Find that directory through Options → Show REAPER resource path.
+Keep it running while using the bridge. Each run creates its own queue at
+`tactus-bridge/instances/<connection_id>/` under REAPER's resource directory and, on exit,
+removes its heartbeat and empty queue directories; a queue still holding unread replies
+is kept. Find that directory through Options → Show REAPER resource path.
 Use an isolated REAPER configuration for automated experiments. No startup script,
 control surface, extension or account is installed automatically.
 
@@ -244,7 +248,8 @@ Load/run it once per REAPER instance; end its running action or quit REAPER to s
 
 ## Write ordinary Lua
 
-`execute(code, *, resource_path, args=None, timeout=30, undo=None)` waits for native
+`execute(code, *, resource_path, args=None, timeout=30, undo=None, connection_id=None,
+project_id=None)` waits for native
 execution and returns the first Lua result. Supply data through `args`, so paths,
 quotes and Unicode are encoded correctly instead of interpolated into Lua source:
 

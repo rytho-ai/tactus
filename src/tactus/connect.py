@@ -108,6 +108,8 @@ def connect(*, host: str | None = None, reaper_path: Path | None = None,
             if old_script.is_file():
                 report["reaper"].setdefault("previous_names", []).append(str(old_script))
         step = "In REAPER, load this file in Actions > ReaScript: Load, then run the Action."
+        if sys.platform == "darwin":
+            step += f" With REAPER closed, `open -a REAPER \"{scripts / REAPER_SCRIPT_NAME}\"` starts both."
         if "previous_names" in report["reaper"]:
             step += " Stop and remove the previous Tactus Action before deleting its file."
         report["reaper"]["next_step"] = step

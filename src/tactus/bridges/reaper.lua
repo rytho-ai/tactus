@@ -10,7 +10,14 @@ local root = reaper.GetResourcePath() .. '/tactus-bridge/instances/' .. instance
 local requests, responses = root .. '/requests', root .. '/responses'
 reaper.RecursiveCreateDirectory(requests, 0)
 reaper.RecursiveCreateDirectory(responses, 0)
-reaper.atexit(function() os.remove(root .. '/heartbeat.json') end)
+reaper.atexit(function()
+  -- Best effort: os.remove only deletes empty directories, so unread replies survive;
+  -- platforms whose remove() rejects directories keep the empty queue.
+  os.remove(root .. '/heartbeat.json')
+  os.remove(requests)
+  os.remove(responses)
+  os.remove(root)
+end)
 
 local function quote(s)
   return '"' .. s:gsub('[%z\1-\31\\"]', function(c)
