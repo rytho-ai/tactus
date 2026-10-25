@@ -111,7 +111,9 @@ This copies the bundled REAPER script into the REAPER resource directory and reg
 the `tactus-mcp` Codex connection. No separate GitHub download is needed. Use
 `--reaper-path DIR` for a custom REAPER resource directory; `--check` only reports
 state. The command prints the installed `TactusMCP.lua` path. In REAPER, open Actions,
-choose **ReaScript: Load**, select that path, then run the new Action. If an older
+choose **ReaScript: Load**, select that path, then run the new Action. On macOS, while
+REAPER is closed, `open -a REAPER "<installed path>"` launches REAPER and runs the script
+in one step. If an older
 `tactus-mcp.lua` or `Tactus MCP.lua` Action was registered, stop and remove it after
 loading the new one, then delete the old script file. Updating
 Tactus requires rerunning `tactus connect`, then stopping and rerunning the Action.
