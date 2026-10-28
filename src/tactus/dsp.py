@@ -516,6 +516,10 @@ def _fold(x):
     return 1.0 - 4.0 * np.abs(np.mod((x + 1.0) / 4.0, 1.0) - 0.5)
 
 
+_SATURATION_BLOCK = 65536
+_SATURATION_MARGIN = 32  # Two polyphase FIRs reach at most ~20 original frames.
+
+
 _CURVES = {"tanh": np.tanh, "clip": lambda x: np.clip(x, -1.0, 1.0), "fold": _fold}
 
 
@@ -567,6 +571,21 @@ def saturate(
         raise ValueError("drive_db produces a nonfinite gain")
     if not len(x) or np.all(blend == 0):
         return x.copy()
+    if oversample > 1 and len(x) > _SATURATION_BLOCK + 2 * _SATURATION_MARGIN:
+        # Both FIRs have finite support. Overlap preserves their exact whole-clip
+        # boundaries while bounding the otherwise very large oversampled arrays.
+        result = np.empty_like(x)
+        for start in range(0, len(x), _SATURATION_BLOCK):
+            end = min(start + _SATURATION_BLOCK, len(x))
+            a, b = max(0, start - _SATURATION_MARGIN), min(len(x), end + _SATURATION_MARGIN)
+            processed = saturate(
+                x[a:b], sample_rate,
+                drive_db=drive[a:b] if drive.ndim else drive,
+                mix=blend[a:b] if blend.ndim else blend,
+                oversample=oversample, curve=curve,
+            )
+            result[start:end] = processed[start - a:end - a]
+        return result
     mono = x.ndim == 1
     frames = x[:, None] if mono else x
     up = resample_poly(frames, oversample, 1, axis=0, window=("kaiser", 8.6))

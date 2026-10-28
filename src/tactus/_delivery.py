@@ -21,7 +21,6 @@ import subprocess
 import tempfile
 from bisect import bisect_right
 from concurrent.futures import ThreadPoolExecutor
-from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -57,10 +56,16 @@ def waveform_peaks(audio: np.ndarray, buckets: int) -> list[float]:
     """
     if type(buckets) is not int or buckets < 1:
         raise ValueError("peaks must be a positive number of buckets")
-    samples = np.abs(audio) if audio.ndim == 1 else np.abs(audio).max(axis=1)
-    count = min(buckets, len(samples))
-    edges = np.linspace(0, len(samples), count + 1).astype(int)
-    return [round(float(samples[a:b].max()), 4) for a, b in pairwise(edges)]
+    count = min(buckets, len(audio))
+    if not count:
+        return []
+    edges = np.linspace(0, len(audio), count + 1).astype(int)
+    # Each frame's channels belong to the same bucket. Reduce their contiguous
+    # samples together instead of making a channel reduction for every frame.
+    channels = 1 if audio.ndim == 1 else audio.shape[1]
+    samples = np.abs(audio).reshape(-1)
+    maxima = np.maximum.reduceat(samples, edges[:-1] * channels)
+    return [round(float(value), 4) for value in maxima]
 
 
 def _offset(source: np.ndarray, decoded: np.ndarray, rate: int) -> int | None:
@@ -144,6 +149,7 @@ def web(
     bit_depth: int | None = None,
     names: list[str] | None = None,
     peaks: int = 2000,
+    cache: str | None = None,
     time_map: dict | None = None,
     run_identity: dict | None = None,
 ) -> dict:
@@ -161,6 +167,9 @@ def web(
     copied as frames (`map`) and as seconds (`map_seconds`). No resampling, normalization,
     mixing or trimming. Pass --names as a JSON list to bundle only those outputs; --peaks 0
     leaves the waveform outline out (`peaks: null`) for pages that draw none.
+    --cache DIR optionally reuses verified, identical lossless output encodings and
+    measurements across deliveries. Changed audio, options or implementation recompute;
+    maps and run identity are always regenerated. Cache files are copied into each export.
     """
     if codec not in CODECS:
         raise ValueError(f"codec must be one of {', '.join(CODECS)}")
@@ -175,6 +184,16 @@ def web(
     if type(peaks) is not int or peaks < 0:
         raise ValueError("peaks must be a whole number of buckets; 0 writes no outline")
     selected = _selected(outputs, names)
+    output_cache = None
+    if cache is not None:
+        if lossy:
+            raise ValueError("--cache supports lossless wav/flac delivery only")
+        from ._delivery_cache import WebOutputCache
+
+        cache_path = Path(cache).resolve()
+        if cache_path.is_relative_to(out.resolve()):
+            raise ValueError("--cache must be outside the export directory")
+        output_cache = WebOutputCache(cache_path)
     ffmpeg = None
     if lossy:
         from .inputs import tool
@@ -185,6 +204,11 @@ def web(
     (out / "audio").mkdir()
     entries, mismatched = {}, []
     def deliver_one(name: str, audio: np.ndarray, temporary: str) -> tuple[str, bool, dict]:
+        cache_key = None if output_cache is None else output_cache.key(name, audio, sample_rate, codec, depth, peaks)
+        if cache_key is not None:
+            cached = output_cache.restore(cache_key, out)
+            if cached is not None:
+                return name, False, cached
         payload, levels = encode_pcm24(audio, sample_rate)
         digest = hashlib.sha256(payload).hexdigest()
         file = out / "audio" / f"{name}-{digest[:8]}.{CODECS[codec]}"
@@ -221,7 +245,7 @@ def web(
         offset = 0 if not lossy else _offset(reference, decoded, sample_rate)
         frames = len(audio)
         mismatch = len(decoded) != frames or offset not in (0, None)
-        return name, mismatch, {
+        entry = {
             "file": file.relative_to(out).as_posix(),
             "codec": codec,
             "bitrate": bitrate,
@@ -244,6 +268,10 @@ def web(
             if peaks == 0
             else {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
         }
+
+        if cache_key is not None and not mismatch:
+            output_cache.save(cache_key, entry, out)
+        return name, mismatch, entry
 
     with tempfile.TemporaryDirectory(prefix="tactus-web-") as temporary:
         # Encoding runs in ffmpeg or libsndfile, outside the GIL: outputs in parallel, order kept.
