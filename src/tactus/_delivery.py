@@ -149,6 +149,7 @@ def web(
     bit_depth: int | None = None,
     names: list[str] | None = None,
     peaks: int = 2000,
+    loudness: bool = True,
     cache: str | None = None,
     time_map: dict | None = None,
     run_identity: dict | None = None,
@@ -167,6 +168,8 @@ def web(
     copied as frames (`map`) and as seconds (`map_seconds`). No resampling, normalization,
     mixing or trimming. Pass --names as a JSON list to bundle only those outputs; --peaks 0
     leaves the waveform outline out (`peaks: null`) for pages that draw none.
+    --no-loudness omits integrated LUFS measurement (null), recorded in bundle.measurements;
+    audio, sample peaks and waveform computation are unaffected. The default measures LUFS.
     --cache DIR optionally reuses verified, identical lossless output encodings and
     measurements across deliveries. Changed audio, options or implementation recompute;
     maps and run identity are always regenerated. Cache files are copied into each export.
@@ -183,6 +186,8 @@ def web(
     depth = (bit_depth or 24) if not lossy else None
     if type(peaks) is not int or peaks < 0:
         raise ValueError("peaks must be a whole number of buckets; 0 writes no outline")
+    if type(loudness) is not bool:
+        raise ValueError("loudness must be a boolean")
     selected = _selected(outputs, names)
     output_cache = None
     if cache is not None:
@@ -199,12 +204,14 @@ def web(
         from .inputs import tool
 
         ffmpeg = tool("ffmpeg")
-    from .analysis import level
+    level = None
+    if loudness:
+        from .analysis import level
 
     (out / "audio").mkdir()
     entries, mismatched = {}, []
     def deliver_one(name: str, audio: np.ndarray, temporary: str) -> tuple[str, bool, dict]:
-        cache_key = None if output_cache is None else output_cache.key(name, audio, sample_rate, codec, depth, peaks)
+        cache_key = None if output_cache is None else output_cache.key(name, audio, sample_rate, codec, depth, peaks, loudness)
         if cache_key is not None:
             cached = output_cache.restore(cache_key, out)
             if cached is not None:
@@ -263,7 +270,7 @@ def web(
             **levels,
             "integrated_lufs": level.loudness(np.asarray(audio, np.float64), sample_rate)[
                 "integrated_lufs"
-            ],
+            ] if loudness else None,
             "peaks": None
             if peaks == 0
             else {"buckets": min(peaks, frames), "values": waveform_peaks(audio, peaks)},
@@ -294,6 +301,7 @@ def web(
         },
         "sample_rate": sample_rate,
         "outputs": entries,
+        "measurements": {"integrated_lufs": loudness},
         "map": time_map,
         "map_seconds": None if time_map is None else timemap.to_seconds(time_map, sample_rate),
     }

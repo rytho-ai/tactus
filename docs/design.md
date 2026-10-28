@@ -416,3 +416,5 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 ## 無損網頁交付快取
 
 `export web --cache DIR` 選擇對 WAV／FLAC 的各 output 重用編碼、音量與波形結果；預設不使用快取，lossy codec 不支援這個選項。Key 包含原始陣列 bytes、dtype／shape、sample rate、output 名稱、codec／bit depth／peaks，以及相關實作與數值／編碼套件版本；以原始陣列而非僅 PCM 做身分，保留 headroom 與量測的差異。讀取時驗證音訊與 metadata hash，損壞項目重新計算。每個 export 複製出獨立檔案，map 與當次 run 身分仍重新產生。快取須在 export 目錄之外，可直接刪除，不影響作品或已完成 render。這減少重複交付成本，不改變 source、receipt 與聲音。
+
+網頁交付預設仍計算整合 LUFS；`export web --no-loudness` 省略這項量測並延後載入分析模組，不改變音訊、峰值、波形及 decoder 驗證。各 output 的 `integrated_lufs` 為 null，bundle 的 `measurements.integrated_lufs` 明確記錄 false；快取身分也包含這項選擇。這適合只需要峰值與波形的現場介面，不影響作品內 `fit_loudness` 等實際處理。
