@@ -366,3 +366,7 @@ The source inventory covers local `.py` files, not every external file Python mi
 These are trusted Python functions: external I/O, network, randomness and side effects are
 not sandboxed or exhaustively traced. Commit custom code, registration and the work's lock
 with the work; pin any additional inputs with `material()` / `tool()`.
+
+### Repeated lossless web delivery
+
+For repeated revisions, `tactus export web RUN --codec flac --cache .tactus/web-cache --out DIR` reuses verified encodings, loudness and waveform measurements for content-identical outputs. Changed outputs/options/implementation recompute. WAV and FLAC only; omit the flag for an uncached export. The cache lives outside `DIR`, is disposable, and each export receives independent files and its own current run identity/map.

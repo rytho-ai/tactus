@@ -30,6 +30,8 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整素材：保留 Tactus 的陣列排列、先 reset、可保留尾音。Tactus 不另寫 reverb。Float WAV 匯出不帶時間戳，同樣的音訊產生同樣的檔案；`tactus analyze --brief` 只印結果欄位。
 
+長音訊的 `dsp.saturate` 以內部重疊分塊限制超取樣暫存陣列大小，保留原本的整段處理定義與超取樣倍數。32-frame 輸入邊界涵蓋兩次預設 polyphase FIR 的有限影響範圍，只採用分塊內部結果；這是執行細節，不是連續串流 API。數值回歸涵蓋 mono／stereo、逐樣本控制、三種曲線及 2／4／8／16 倍超取樣。
+
 **尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
 ## DAW skill：依目的讀取原生操作指引
@@ -410,3 +412,7 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 **作品自訂分析與交付：**常用或難實作的能力由 Tactus 內建；其他分析與交付由作品自己的 Python 定義，在 `pyproject.toml` 的 `[tool.tactus.analysis]`／`[tool.tactus.export]` 以 `module:function` 明確註冊，CLI 以 `tactus analyze category name`／`tactus export name` 呼叫，只 import 被選中的函式。函式仍可直接由 Python 使用；keyword-only 參數形成 typed flags，內建與自訂共用紀錄流程。紀錄包括輸入、callable、作品 source／config／lock、參數與實際環境，不追蹤任意外部 I/O，也不隔離 Python 副作用。見 [project commands](project-commands.md)。
 
 **尚未定案：**共用 validation report 或 analysis report 的必要欄位與介面；stereo、DC 與 dropout 類分析是否提供；`join` 量到的斷點哪些聽得見（尚未有人聆聽確認）；pitch（若日後有可行方法）併入 `tactus.analysis` 的形狀。以真實製作與修訂流程驗證需要，再決定哪些觀察值得標準化。
+
+## 無損網頁交付快取
+
+`export web --cache DIR` 選擇對 WAV／FLAC 的各 output 重用編碼、音量與波形結果；預設不使用快取，lossy codec 不支援這個選項。Key 包含原始陣列 bytes、dtype／shape、sample rate、output 名稱、codec／bit depth／peaks，以及相關實作與數值／編碼套件版本；以原始陣列而非僅 PCM 做身分，保留 headroom 與量測的差異。讀取時驗證音訊與 metadata hash，損壞項目重新計算。每個 export 複製出獨立檔案，map 與當次 run 身分仍重新產生。快取須在 export 目錄之外，可直接刪除，不影響作品或已完成 render。這減少重複交付成本，不改變 source、receipt 與聲音。
