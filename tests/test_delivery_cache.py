@@ -82,3 +82,26 @@ def test_cache_cannot_be_inside_export(tmp_path):
     with pytest.raises(ValueError, match='outside'):
         web({'voice': np.ones(8000) * .1}, 8000, out=out, codec='flac', cache=str(out / 'cache'))
     assert not (out / 'cache').exists()
+
+
+def test_optional_loudness_skips_analysis_preserving_audio_and_peaks(tmp_path, monkeypatch):
+    x = np.sin(np.arange(8000) * .3) * .1
+    a, first = deliver(tmp_path, 'measured', {'voice': x})
+    def unexpected(*_):
+        raise AssertionError('Unrequested loudness analysis ran')
+    monkeypatch.setattr(level, 'loudness', unexpected)
+    b, second = deliver(tmp_path, 'live', {'voice': x}, loudness=False)
+    left, right = first['outputs']['voice'], second['outputs']['voice']
+    assert (a / left['file']).read_bytes() == (b / right['file']).read_bytes()
+    assert left['peaks'] == right['peaks'] and left['peak_dbfs'] == right['peak_dbfs']
+    assert right['integrated_lufs'] is None
+    assert second['measurements']['integrated_lufs'] is False
+    assert first['measurements']['integrated_lufs'] is True
+    assert len(list((tmp_path / 'cache').iterdir())) == 2
+
+
+def test_unmeasured_export_does_not_import_analysis(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, 'tactus.analysis', None)
+    _, bundle = deliver(tmp_path, 'no-analysis', {'voice': np.zeros(8000)}, loudness=False)
+    assert bundle['measurements']['integrated_lufs'] is False

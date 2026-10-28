@@ -370,3 +370,5 @@ with the work; pin any additional inputs with `material()` / `tool()`.
 ### Repeated lossless web delivery
 
 For repeated revisions, `tactus export web RUN --codec flac --cache .tactus/web-cache --out DIR` reuses verified encodings, loudness and waveform measurements for content-identical outputs. Changed outputs/options/implementation recompute. WAV and FLAC only; omit the flag for an uncached export. The cache lives outside `DIR`, is disposable, and each export receives independent files and its own current run identity/map.
+
+For a player that does not use integrated LUFS, add `--no-loudness` to web export. It omits that measurement and its analysis imports; audio encoding, sample peaks, waveform and decoder verification stay enabled. `bundle.measurements.integrated_lufs` records false and each output has `integrated_lufs: null`. Default exports continue measuring LUFS.

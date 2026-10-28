@@ -38,10 +38,10 @@ class WebOutputCache:
         self.root.mkdir(parents=True, exist_ok=True)
         self.implementation = implementation()
 
-    def key(self, name, audio, rate, codec, depth, peaks):
+    def key(self, name, audio, rate, codec, depth, peaks, loudness):
         content = hashlib.sha256(np.ascontiguousarray(audio).tobytes()).hexdigest()
         spec = [self.implementation, name, content, str(audio.dtype), audio.shape,
-                rate, codec, depth, peaks]
+                rate, codec, depth, peaks, loudness]
         return hashlib.sha256(json.dumps(spec).encode()).hexdigest()
 
     def restore(self, key: str, out: Path):
