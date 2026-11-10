@@ -121,6 +121,23 @@ binaries inside a wheel labeled arm64. The settings do not pin a CPU architectur
 uv selects build tools for the chosen Python/platform. `init` still only scaffolds
 and locks; `uv sync` or the first work command installs dependencies.
 
+On Intel macOS, current Numba/llvmlite releases no longer provide prebuilt wheels.
+Source builds require LLVM 22; installing ordinary Xcode command-line tools alone
+is insufficient. The Intel CI job installs `llvmdev=22.1.8` from conda-forge using
+micromamba and sets `CMAKE_PREFIX_PATH` to that environment's prefix before running
+uv. With micromamba installed, the equivalent setup is:
+
+```bash
+micromamba create -y -p "$HOME/.local/share/tactus-llvm" -c conda-forge llvmdev=22.1.8
+export CMAKE_PREFIX_PATH="$HOME/.local/share/tactus-llvm"
+uv sync
+```
+
+Keep that LLVM environment available for later installs. Python and Tactus packages
+remain managed by uv. This does not lower Numba or cap NumPy for other dependencies
+in the work. Apple Silicon users should select an arm64 Python rather than an Intel
+Python under Rosetta.
+
 Run `tactus doctor` inside the work (or `tactus --project WORK doctor`). In addition
 to the environment fields above, it reports the running Python's `architecture`
 and `native_dependencies`. It performs small real computations with QM-DSP,
