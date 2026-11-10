@@ -4,12 +4,17 @@ decoded PCM against baselines captured before the second-production-through-run 
 
 Cases that need pinned materials skip, naming the missing digest, when this machine's
 pool does not have them (`tactus.inputs.pool.has`); everything else always runs.
+The synthetic/no-drums case also has an independently captured macOS ARM64
+reference from the pre-port source (tests/fixtures/README.md).
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import platform
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -105,7 +110,13 @@ def test_phonon_ballad_synthetic_none_matches_baseline(tmp_path):
         out=tmp_path / "phonon-synthetic-none",
         params={"palette": "synthetic", "drums": "none"},
     )
-    assert_outputs_match(result["outputs"], PHONON_SYNTHETIC_NONE)
+    expected = PHONON_SYNTHETIC_NONE
+    if sys.platform == "darwin" and platform.machine() == "arm64":
+        reference = json.loads(
+            (REPO_ROOT / "tests/fixtures/phonon-synthetic-none-macos-arm64.json").read_text()
+        )
+        expected = reference["outputs"]
+    assert_outputs_match(result["outputs"], expected)
 
 
 @pytest.mark.skipif(

@@ -71,17 +71,6 @@ def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-def _end(process: subprocess.Popen[str]) -> None:
-    """Stop a worker (its process group on POSIX) and close its pipes."""
-    _stop(process)
-    for pipe in (process.stdin, process.stdout):
-        if pipe is not None:
-            try:
-                pipe.close()
-            except OSError:
-                pass
-
-
 def _directory_bytes(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
@@ -156,6 +145,8 @@ class Service:
         self.session: str | None = None
         self.directory: Path | None = None
         self._cond = threading.Condition()
+        # Cancellation and render cleanup can reach the same worker concurrently.
+        self._stop_lock = threading.Lock()
         self._waiting: list[_Ticket] = []
         self._busy = False
         self._process: subprocess.Popen[str] | None = None
@@ -217,7 +208,7 @@ class Service:
             process, self._process = self._process, None
             self._load = None
         if process is not None:
-            _end(process)
+            self._end(process)
         if self._pycache is not None:
             self._pycache.cleanup()
             self._pycache = None
@@ -316,7 +307,8 @@ class Service:
                 self._cancelling = True
             self._cond.notify_all()
         if process is not None:
-            _stop(process)
+            with self._stop_lock:
+                _stop(process)
         return {"status": "ok", "cancelled_waiting": waiting, "cancelled_running": bool(busy)}
 
     def document(self, number: int) -> dict[str, Any]:
@@ -484,13 +476,24 @@ class Service:
         assert self._load is not None
         return {key: self._load[key] for key in ("id", "loaded_at", "reason", "pid", "seconds")}
 
+    def _end(self, process: subprocess.Popen[str]) -> None:
+        """Serialize worker termination with cancellation, then close its pipes."""
+        with self._stop_lock:
+            _stop(process)
+            for pipe in (process.stdin, process.stdout):
+                if pipe is not None:
+                    try:
+                        pipe.close()
+                    except OSError:
+                        pass
+
     def _replace(self, reason: str) -> None:
         """Drop the current worker; the next request loads with `reason`."""
         process, self._process = self._process, None
         self._load = None
         self._next_reason = reason
         if process is not None:
-            _end(process)
+            self._end(process)
 
     def _ensure_loaded(self) -> float:
         """Load when no live worker holds the current source; return the seconds spent."""
@@ -543,7 +546,7 @@ class Service:
         line = process.stdout.readline()
         message = json.loads(line) if line.strip() else None
         if message is None or message.get("status") != "loaded":
-            _end(process)
+            self._end(process)
             error = (
                 RunError(**message["error"])
                 if message and message.get("status") == "error"
