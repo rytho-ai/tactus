@@ -27,9 +27,7 @@ execution and records what produced each result; the author makes the musical de
 ### CLI and dependencies
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Git first.
-Tactus requires Python **3.12 or newer**; uv can install it. On Intel Macs, use
-Python **3.12 or 3.13**: Tactus selects Numba 0.62, the last release with Intel macOS
-wheels ([upstream support policy](https://numba.readthedocs.io/en/latest/release/0.63.0-notes.html#deprecation-of-macos-x86-64-intel-support)). Git-sourced native dependencies also need
+Tactus requires Python **3.12 or newer**; uv can install it. Git-sourced native dependencies also need
 C and C++20 compilers, such as GCC or Clang.
 
 ```bash
