@@ -86,3 +86,13 @@ markers = [
 [tool.uv.sources]
 pyqmdsp = { git = "https://github.com/openmirlab/pyqmdsp", rev = "09b36d656b347425ba36c1c38ca372b337f0b527" }
 pytimestretch = { git = "https://github.com/openmirlab/pytimestretch", rev = "e43cc6dc000c61715540d5031bb526b4a28f2ee9" }
+
+# Keep native builds independent of an Intel CMake on PATH and old CMake caches.
+# Mirrored in init's generated work configuration; test_init checks parity.
+[tool.uv.extra-build-dependencies]
+pyqmdsp = ["cmake>=3.24"]
+pytimestretch = ["cmake>=3.24"]
+
+[tool.uv.config-settings-package]
+pyqmdsp = { "build-dir" = "" }
+pytimestretch = { "build-dir" = "" }

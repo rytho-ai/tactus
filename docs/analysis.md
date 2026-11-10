@@ -5,6 +5,7 @@ Python functions for arrays; the author decides how the results affect the work.
 Discover categories with `tactus analyze --help`, then use category/command `--help` for
 available analyses, parameters and exact definitions in the installed version.
 
+- [One-shot note candidates](#one-shot-note-candidates)
 - [Data schema](#data-schema)
 - [Beat analysis](#beat-analysis)
 - [Level curves and loudness range](#level-curves-and-loudness-range)
@@ -14,16 +15,69 @@ available analyses, parameters and exact definitions in the installed version.
 - [Joins and loops](#joins-and-loops)
 
 Add `--brief` to print only `path`, `output`, `analysis` and `result` when you need the
-number and not the parameters and provenance.
+number and not the parameters, provenance or `result.schema`. Full output and saved
+`--out` records retain the schema.
+
+By default each file or run output produces one JSON line. Add `--json` to emit one
+JSON array that can be read with a single `json.loads`, even for a multi-output run:
+
+```bash
+uv run tactus analyze level sample_peak runs/a --json --brief
+```
+
+A successful `--json` response is always an array, including for a single file.
+Errors remain one error object with a nonzero exit code.
 
 To write an analysis or register a work-local command, read the
 [measure skill](../skills/measure/SKILL.md) and
 [project command contract](../skills/references/project-commands.md#analyze).
 
+## One-shot note candidates
+
+Use `spectral note_candidates` to inspect a steady region of a single-note recording
+without writing a frequency-to-note conversion script:
+
+```bash
+uv run tactus analyze spectral note_candidates bass.wav --start-s 0.08 --end-s 0.5 --n 8 --json --brief
+```
+
+The command labels the same interpolated spectral peaks as `spectral peaks`. Each
+candidate contains `freq_hz`, `level_db`, nearest `note` including octave (for example
+`G3`), fractional `midi`, and `offset_cents` relative to that note. A4 is 440 Hz and
+C4 is MIDI 60. A confirmed G3 at +22 cents corresponds to sampler `root=55.22`.
+The result also records the actual selected `start_s` and exclusive `end_s`, rounded
+to input sample boundaries. Omit the region arguments to measure the entire input.
+
+**Candidates are ordered by spectral level, not by root likelihood.** A G3 recording
+can have a stronger G4 second harmonic. Compare candidate spacing and repeated
+steady regions before choosing a root; missing fundamentals, noise, layered notes
+and changing pitch can all make this unsuitable for automatic decisions. No root
+is selected and no confidence score is claimed. Choose a region after the attack
+with enough periods of the lowest note; selecting the entire decay can change the
+measured cents. Channels are summed, so antiphase content can cancel.
+
+Python uses the same function:
+
+```python
+from tactus.analysis import spectral
+
+result = spectral.note_candidates(audio, sample_rate, start_s=0.08, end_s=0.5)
+# After confirming which spectral candidate is the recording's root:
+root = result["candidates"][confirmed_index]["midi"]
+```
+
+Silence returns an empty candidate list. Invalid/nonfinite input, invalid ranges or
+regions shorter than eight samples raise an error. Eight samples are only a minimum
+input length, not a guarantee of useful pitch resolution. `resolution_hz` controls
+the requested Welch bin spacing, bounded by the available region length.
+`spectral tuning` remains a different tool: it reports the whole-signal tuning offset
+and does not identify a note or octave.
+
 ## Data schema
 
 Every builtin returns an additional `schema` object. In Python it is `result["schema"]`;
-in CLI JSON it is `report["result"]["schema"]`, including with `--brief`. It describes
+in full CLI JSON it is `report["result"]["schema"]`. `--brief` omits it from stdout,
+while saved records retain it. It describes
 the data rather than how to draw it. Existing fields, parameter defaults, arrays and
 numeric analysis revisions stay unchanged. `image(result)` and `--image` remain available.
 Project-defined analyses can use the same public helpers below. They are not annotated

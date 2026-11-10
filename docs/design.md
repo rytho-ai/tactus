@@ -24,6 +24,8 @@ Outputs 共用一個 sample rate，可有不同長度；可以是 mix、stems �
 
 **執行環境選擇：**launcher 與 CLI 共用 project selection，依序採用明確 `--project`、父 launcher 傳遞的 work、可辨識的 uv `.venv` owner，最後才由 cwd 找最近的專案；單純 activate 不覆蓋 cwd 選擇，檔案參數仍以呼叫 cwd 解析。這避免 `uv run --project WORK` 保留 cwd 時跳回另一個 runtime。自訂／共享環境明確使用 `--project`，不靠自動猜測；`doctor` 顯示選擇結果。見 [環境選擇](../skills/references/project-commands.md#selecting-a-works-environment)。
 
+**原生依賴的建置與診斷：**checkout 與 `init` 生成的作品設定替 pyqmdsp／pytimestretch 加入隔離的 CMake build dependency，並使用暫存 build directory，避免 PATH 上的 Intel CMake 或先前的 CMake cache 產生標為 arm64、實際卻是 x86_64 的套件。不寫死 CPU 架構，建置工具跟隨選定的 Python／平台。`init` 維持只建立設定與 lock；`doctor` 在選定環境的獨立 subprocess 實際測試 QM-DSP 與三個 stretch engine，回報 Python 架構與各項結果，錯誤、崩潰或逾時以非零 exit code 表示，不自動修復。舊作品手動採用建置設定，不改動其 source pin；這不是整個 DSP 套件的完整驗證。見 [診斷與修復](../skills/references/project-commands.md#native-dependency-health-and-recovery)。
+
 **作品檢查設定：**`init` 在作品的 `pyproject.toml` 寫入可自行修改的本地 pytest／Ruff 預設：recursive checks 略過 runs、excerpts、pool、analyses、exports 與 Git 恢復用的 worktree，Ruff 規則屬於作品本身，不繼承外層 repo 的 lint policy。pytest／Ruff 不是 runtime dependencies；需要固定版本時加入作品的 dev group。舊作品手動合併設定，runtime lock 不隨之升級。見 [作品測試與 lint](../skills/references/project-commands.md#test-and-lint-a-work)。
 
 **Devices：**`tactus.devices` 以普通函式提供大家認得的做音樂方式：`sampler`（把錄音當成有音高的樂器，含 root、起始位置與延音 loop）、`pads`（切片與 one-shot，含 choke）、`steps`（step sequencer，產生事件）。Device 跟音符事件有關；`dsp` 只處理音訊，`synth` 只產生聲音。每個 device 是一個自足的檔案，只依賴 NumPy 與 Tactus 公開模組，可以 import，也可以整份複製到作品裡改；輸入輸出是普通陣列、tuple 與 dict，事件時間一律是絕對秒數。Device 本身沒有音色：Tactus 提供 device，Agent 用素材與設定做出自己的 patch。理由是可見性：有說明與可抄實作的 Agent 才會把素材當樂器演奏，只給素材時它只用在鼓聲；手寫的慣例小工具也會寫錯而不自知。不屬於裝置的做法（resample 自己的輸出、loop 當底再變化、錄音與合成疊加）由 [techniques reference](../skills/references/techniques.md) 說明。不提供 device 類別、chain／rack、track 或 session 模型。契約見 [devices reference](../skills/references/devices.md)。
@@ -385,11 +387,13 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 **`tactus.analysis` 的結構：**分析按 category 組織，一個 category 是一個模組，以三層 `--help` 自我描述：`tactus analyze --help` 列出 category，`tactus analyze CATEGORY --help` 列出分析，`tactus analyze CATEGORY NAME --help` 給參數、欄位、單位與定義。每個分析是 `tactus.analysis.CATEGORIES[category].ANALYSES` 裡的一個函式，回傳 dict（可含 NumPy arrays）並帶 `revision` int；CLI 從這個結構自動產生子命令，沒有手寫的 per-analysis CLI。分析只回報數值，從不判斷通過或失敗，門檻由作品或 Agent 自己套。內建分析是可選工具，作品自己的 Python 與註冊分析仍是正式途徑。現有 category：
 
 - `level`：`loudness`、`true_peak`、`sample_peak`、`rms`、`clipping`、`crest_factor`，以及 `momentary_loudness`、`short_term_loudness`、`loudness_range`、`rms_curve`、`peak_curve`、`crest_factor_curve`。
-- `spectral`：`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`、`bandwidth`、`rolloff`、`flatness`、`mel`、`chroma`、`mfcc`、`cqt`、`vqt`、`tuning`。
+- `spectral`：`spectrum`、`band_levels`、`centroid`、`peaks`、`stft`、`bandwidth`、`rolloff`、`flatness`、`mel`、`chroma`、`mfcc`、`cqt`、`vqt`、`tuning`、`note_candidates`。
 - `rhythm`：`beats`、`onset_strength`、`onsets`、`tempogram`。
 - `join`：`seams`、`fades`、`onset_phase`。
 
 數值定義、單位與限制由 [analysis 文件](analysis.md) 維護；以下只記錄設計邊界。
+
+**分析的 CLI 輸出：**預設保留每筆結果一行 JSON；`--json` 把所有檔案／run outputs 的結果合成單一 JSON array，單筆也維持 array，方便程式一次讀取。`--brief` 保留 path／output／analysis 與量測值，省略 provenance、params 與 `result.schema`；完整 stdout、Python 回傳與 `--out` 保存的結果仍保留 schema。分析數值與 revision 不因此改變。
 
 **分析資料的自我描述：**所有內建分析在既有回傳 dict 新增 `schema`，Python 與 CLI 共用同一份宣告；以獨立版本記錄資料形狀、軸與矩陣維度、單位、時間位置、實際視窗寬度和特殊值編碼。現有數值、欄位位置與分析 revision 保留，參數與座標由 schema 的欄位角色清單辨識，不要求下游猜測。時間以這次輸入起點為原點，不推定 render／原曲位置、小節或未宣告的語意。中心視窗、結尾視窗、補償後的 onset 格點與逐頻率 Q 視窗分別描述。`tactus.analysis.schema` 是內建與自訂分析共用的公開介面：用普通 dict 宣告資料，`attach` 複製 metadata 並檢查結構，`validate` 核對宣告與資料形狀，`coordinates` 解讀明確的 selector 與換算因子。檢查不代替演算法正確性驗證；自訂分析仍可不宣告，裸資料與未宣告的語意不會被猜測。宣告只指向資料、不抄資料：selector 可加 `slice`，軸可用 `end` selector 給區間終點，`ends` 解讀終點；用到這兩項的宣告標為 version 2（目前只有 `rhythm.beats`），其餘維持 v1，只認 v1 的讀者會拒絕而不是讀錯。理由：拍點的說明把 `beats_s` 與間隔整串再寫一次，〈POV〉整首 41.5 KB 的結果有 19.9 KB 是複本；測試讓每個內建分析在短、長兩種輸入下比對宣告大小，防止再犯。不另外建立跨工具套件或資料物件框架。基本分析圖片繼續提供；標記與跨工具診斷 workflow 由下游工具負責，schema 不依賴特定產品。契約及逐分析核對表見 [data schema](analysis.md#data-schema)。
 
@@ -404,6 +408,8 @@ Runtime 只檢查技術契約，分析只回報數值，音樂判斷留給 Agent
 **拍點：**`tactus analyze rhythm beats FILE` 與 Python 使用同一函式，結果與直接呼叫 pyqmdsp 一致，並在驗證素材上接近原 Vamp 參考；這是特定素材的驗證，不保證所有音樂準確。有效音訊太短或全靜音時回傳空陣列與 `bpm: null`，不猜測小節或第一拍。採用後依 frozen-analysis 規則固定成素材或 source 常數。見 [拍點分析](analysis.md#beat-analysis)。
 
 **接縫與循環：**`join` 在作品宣告的位置量測接點：`at_s`（輸入內的接點秒數）、`wrap`／`wrap_range_s`（loop 繞回開頭，量測尾端接上開頭的虛擬串接）與 `reference_s`（同一段音樂的一般位置，通常是小節線）。秒數以 `timing.frame_of` 換成 frame，與音樂擺放、excerpt 邊界同一規則；不估計 tempo、小節或強拍，也不讀地圖：從地圖取位置是作品幾行程式的事，文件附上經測試的寫法。兩段 clip 怎麼疊接是播放規則，屬於作品或地圖，`join` 只量已接好的聲音。`seams` 同時回報 sample step、斜率變化、邊界樣本的線性預測誤差與高頻爆量，旁邊放整段與參照位置的同一組數字，由作品自己比較，不給單一比值或門檻。理由：互動作品各自寫的「wrap step 不大於 loop 內最大一步」以一下鼓聲為準，放過了《一卷帶子》cruise 與 basement 0.15–0.25 FS 的 wrap 跳動（同一 loop 小節線只有 0.001–0.009）；album 的單一比值分不出爆音與強拍，onset 折疊有固定偏一格的誤差。Render 時的週期性（算三個循環比較）需要 renderer，不在分析內。數值定義、預設值的依據與從地圖取位置的寫法見 [joins and loops](analysis.md#joins-and-loops)。
+
+**One-shot 的音名候選：**`spectral note_candidates` 針對使用者選定的穩定片段，將既有 spectral peaks 標成音名／八度、fractional MIDI 與 cents，記錄實際起訖時間，供確認後填入 sampler root。候選依頻譜峰值排序，不選根音、不回報虛構的信心分數；較強的第二泛音不能直接變成 root。這省掉頻率換算與切片腳本，但不取代缺失基頻、疊層音或音高漂移的判斷。見 [量測指令](analysis.md#one-shot-note-candidates)。
 
 **沒有 `pitch` category：**現有 fundamental 與 f0 估計方法在未見素材上不可靠（帶有比 fundamental 更大聲低八度層的 SFZ bass 讓每種方法失準），在有更可靠的方法之前不提供。`spectral tuning` 是範圍窄得多的量測：整段訊號只回一個相對 A440 的偏差（cents）與集中程度，供 `chroma` 的 `tuning` 與重新調音使用；它不估計音高、調性或和弦。
 

@@ -116,12 +116,18 @@ The plugin installation is separate from the Python runtime installation above. 
 
 ## Your first audio
 
-From the Tactus checkout, create a separate work:
+From the Tactus checkout, create a separate work. These commands work even when
+`tactus` is not installed globally or on PATH:
 
 ```bash
-tactus init ../my-work --tactus-path "$PWD"
+uv run tactus init ../my-work --tactus-path .
 cd ../my-work
+uv run tactus doctor
 ```
+
+Inside the work, prefix the `tactus` commands below with `uv run` if you have not
+installed the global CLI. Run Python scripts with `uv run python script.py` so they
+use the work's dependencies and interpreter, rather than an unrelated system Python.
 
 Use the [version workflow](skills/version/SKILL.md) to commit the work's
 source and lock before rendering, then preserve and commit the revisions you choose.

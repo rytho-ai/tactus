@@ -121,6 +121,9 @@ Install once with
 `uv tool install --python 3.12 --editable TACTUS_CHECKOUT`; use
 `tactus init DIR --tactus-path TACTUS_CHECKOUT` during local development, or pin a published
 revision with `--tactus URL@REV`. Inside the work, plain `tactus ...` uses its locked environment.
+New works also isolate CMake builds for the native analysis/stretch dependencies.
+Run `tactus doctor` to exercise their native engines; see [health and recovery](project-commands.md#native-dependency-health-and-recovery).
+
 `tactus --project DIR ...` selects it explicitly; file arguments keep their cwd meaning. `uv add PACKAGE` adds a package to the work
 only; `.python-version` pins the running Tactus's Python minor version. `requires-python`
 retains the installed package's compatibility constraint; the work can revise its pin explicitly.

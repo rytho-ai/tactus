@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import platform
 import sys
 import tempfile
 from collections.abc import Sequence
@@ -72,6 +73,12 @@ def _brief_export(result: dict) -> dict:
         brief["replaced"] = True
     return brief
 
+
+def _brief_analysis(report: dict) -> dict:
+    brief = {key: report[key] for key in ("path", "output", "analysis") if key in report}
+    brief["result"] = {key: value for key, value in report["result"].items() if key != "schema"}
+    return brief
+
 def _main(argv: Sequence[str] | None = None) -> int:
     """Execute a command; functional runs reserve stdout for one JSON result."""
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -102,7 +109,7 @@ def _main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {package_version}")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("doctor", help="Report the installed environment")
+    commands.add_parser("doctor", help="Report the environment and test native DSP dependencies")
     connect_command = commands.add_parser("connect", help="Install and check DAW connections")
     connect_command.add_argument("--host", choices=("codex",),
                                  help="Configure this agent host's Tactus MCP entry")
@@ -281,7 +288,12 @@ def _main(argv: Sequence[str] | None = None) -> int:
             name_parser.add_argument(
                 "--brief",
                 action="store_true",
-                help="Print only path, output, analysis and result (omit params and provenance)",
+                help="Print path, output, analysis and values (omit schema, params and provenance)",
+            )
+            name_parser.add_argument(
+                "--json",
+                action="store_true",
+                help="Print one JSON array instead of one JSON object per line",
             )
             image_flags = set()
             if key in IMAGE_ANALYSES and command.project is None:
@@ -301,7 +313,8 @@ def _main(argv: Sequence[str] | None = None) -> int:
                 names = add_flags(
                     name_parser,
                     fn,
-                    {"paths", "out", "brief", "help", "command", "category", "name"} | image_flags,
+                    {"paths", "out", "brief", "json", "help", "command", "category", "name"}
+                    | image_flags,
                 )
                 name_parser.set_defaults(callable_command=command, param_names=names)
     export_command = commands.add_parser(
@@ -501,28 +514,34 @@ def _main(argv: Sequence[str] | None = None) -> int:
                     visualization = {"vmin": image_min, "vmax": image_max}
                 elif image_min is not None or image_max is not None:
                     raise RunError("invalid_request", "request", "--image-min/max require --image")
-                for result in measure(
+                results = measure(
                     args.paths, args.callable_command, params, args.out, visualization=visualization
-                ):
-                    if args.brief:
-                        result = {
-                            key: result[key]
-                            for key in ("path", "output", "analysis", "result")
-                            if key in result
-                        }
-                    print(json.dumps(result, sort_keys=True))
+                )
+                if args.brief:
+                    results = [_brief_analysis(result) for result in results]
+                if args.json:
+                    print(json.dumps(results, sort_keys=True))
+                else:
+                    for result in results:
+                        print(json.dumps(result, sort_keys=True))
             return 0
     except RunError as exc:
         print(json.dumps(exc.to_dict(), sort_keys=True))
         return exc.exit_code
 
     if args.command == "doctor":
+        from ._native_health import check_native_dependencies
+
+        native = check_native_dependencies()
+        healthy = all(item["status"] == "ok" for item in native.values())
         print(
             json.dumps(
                 {
                     "package": "tactus",
                     "version": package_version,
                     "python": sys.version.split()[0],
+                    "architecture": platform.machine(),
+                    "native_dependencies": native,
                     "environment": sys.prefix,
                     "interpreter": sys.executable,
                     "lock": environment()["lock"],
@@ -534,12 +553,12 @@ def _main(argv: Sequence[str] | None = None) -> int:
                         if project
                         else None
                     ),
-                    "status": "ok",
+                    "status": "ok" if healthy else "error",
                 },
                 sort_keys=True,
             )
         )
-        return 0
+        return 0 if healthy else 2
 
     parser.error(f"unknown command: {args.command}")
 

@@ -43,6 +43,35 @@ when it is not on `PATH` (`uv run pytest -m oracle`).
 `uv sync --group dev` removes packages left by an earlier reference run; `uv run`
 alone can retain extra packages. The optional references remain pinned in `uv.lock`.
 
+## Native dependency compatibility
+
+The checkout and generated works use isolated CMake build dependencies and temporary
+CMake build directories for `pyqmdsp` and `pytimestretch`. These settings are shared
+across Windows, Linux and macOS; they do not hardcode arm64 or use platform-specific
+binary inspection commands. CMake does not install a C/C++ compiler: Windows source
+builds need Visual Studio C++ Build Tools and an appropriate Developer Command Prompt;
+Linux needs a C/C++ toolchain, and macOS needs Xcode Command Line Tools.
+
+`verify.yml` defines fresh native-build jobs on Linux x64, Windows x64, macOS arm64
+and macOS Intel with Python 3.12. Each job installs dependencies without a restored
+uv cache, exercises all four native engines, and creates, syncs, diagnoses and renders
+a new work. Windows explicitly selects the x64 MSVC environment. The existing `verify`
+check requires every native job to pass; a failure on one platform does not cancel
+the other platform jobs. This is the configured verification scope, not a claim that
+an unrun workflow has passed or that every OS/architecture/Python version is supported.
+
+Run the native checks locally with:
+
+```bash
+uv run pytest -q tests/test_native_health.py
+uv run tactus doctor
+```
+
+For the real work-creation integration test, set `TACTUS_SLOW=1` in the environment
+and run `uv run pytest -q tests/test_init.py::test_init_then_uv_sync_then_run_uses_the_works_own_lock`.
+See [native health and recovery](../skills/references/project-commands.md#native-dependency-health-and-recovery)
+for old works and diagnostic output.
+
 ## Internal contract checks
 
 Source inventories, callable identities, attribution and completed-audio readers have
