@@ -44,7 +44,13 @@ Times are absolute seconds from the start of the output.
   `duration_s + release_s`. The sample is mono or `(frames, channels)`.
 - `play(sample, sample_rate, notes, *, frames, **settings)` renders a whole part.
 - **root** is the pitch the recording really sounds at. Measure it: a file labelled with a
-  note name can sit tens of cents off, and a wrong root detunes every note. Autocorrelation
+  note name can sit tens of cents off, and a wrong root detunes every note.
+  Run `uv run tactus analyze spectral note_candidates bass.wav --start-s 0.08 --end-s 0.5 --json --brief`
+  to label spectral peaks with note/octave, cents and fractional `midi`. Confirm the
+  root among the candidates, then use its `midi` value (G3 +22 cents gives `root=55.22`).
+  They are sorted by level: a louder G4 harmonic is not a recommendation to use G4.
+  Select a stable region after the attack and compare another region if pitch drifts.
+  Autocorrelation
   or an FFT peak over a steady stretch can suggest a frequency, but harmonics can cause
   octave errors. Check the candidate against the waveform's periodicity and other peaks;
   `69 + 12 * log2(hz / 440)` converts a confirmed frequency to a MIDI number.

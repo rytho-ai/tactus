@@ -10,10 +10,61 @@ permissions:
   contents: read
 
 jobs:
+  native-dependencies:
+    name: native-dependencies (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.12"
+          version: latest-known
+          enable-cache: false
+      - name: Prepare Windows C++ compiler
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: x64
+      - name: Install LLVM for Intel macOS source builds
+        if: matrix.os == 'macos-15-intel'
+        id: llvm
+        uses: mamba-org/setup-micromamba@49bdbd1b63bca20dd1122fe48beda2d446df7184
+        with:
+          environment-name: llvm-build
+          create-args: >-
+            -c conda-forge
+            llvmdev=22.1.8
+          init-shell: none
+          cache-environment: false
+      - name: Locate LLVM for llvmlite
+        if: matrix.os == 'macos-15-intel'
+        env:
+          LLVM_PREFIX: ${{ steps.llvm.outputs.environment-path }}
+        run: echo "CMAKE_PREFIX_PATH=$LLVM_PREFIX" >> "$GITHUB_ENV"
+      - run: uv sync --locked --group dev
+      - run: uv run pytest -q tests/test_native_health.py tests/test_note_candidates.py tests/test_analysis_output.py tests/test_dsp_numba.py tests/test_synth.py tests/test_instrument_synth.py
+      - name: Verify compiled analysis kernels
+        run: uv run pytest -q tests/test_analysis_acceleration.py -k "compiled_q or q_thread or q_memory"
+      - name: Verify a fresh work through render
+        env:
+          TACTUS_SLOW: "1"
+        run: uv run pytest -q tests/test_init.py::test_init_then_uv_sync_then_run_uses_the_works_own_lock
+      - run: uv run tactus doctor
+
   verify:
     name: verify
+    needs: native-dependencies
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Require all native platforms to pass
+        if: needs.native-dependencies.result != 'success'
+        run: exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:

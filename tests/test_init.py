@@ -36,9 +36,11 @@ def commit_all(root: Path, message: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _fake_uv(monkeypatch):
+def _fake_uv(monkeypatch, request):
     """Unit tests never shell out to a real `uv`; they only assert it would be invoked."""
     calls: list[tuple[list[str], Path]] = []
+    if request.node.get_closest_marker("slow"):
+        return calls
     real_which = shutil.which
 
     def fake_which(name: str) -> str | None:
@@ -339,6 +341,13 @@ def test_init_then_uv_sync_then_run_uses_the_works_own_lock(tmp_path):
     work = tmp_path / "work"
     assert main(["init", str(work), "--tactus-path", str(TACTUS_ROOT)]) == 0
     subprocess.run(["uv", "sync"], cwd=work, check=True)
+    doctor = subprocess.run(
+        ["uv", "run", "--locked", "tactus", "doctor"],
+        cwd=work, capture_output=True, text=True, check=True,
+    )
+    health = json.loads(doctor.stdout)
+    assert health["status"] == "ok"
+    assert all(item["status"] == "ok" for item in health["native_dependencies"].values())
 
     (work / "song.py").write_text(
         "import numpy as np\n\n\n"
@@ -346,6 +355,9 @@ def test_init_then_uv_sync_then_run_uses_the_works_own_lock(tmp_path):
         "    return {'sample_rate': 8000, "
         "'outputs': {'a': np.full(8, gain, dtype=np.float32)}}\n"
     )
+    git(["config", "user.email", "a@example.com"], work)
+    git(["config", "user.name", "Test"], work)
+    commit_all(work, "Create smoke-test source")
     subprocess.run(
         ["uv", "run", "tactus", "run", "song.py", "--out", "runs/a"],
         cwd=work,
@@ -392,3 +404,17 @@ def test_init_reports_git_initialization_failure(tmp_path, monkeypatch, _fake_uv
     with pytest.raises(RunError, match="permission denied") as failure:
         init(tmp_path / "work", tactus_path=TACTUS_ROOT)
     assert (failure.value.code, failure.value.phase) == ("init_failed", "git")
+
+
+def test_native_build_configuration_matches_checkout(tmp_path):
+    import tomllib
+
+    work = tmp_path / "work"
+    init(work, tactus_path=TACTUS_ROOT)
+    generated = tomllib.loads((work / "pyproject.toml").read_text())["tool"]["uv"]
+    checkout = tomllib.loads((TACTUS_ROOT / "pyproject.toml").read_text())["tool"]["uv"]
+    for package in ("pyqmdsp", "pytimestretch"):
+        assert generated["extra-build-dependencies"][package] == ["cmake>=3.24"]
+        assert generated["config-settings-package"][package] == {"build-dir": ""}
+    for key in ("extra-build-dependencies", "config-settings-package"):
+        assert generated[key] == checkout[key]

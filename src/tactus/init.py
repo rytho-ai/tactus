@@ -41,6 +41,15 @@ from ._source import direct_url as _direct_url
 _GITIGNORE = "runs/\nexcerpts/\nanalyses/\nexports/\n.tactus/\n.venv/\n__pycache__/\n"
 
 _WORK_TOOL_CONFIG = """
+# Keep native builds independent of an Intel CMake on PATH and old CMake caches.
+[tool.uv.extra-build-dependencies]
+pyqmdsp = ["cmake>=3.24"]
+pytimestretch = ["cmake>=3.24"]
+
+[tool.uv.config-settings-package]
+pyqmdsp = { "build-dir" = "" }
+pytimestretch = { "build-dir" = "" }
+
 [tool.pytest.ini_options]
 norecursedirs = [
     "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}",

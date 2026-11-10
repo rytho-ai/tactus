@@ -37,6 +37,9 @@ these steps, with the same steps.
    Before choosing sound sources, read [Ways of making music](../references/techniques.md)
    and weigh recorded material, slices and resampling beside synthesis.
    For a new work, `tactus init DIR` creates its uv project; it does not compose a song.
+   A global CLI is optional: from a checkout use `uv run tactus init DIR --tactus-path .`;
+   inside a work use `uv run tactus ...` if `tactus` is not on PATH. Run work scripts
+   with `uv run python`, not an assumed system `python3`.
    For an existing work, check `tactus --project WORK doctor` before running commands;
    read [Selecting a work's environment](../references/project-commands.md#selecting-a-works-environment)
    for command paths, locked Python scratch scripts and runtime diagnostics.

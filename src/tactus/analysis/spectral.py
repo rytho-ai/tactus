@@ -12,6 +12,8 @@ Measurement definitions and feature-array contracts are maintained in
 docs/analysis.md. Pitch estimation is outside this category; current limits
 and the decision to omit a pitch category are recorded in docs/design.md. `tuning`
 reports only a whole-signal offset from A440, the input `chroma` needs.
+`note_candidates` labels spectral peaks for manual sampler-root inspection; it does
+not infer the fundamental or select a root.
 
 dB reference for the original five measurements: 0 dB = the power of a full-scale
 (amplitude 1.0) sine wave, i.e. mean-square 0.5. The owned feature functions `mel`,
@@ -35,6 +37,7 @@ from scipy.fft import dct, set_workers
 from scipy.signal import find_peaks, welch
 from scipy.signal import stft as _scipy_stft
 
+from ..timing import frame_of
 from . import _features
 from ._acceleration import fft_workers
 from ._revision import revision as _revision
@@ -359,6 +362,76 @@ def peaks(
         out.append({"freq_hz": freq_hz, "level_db": level})
     out.sort(key=lambda d: d["level_db"], reverse=True)
     return {"peaks": out[:n]}
+
+
+@_revision(1)
+@_describe
+def note_candidates(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    start_s: float = 0.0,
+    end_s: float | None = None,
+    n: int = 8,
+    min_hz: float = 20.0,
+    resolution_hz: float = 1.0,
+) -> dict[str, Any]:
+    """Label spectral peaks with note/octave and cents; do not automatically choose a root.
+
+    Select a steady region of a single-note sample with start_s/end_s (input seconds,
+    end exclusive). Boundaries round to the nearest sample, half-sample ties later.
+    The same Hann/Welch spectrum and interpolated peaks as `spectral.peaks` are used;
+    channels are summed. At least eight selected samples are required, but low notes
+    need many periods for useful resolution. Short/noisy/changing tones reduce accuracy.
+
+    Candidates are sorted by peak level, NOT by likelihood of being the fundamental.
+    A louder second harmonic can appear first, and noise also has peaks. Compare
+    harmonic spacing and multiple steady regions before adopting a sampler root;
+    absence of a peak does not prove absence of its fundamental. This is not a pitch
+    tracker, a chord detector or a confidence-scored root estimator.
+
+    Returns:
+        start_s (seconds): actual selected start after sample rounding.
+        end_s (seconds): actual exclusive end after sample rounding.
+        candidates (records): up to n peaks, loudest first; empty for silence.
+            freq_hz (Hz): measured spectral peak frequency.
+            level_db (dB): peak level relative to a full-scale sine.
+            note (text): nearest equal-tempered note with octave, using sharps;
+                C4 is MIDI 60 and A4 is 440 Hz. Half-semitone ties round upward.
+            midi (semitones): 69 + 12*log2(freq_hz/440), including fractional detuning.
+                Use as sampler root only after confirming this peak is the root.
+            offset_cents (cents): distance from that nearest note, positive when sharp.
+    """
+    x = _features.mono(audio, sample_rate, average=False)
+    _features.positive_int("n", n)
+    if not np.isfinite(min_hz) or not 0 < min_hz < sample_rate / 2:
+        raise ValueError("min_hz must be finite, positive and below Nyquist")
+    if not np.isfinite(resolution_hz) or resolution_hz <= 0:
+        raise ValueError("resolution_hz must be finite and positive")
+    end = len(x) / sample_rate if end_s is None else end_s
+    if not (
+        np.isfinite(start_s) and np.isfinite(end)
+        and 0 <= start_s < end <= len(x) / sample_rate
+    ):
+        raise ValueError("require 0 <= start_s < end_s <= input duration")
+    first, last = frame_of(start_s, sample_rate), frame_of(end, sample_rate)
+    if last - first < 8:
+        raise ValueError("selected region must contain at least eight samples")
+    measured = peaks(x[first:last], sample_rate, n=n, min_hz=min_hz,
+                     resolution_hz=resolution_hz)
+    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    candidates = []
+    for peak in measured["peaks"]:
+        midi = 69 + 12 * math.log2(peak["freq_hz"] / 440)
+        nearest = math.floor(midi + 0.5)
+        candidates.append({
+            **peak,
+            "note": f"{names[nearest % 12]}{nearest // 12 - 1}",
+            "midi": midi,
+            "offset_cents": 100 * (midi - nearest),
+        })
+    return {"start_s": first / sample_rate, "end_s": last / sample_rate,
+            "candidates": candidates}
 
 
 @_revision(2)
@@ -805,6 +878,7 @@ ANALYSES = (
     band_levels,
     centroid,
     peaks,
+    note_candidates,
     stft,
     mel,
     chroma,

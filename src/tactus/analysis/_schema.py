@@ -130,6 +130,21 @@ def _spectral(name, result, rate, params, frames):
             layout="records",
             order="descending_level",
         )
+    elif name == "note_candidates":
+        fields["candidates"] = schema.series(
+            schema.axis("freq_hz", "frequency", "Hz", "nonuniform"),
+            {"key": "level_db", **db},
+            layout="records",
+            order="descending_level_not_root_likelihood",
+            attributes={
+                "note": schema.value("nearest_equal_tempered_note", "text", reference="C4 = MIDI 60"),
+                "midi": schema.value("spectral_peak_note_number", "semitone", reference="A4 = 440 Hz"),
+                "offset_cents": schema.value("offset_from_nearest_note", "cent"),
+            },
+        )
+        fields["start_s"] = schema.summary("selected_region_start", "s", origin="input_start")
+        fields["end_s"] = schema.summary("selected_region_end", "s", origin="input_start",
+                                          end_exclusive=True)
     elif name == "tuning":
         for key, unit in (("offset_cents", "cent"), ("offset_semitones", "semitone")):
             fields[key] = schema.summary(

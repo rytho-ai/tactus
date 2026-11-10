@@ -1,12 +1,13 @@
 # Project analysis and export commands
 
-Install the CLI once with uv. Inside a work, `tactus` runs with that work's locked Tactus
-version and dependencies. Register the work's Python functions by name; use the same CLI
+Use `uv run tactus` inside a work, or install the CLI once with uv for the shorter
+`tactus` command. Inside a work, both use that work's locked Tactus version and dependencies. Register the work's Python functions by name; use the same CLI
 for built-in and custom operations.
 
 ## Contents
 
 - [Install and select a work](#install-and-select-a-work)
+- [Native dependency health and recovery](#native-dependency-health-and-recovery)
 - [Test and lint a work](#test-and-lint-a-work)
 - [Register local functions](#register-local-functions)
 - [Analyze](#analyze)
@@ -16,7 +17,22 @@ for built-in and custom operations.
 
 ## Install and select a work
 
-For a fixed installation, replace `FULL_COMMIT` with the chosen published commit SHA:
+A global `tactus` executable is optional. From a checkout, start without one:
+
+```bash
+uv run tactus init ../my-work --tactus-path .
+cd ../my-work
+uv run tactus doctor
+```
+
+From another directory, use `uv run --project /path/to/tactus tactus init /path/to/work
+--tactus-path /path/to/tactus` on one command line. Inside a work, `uv run tactus ...`
+is the direct alternative whenever the shell reports `tactus: command not found`.
+Use `uv run python script.py` for work scripts; a bare `python3` may point at an old
+or incompatible system installation. Global tool installation and PATH setup are
+separate from installing the agent plugin.
+
+For a fixed global installation, replace `FULL_COMMIT` with the chosen published commit SHA:
 
 ```bash
 uv tool install --python 3.12 "tactus @ git+https://github.com/rytho-ai/tactus.git@FULL_COMMIT"
@@ -95,6 +111,72 @@ This diagnostic compares the default `.venv`: the work's own, or, for a work wit
 `uv.lock` that is a member of an enclosing uv workspace, the workspace root's. Custom
 environment locations are not compared.
 Locks control versions; updating the global CLI does not upgrade a work's pinned Tactus.
+
+## Native dependency health and recovery
+
+`init` writes build settings for `pyqmdsp` and `pytimestretch`: CMake is installed in
+an isolated build environment, and each build uses a temporary CMake directory.
+This prevents a system Intel CMake or a previous CMake cache from producing Intel
+binaries inside a wheel labeled arm64. The settings do not pin a CPU architecture;
+uv selects build tools for the chosen Python/platform. `init` still only scaffolds
+and locks; `uv sync` or the first work command installs dependencies.
+
+On Intel macOS, current Numba/llvmlite releases no longer provide prebuilt wheels.
+Source builds require LLVM 22; installing ordinary Xcode command-line tools alone
+is insufficient. The Intel CI job installs `llvmdev=22.1.8` from conda-forge using
+micromamba and sets `CMAKE_PREFIX_PATH` to that environment's prefix before running
+uv. With micromamba installed, the equivalent setup is:
+
+```bash
+micromamba create -y -p "$HOME/.local/share/tactus-llvm" -c conda-forge llvmdev=22.1.8
+export CMAKE_PREFIX_PATH="$HOME/.local/share/tactus-llvm"
+uv sync
+```
+
+Keep that LLVM environment available for later installs. Python and Tactus packages
+remain managed by uv. This does not lower Numba or cap NumPy for other dependencies
+in the work. Apple Silicon users should select an arm64 Python rather than an Intel
+Python under Rosetta.
+
+Run `tactus doctor` inside the work (or `tactus --project WORK doctor`). In addition
+to the environment fields above, it reports the running Python's `architecture`
+and `native_dependencies`. It performs small real computations with QM-DSP,
+Rubber Band, Signalsmith and PaulStretch in isolated subprocesses. An import failure,
+crash, invalid output or 30-second per-probe timeout gives `status: "error"` and exit
+code 2, with the affected engine and diagnostic; successful checks give exit code 0.
+This checks native compatibility, not musical quality or every algorithm.
+
+Existing works retain their configuration and pinned Tactus version. To repair an
+old work, first confirm that its Python architecture is intentional (normally
+`arm64` on Apple Silicon, or `x86_64` for a deliberate Intel/Rosetta environment).
+Merge these entries into the work's `pyproject.toml` without duplicating existing
+TOML tables; for a uv workspace, configure the workspace root:
+
+```toml
+[tool.uv.extra-build-dependencies]
+pyqmdsp = ["cmake>=3.24"]
+pytimestretch = ["cmake>=3.24"]
+
+[tool.uv.config-settings-package]
+pyqmdsp = { "build-dir" = "" }
+pytimestretch = { "build-dir" = "" }
+```
+
+Then, from that work/environment root:
+
+```bash
+uv sync --locked --reinstall-package pyqmdsp --reinstall-package pytimestretch
+tactus doctor
+```
+
+These settings change the build cache identity, avoiding wheels built under the
+old configuration; do not clear the entire uv cache. They require a uv version
+supporting `extra-build-dependencies` and `config-settings-package` (verified with
+uv 0.12.0). A work pinned to older Tactus will still have the old metadata-only
+`doctor`; upgrade that pin deliberately to use the native checks. Neither `doctor`
+nor updating the global launcher changes a work's dependencies automatically.
+CMake is a build tool, not a runtime dependency. Global `uv tool install` environments
+are separate: these project settings cover the checkout and generated works.
 
 ## Test and lint a work
 
@@ -207,6 +289,19 @@ It returns a dict. Each input produces one JSON line with `path`, `analysis`,
 `result`, `input_sha256` and `provenance`. A run directory measures its published audition
 WAVs and adds each output name. It does not substitute original arrays for the heard audio.
 Non-finite scalar measurements become null.
+
+Use `--json` for a single JSON array containing every report (including a one-item
+array for a single file). Without it, output remains one JSON object per line for
+compatibility. An error emits one error object and a nonzero exit code, rather than
+a success array. `--brief` omits outer provenance/parameters and the top-level
+`result.schema`, retaining the measured values. Combine them for downstream scripts:
+
+```bash
+uv run tactus analyze level sample_peak runs/a --json --brief
+```
+
+Full stdout and `--out` result files retain their schemas. `json` is a reserved CLI
+parameter name, like `brief` and `out`; custom analysis arguments must use another name.
 
 Builtin results also include the data declarations described in
 [Analysis coordinates and images](runtime.md#analysis-coordinates-and-images).
