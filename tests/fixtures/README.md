@@ -29,3 +29,24 @@ These snapshots complement analytical channel/gain/window tests, the published
 48 kHz K-weighting coefficients and an independent EBU corpus check retained in the
 local experiments workspace. They are regression evidence, not a claim to
 cover every possible audio input or the entire pyloudnorm API.
+
+## Phonon synthetic example on macOS ARM64
+
+`phonon-synthetic-none-macos-arm64.json` records exact decoded int32 PCM hashes
+from the **pre-port** `examples/phonon-ballad/song.py` at
+`0d108e3027f66fdb9f7eb4ed4eb6d5bfe649adf0`, not from the current implementation.
+The capture records the source hash and numerical environment. Load that historical
+file with its sibling `soundfont.py` import available and call
+`render(palette="synthetic", out=output_path, drum_mode="none")`.
+Read each WAV with `soundfile.read(dtype="int32", always_2d=True)` and hash
+the array's bytes with SHA-256. Preserve sufficient parent directories for the
+historical module's default paths; this mode needs no external materials.
+
+On 2026-11-10 all seven historical outputs matched the current `tactus.run`
+outputs sample for sample in the recorded macOS ARM64 environment. Five differed
+from the original frozen hashes, even when rendered with the historical source;
+this is not evidence of a runner regression. The test selects this reference on
+macOS ARM64 and keeps the original reference elsewhere. It still requires exact
+PCM identity, rather than accepting either answer or updating hashes from a failed
+current render. This does not establish bitwise portability across numerical-library
+versions or validate the material-dependent palettes, which were unavailable here.

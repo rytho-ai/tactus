@@ -19,11 +19,12 @@ def candidate(tmp_path, monkeypatch):
     monkeypatch.setenv("TACTUS_POOL", str(tmp_path / "pool"))
     source = tmp_path / "work" / "song.py"
     source.parent.mkdir()
-    source.write_text("""import numpy as np
+    source.write_text("""import sys
+import numpy as np
 from tactus import tool
 
 def render(*, offset=0.0):
-    tool("/bin/true")
+    tool(sys.executable)
     raw = np.array([[1.25, -1.5], [0.123456789123, 1e-12]], dtype=np.float64) + offset
     return {"sample_rate": 8000, "outputs": {"mix": raw * 0.25}, "takes": {"pad": raw}}
 """)

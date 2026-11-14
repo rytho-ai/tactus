@@ -1,0 +1,28 @@
+{
+  "source_commit": "0d108e3027f66fdb9f7eb4ed4eb6d5bfe649adf0",
+  "source_path": "examples/phonon-ballad/song.py",
+  "source_sha256": "f381b310a0c3a9bf880d4d0ab5c2ad57627ef7412f8edd4c9228ac0e1672b440",
+  "environment": {
+    "sys_platform": "darwin",
+    "machine": "arm64",
+    "python": "3.12.12",
+    "numpy": "2.5.3",
+    "soundfile": "0.14.0",
+    "libsndfile": "1.2.2"
+  },
+  "parameters": {
+    "palette": "synthetic",
+    "drum_mode": "none"
+  },
+  "sample_rate": 32000,
+  "pcm_dtype": "int32",
+  "outputs": {
+    "bass": "9a4076fbc95bafa185832185074e7b47915c9416dcd331492e89a993aeac96b3",
+    "drums": "6f3d7da9ae1ef130b14da0a5b5867c72cd9bf4a3cb39aa028a174152180c7253",
+    "guitar": "347ad9b3a96eba11e2b12aee2ecb9a2096535e64d7c13c222923ad8c1b9472c2",
+    "lead": "6ca98aef75ffce9522f7abae58e6c34131110da08446933b2ec4a25881f10e33",
+    "mix": "a60643285b81418c2191052e51a6db8cbf27cfab388fee2bc74d8b1f91ee0611",
+    "piano": "20736641f74a1c9236eb64cc288a373c2c5305be863e2c84198f2319d4e08452",
+    "strings": "c56ed6530cbd4b0219d7c00adfd33331ad5d48f64a2a8f9270fb444035615a87"
+  }
+}
