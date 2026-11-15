@@ -25,6 +25,10 @@ Live or hosted VSTs, adopting GUI changes or handing off a saved run, use
 [daw](../daw/SKILL.md). It selects the host-specific reference and the appropriate
 package, handoff or co-working path. Short DAW edits use native readback and audition;
 adopting the result or delivering audio follows the work/run/receipt flow below.
+Creating the intended sound can include authoring your own native instrument or effect.
+Use [plugin](../plugin/SKILL.md) to create or revise it as an independent JUCE project,
+then adopt a chosen build and settings in the music work. Choose this route when it
+serves the sound or workflow; work-local DSP and existing plugins remain valid options.
 
 ## Develop the work
 

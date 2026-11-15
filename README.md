@@ -87,7 +87,8 @@ The `tactus` plugin provides **compose** (write and revise works),
 **[daw](skills/daw/SKILL.md)** (REAPER/Live reads and edits, using native instruments/effects,
 and handing off accepted work),
 **[resources](skills/resources/SKILL.md)** (acquire audio and reviewed VSTs with provenance and verification), **dsp** (design sounds and build
-effects), **measure** (use or write analyses), **version** (track work revisions
+effects), **[plugin](skills/plugin/SKILL.md)** (make native JUCE instruments/effects,
+validate builds and use fixed releases), **measure** (use or write analyses), **version** (track work revisions
 with Git), **interactive** (give a work an interface: time map, decisions as input, checked
 joins, browser delivery) and **visual** (join pictures to the music's time — videos, pages, live
 visuals — and measure their sync). Install it from this repository root
@@ -252,6 +253,7 @@ is a film workflow outside Tactus.
 ## Go further
 
 - [Creative examples](skills/examples/README.md): custom effects, library combinations, analysis-driven time warping and synthesized instruments.
+- [Native audio plugins](skills/plugin/SKILL.md): independent JUCE projects, visual/interaction design, adaptable native editor examples, official API lookup, validation and fixed-release hosting in Tactus or a DAW.
 - [Runtime reference](skills/references/runtime.md): materials, rendering, time maps, excerpts and saved takes.
 - [Interactive works](skills/interactive/SKILL.md): maps, performances as input, rendering on request, checked joins and delivery.
 - [Pictures that follow the music](skills/visual/SKILL.md): videos, playing pages and live visuals timed from a run.

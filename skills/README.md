@@ -4,7 +4,8 @@
 
 Arrange, render, analyze, and refine.
 
-Eight composable skills for making music with the separately installed Tactus Python runtime:
+Nine composable skills for making music and its sound tools. Music works use the
+separately installed Tactus Python runtime; native plugin projects build independently.
 
 | Skill | Responsibility |
 |---|---|
@@ -12,6 +13,7 @@ Eight composable skills for making music with the separately installed Tactus Py
 | [daw](daw/SKILL.md) | Use REAPER or Ableton Live as a music package, hand off accepted work, or co-work through scoped native reads and edits, including Max for Live and hosted VSTs. |
 | [resources](resources/SKILL.md) | Acquire audio files and reviewed VST instruments/effects; verify access, rights and file or host behavior, preserving provenance. |
 | [dsp](dsp/SKILL.md) | Use or build sound sources, processors and controls, validate their behavior and accelerate measured bottlenecks. |
+| [plugin](plugin/SKILL.md) | Author native JUCE/C++ instruments and effects in independent projects; build, validate and adopt fixed releases in music. |
 | [measure](measure/SKILL.md) | Use or write analyses, check joins and loop wraps, evaluate their limits and supply observations for creative choices. |
 | [version](version/SKILL.md) | Explore, compare, preserve and reuse versions; use Git to connect source, refs and locks to audio. |
 | [visual](visual/SKILL.md) | Make pictures that follow the music's time in any form — a video, a page that plays, live visuals — and measure their sync. |
@@ -22,7 +24,9 @@ measurement when an idea needs them; interactive builds on compose when other co
 changes the work, and visual joins pictures to its time. Resources supplies external audio
 and plugin choices when compose needs material or tools. Daw selects REAPER or Live
 guidance for direct host operations and joins compose when adopting or delivering audio.
-All eight are independently usable. Builtin functions, Pedalboard and local Python
+Plugin-authoring develops independent native sound tools and joins compose when a
+chosen build is used in music. All nine are independently usable. Builtin functions,
+Pedalboard and local Python
 are ordinary options. The skills
 provide working methods and adaptable examples; musical form and aesthetics remain yours.
 
@@ -69,6 +73,7 @@ skills/
   daw/SKILL.md
   resources/SKILL.md
   dsp/SKILL.md
+  plugin/SKILL.md
   measure/SKILL.md
   version/SKILL.md
   interactive/SKILL.md
@@ -119,6 +124,9 @@ The plugin supplies guidance, not an MCP server or Python dependency installer.
 - [Project commands](references/project-commands.md): custom analysis/export, delivery with the map and environment selection.
 - [Rendering on request](references/serve.md): `tactus serve` for works that render while they play.
 - [Packages and integration notes](references/packages.md): tool selection, layouts, timing and state.
+- [Native plugin authoring](references/plugin-authoring.md): official JUCE API lookup, minimal CMake starter, parameter/state compatibility, validation and fixed-release hosting.
+- [Plugin design](references/plugin-design.md): audible tasks, visual identity, control behavior, accessibility and task-based iteration.
+- [JUCE editors](references/plugin-ui.md): native/WebView choices, parameter-authoritative controls, optional gain/editor example and actual-host verification.
 - [Builtin DSP](references/dsp.md): available functions and behavior worth considering when adapting them.
 - [Synthesis building blocks](references/synth.md): oscillators, seeded noise, envelopes, resonators, plucked strings and grains.
 - [Devices](references/devices.md): a sampler, pads and a step sequencer to import or copy.
@@ -134,3 +142,10 @@ with `claude plugin validate .claude-plugin/plugin.json`. Its warning about root
 is expected: repository development instructions are separate from the installed skills.
 Plugin loading and example execution
 verify availability and technical behavior; they do not prove an increase in creativity.
+
+The native starter test opts in with a pinned JUCE checkout and requires CMake and a
+C++ toolchain. It compiles a copied starter and checks actual mono/stereo transparency:
+
+```bash
+TACTUS_JUCE_SOURCE=/path/to/JUCE uv run pytest tests/test_plugin_authoring.py
+```

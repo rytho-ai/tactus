@@ -8,6 +8,8 @@ description: Find and acquire external audio and VST instruments or effects for 
 Turn a musical need into usable local audio or an available plugin, with its source and
 use conditions preserved. Use the audio workflow for files and the
 [plugin workflow](#find-and-verify-vst-plugins) for instruments/effects.
+To make a native instrument or effect instead of acquiring one, use
+[plugin](../plugin/SKILL.md).
 
 ## Find and acquire audio
 

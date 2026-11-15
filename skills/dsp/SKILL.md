@@ -9,6 +9,9 @@ Start with the audible behavior you want to create. Use an existing sound source
 processor, adapt its implementation, write a local function, or combine these approaches.
 A custom synth voice or effect is ordinary Python called from a work; it needs no Tactus
 registration or processor base class.
+For a native audio plugin that a DAW can load, use
+[plugin](../plugin/SKILL.md); algorithms and sound choices remain
+authored code in that independent JUCE project.
 Read [Packages and integration notes](../references/packages.md) when selecting a
 library or crossing array, MIDI, plugin-state or time-stretch interfaces.
 
