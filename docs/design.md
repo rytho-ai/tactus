@@ -36,6 +36,32 @@ Pedalboard 內建效果（reverb、chorus 等）以 `fx.process` 套用到完整
 
 **尚未定案：**是否提供單音的 root 音高估計；`devices` 這個名稱是否會被誤解成音訊硬體；是否增加琶音器、tracker、looper。targeted rendering 與更廣的交付型別。`select`、`render_audio`、`mix`、`render_all` 是實驗使用過的語彙，不是 public API。
 
+## 音訊外掛製作：獨立工程與固定版本
+
+`plugin` skill 引導 Agent 用普通 JUCE／C++ 製作原生效果器與 MIDI 樂器；
+DSP、參數、介面與聲部架構由外掛工程自行決定。工程擁有自己的 source、Git、依賴與
+建置，與使用它的音樂作品分開；可改寫的最小 CMake／原音通過範例只提供起點。
+官方 API 以選定 JUCE revision 的 source／文件為準，流程涵蓋參數身分與單位、舊狀態
+遷移、最後封裝簽章、實際 host 驗證和安全重載。Python／host／外掛架構明確選擇，
+不把 dependency lock 當成 interpreter 架構的保證。
+
+有真人操作的外掛，依聲音用途設計視覺層級、控制分組、字體配色與互動方式。
+共用指引分成設計判斷與 JUCE 介面實作，按需讀取；可改寫的參數控制／gain editor
+範例示範數值輸入、微調、factory reset、參數連接及縮放，配色與控制形式由工程決定。
+介面設計先對照用途相近與不同做法的實際外掛，依音樂動作選擇主次比例、控制形式及
+視覺性格；[介面案例](../skills/references/plugin-interface-studies.md) 保留來源、可借鏡之處
+與適用界線。共用控制範例是操作機制的起點，外觀品質仍需獨立判斷。
+原生 Component／LookAndFeel 與 WebView 都是可選路徑；各自驗證實際 host 的畫面、
+操作、focus、automation 與保存重開。畫面截圖、數值檢查及實際試聽各自提供不同證據。
+
+音樂作品以 tree material ref 固定選定 release，保留 bundle 名稱、source／build 身分
+與必要資料，再以 `tool()` 宣告實際載入的 bundle；`tool()` 本身只記錄，不固定可變路徑。
+作品保存設定、automation 與明確升級選擇。Hosting 沿用 Pedalboard、`fx.process`／
+`fx.render_instrument` 或原生 DAW，沒有新的 runtime API、預設效果鏈或外掛 registry。
+保存結果與重新執行的保證仍分開；各格式、host 與即時效能以實測範圍為準。見
+[authoring reference](../skills/references/plugin-authoring.md)。
+
+
 ## DAW skill：依目的讀取原生操作指引
 
 共用的 [daw skill](../skills/daw/SKILL.md) 承接 REAPER／Ableton Live 的直接查看與修改，
@@ -289,7 +315,7 @@ Reuse 的價值主要是讓候選比較公平，而非速度：每次 render 都
 
 `tactus take export REF --out DIR` 匯出音訊與 provenance，另一台電腦以 `tactus material add DIR` 匯入得到相同 ref；重新生成所需的 sample libraries、binaries 與 Python 環境需另外準備。Pool 是本機持久素材庫，需備份；stage cache 可刪，不能充當採用演奏的唯一保存處。固定成素材的演奏已在乾淨 pool／Python 環境、斷網的同主機 Linux 容器中重建出相同 WAV；這還不是通用的交接 CLI。見 [Saved takes](../skills/references/runtime.md#saved-takes) 與 [saved takes 測試](../tests/test_takes.py)。
 
-**Agent 指引與 plugin：**指引由單一 [`tactus` plugin](../skills/README.md) 提供，manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，兩個 marketplace 都指向根目錄。六個 skills 放在 `skills/`，共用契約由 `skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的相對引用可獨立使用，runtime 另行安裝。
+**Agent 指引與 plugin：**指引由單一 [`tactus` plugin](../skills/README.md) 提供，manifest 放在 repo 根目錄的 `.claude-plugin/` 與 `.codex-plugin/`，兩個 marketplace 都指向根目錄。共用 skills 放在 `skills/`，共用契約由 `skills/references/` 維護，小型合成音源範例放在 `skills/examples/`；整個 skills 目錄的相對引用可獨立使用，runtime 另行安裝。
 
 - `compose` 負責用 functional、modular Python 撰寫、執行與修訂作品，以 progressive disclosure 組織和閱讀 code：先看整體 form／signal flow，再進入相關模組契約與演算法。模組採 deep module 原則：小而清楚的 interface 承載完整能力，隱藏演算法與協調細節，保留 caller 要控制的音樂選擇；不只增加轉接層。套件清單與整合注意事項在共用 reference 按需查閱。
 - `dsp` 負責使用、撰寫與驗證聲音源與 processor（sound design 與訊號處理）；`measure` 涵蓋使用與撰寫分析、驗證定義，以及註冊作品自己的 analyze 指令。Compose 在需要時連到這兩個 skills，把量測、time-stretch 與效果組合成作品自己的做法，不要求每首作品走同一流程。

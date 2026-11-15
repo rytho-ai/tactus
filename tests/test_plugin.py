@@ -44,6 +44,7 @@ def test_marketplaces_resolve_the_same_versioned_plugin():
         "dsp",
         "interactive",
         "measure",
+        "plugin",
         "resources",
         "version",
         "visual",
