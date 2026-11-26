@@ -1,29 +1,33 @@
 # Tactus development
 
 This repository is the active Tactus product, formerly `tactus-code`. Start with README.md
-for delivered behavior and examples. When a local `docs/blueprints/plan.md` exists, read it
-for ongoing work. `../tactus-daw` is a reference implementation;
+for delivered behavior and examples. Resolve the configured project workspace for
+working plans, progress and retained development rationale. `../tactus-daw` is a reference implementation;
 reuse mechanisms only when the active product needs them. Its package and CLI use distinct names.
 
 Before implementation, design changes, or review, read `docs/positioning.md` for product principles
 and `docs/design.md` for current approaches and undecided interfaces. Both are self-contained and
 maintained independently of the historical thoughts; design choices do not imply shipped behavior.
 
-Use the installed small-change skill for decided fixes and the planning skill for new
-capabilities. Maintain principles in `docs/positioning.md`, current approaches in `docs/design.md`,
-grounded plans for active work in `docs/blueprints/plans/`, decision rationale by topic in
-`docs/blueprints/thoughts/`, and current status in `docs/blueprints/plan.md`.
-Write `docs/design.md` as the current decision for each topic: approach, boundaries, a short
-reason and open questions, in present tense. Record dated progress, measurements and attempts
-that were tried and reverted in blueprints or `experiments/`; tracked documents link only to
-tracked files.
-Original experiments and retired plans are archived with checksums under
-`experiments/documentation-history/`; consult them when original measurements or superseded
-proposals are needed. Current contracts stay in the maintained product documents.
-Experiments that render many candidates run `tactus prune` on their run directories once the
-results are recorded: each run's original arrays can exceed a gigabyte.
-Blueprints and `experiments/` are local, Git-ignored working material. Keep usage contracts
-and verification needed by a clean checkout in tracked docs, examples and tests.
+Use the installed execution skill for decided fixes and plan new capabilities before
+implementation. Keep working plans, ideas, progress and retained process artifacts in
+the selected project workspace; report an unavailable connection instead of creating
+another local work board. Machine-specific workspace paths stay in local configuration,
+not committed repository instructions.
+
+Maintain product principles in `docs/positioning.md` and current approaches in
+`docs/design.md`: approach, boundaries, a short reason and open questions, in present
+tense. Tracked docs, examples and tests own the contracts and verification needed by a
+clean checkout. Keep dated process history and private rationale in the workspace;
+exploratory scripts, renders and media remain in `experiments/` under its local
+retention rules. Historical blueprints are retired sources, not a place for new work.
+
+Original experiments and retired plans may remain with checksums under
+`experiments/documentation-history/`; consult them when original measurements or
+superseded proposals are needed. Experiments and historical local blueprints stay
+Git-ignored and outside distributions. When experiments render many candidates, run
+`tactus prune` on unneeded run arrays after recording results; each run can exceed a
+gigabyte. Preserve selected performances and required evidence.
 
 When a task in this repository is to make music (a song, beat, demo, probe piece or listening
 example), work as a user of Tactus: invoke the compose skill (`skills/compose/SKILL.md`)

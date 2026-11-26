@@ -1,5 +1,5 @@
 """Exercise tactus.timing against independent computations (scipy quad, closed forms) and the
-validation the plan requires. See docs/blueprints/plans/2026-09-27-tactus-timing.md."""
+public input-validation contract documented in src/tactus/timing.py."""
 
 from __future__ import annotations
 
@@ -668,7 +668,7 @@ def test_cycle_empty_figure_raises():
 
 # ---------------------------------------------------------------------------
 # fit_tempo / segment / warp_markers / fold
-# See docs/blueprints/plans/2026-10-14-tempo-grid-fitting.md.
+# Contracts and numerical definitions: src/tactus/timing.py.
 # ---------------------------------------------------------------------------
 
 

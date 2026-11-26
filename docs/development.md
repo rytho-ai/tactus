@@ -104,7 +104,9 @@ uv run pytest tests/test_analysis_schema.py tests/test_generic_analysis_schema.p
 
 Read [positioning](positioning.md) for the product principles and [design](design.md) for
 current approaches and undecided interfaces. Follow [AGENTS.md](../AGENTS.md) when changing
-this repository. Blueprints and `experiments/` are local, Git-ignored working material.
+this repository. Working plans, progress and private development rationale belong to
+the configured project workspace; historical blueprints are retired sources.
+`experiments/` remains local and Git-ignored.
 Tracked docs, examples and tests hold the usage contracts and verification needed by a clean
 checkout. Keep exploratory scripts, raw benchmark reports and temporary experiments locally;
 promote required regression inputs into `tests/fixtures/` and maintained examples into `examples/`.
