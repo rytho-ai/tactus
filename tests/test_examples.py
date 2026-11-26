@@ -1,6 +1,5 @@
 """Regression tests for the shipped examples: run each through `tactus.run` and compare
-decoded PCM against baselines captured before the second-production-through-run port
-(docs/blueprints/plans/2026-09-24-second-production-through-run.md, step 6).
+decoded PCM against the preserved baselines for the shipped run-based examples.
 
 Cases that need pinned materials skip, naming the missing digest, when this machine's
 pool does not have them (`tactus.inputs.pool.has`); everything else always runs.
